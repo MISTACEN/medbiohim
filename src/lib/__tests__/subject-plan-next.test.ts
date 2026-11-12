@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   daysUntil,
+  normalizeApiPlan,
   normalizeStaticPlan,
   parsePlanDate,
   sessionsFromApiPlanWeeks,
@@ -113,6 +114,41 @@ describe("subject-plan-next: ближайшее занятие", () => {
     expect(plan.sessions[0].preparations).toHaveLength(1);
     expect(plan.sessions[0].electronograms).toEqual(["Митохондрия"]);
     expect(plan.sessions[0].homework?.items).toEqual(["зарисовать препарат"]);
+  });
+
+  it("план из БД (недели API) даёт занятия, работы практикума и контрольные", () => {
+    const plan = normalizeApiPlan({
+      subject: "Оптика, атомная физика",
+      subject_slug: "optics",
+      year: "2026/2027",
+      course: 2,
+      semester: 3,
+      note: "Даты из расписания",
+      controls: [{ n: 1, date: null, title: "Зачёт", covers: ["Все темы"] }],
+      weeks: [
+        { week: 1, date: "2026-09-01", lecture: "Основы фотометрии." },
+        { week: 2, date: "2026-09-08", practice: "Законы отражения и преломления света." },
+        { week: 3, date: "2026-12-01", practice: "Рефрактометр", laboratory: ["Рефрактометр"] },
+      ],
+    });
+
+    expect(plan).not.toBeNull();
+    expect(plan!.subject).toBe("Оптика, атомная физика");
+    expect(plan!.slug).toBe("optics");
+    expect(plan!.year).toBe("2026/2027");
+    expect(plan!.sessions).toHaveLength(3);
+    expect(plan!.sessions[0].lecture?.title).toBe("Основы фотометрии.");
+    expect(plan!.sessions[1].practice).toBe("Законы отражения и преломления света.");
+    expect(plan!.sessions[2].laboratory).toEqual(["Рефрактометр"]);
+    expect(plan!.controls).toHaveLength(1);
+    expect(plan!.controls[0].title).toBe("Зачёт");
+  });
+
+  it("план без недель не считается загруженным — остаётся статический JSON", () => {
+    expect(normalizeApiPlan({ weeks: [] })).toBeNull();
+    expect(normalizeApiPlan({ subject: "Оптика" })).toBeNull();
+    expect(normalizeApiPlan(null)).toBeNull();
+    expect(normalizeApiPlan(undefined)).toBeNull();
   });
 
   it("daysUntil считает разницу в днях", () => {

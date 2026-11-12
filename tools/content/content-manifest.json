@@ -1,0 +1,800 @@
+{
+ "generated_at": "2026-11-12T15:33:18.981Z",
+ "bucket": "content-mirror",
+ "base_url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror",
+ "note": "Зеркало public/content: path — путь в репо, storage_path — ключ в бакете. JSON дополнительно лежит в site_content под ключом static_content:<путь без .json>.",
+ "files": [
+  {
+   "path": "public/content/chem/plan-informatics-2025-2026.json",
+   "storage_path": "content/chem/plan-informatics-2025-2026.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/chem/plan-informatics-2025-2026.json",
+   "size": 3279,
+   "sha1": "7598a1a4e642b220ae50ce5679b4d709d5d46ddd",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/chem/plan-optics-2025-2026.json",
+   "storage_path": "content/chem/plan-optics-2025-2026.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/chem/plan-optics-2025-2026.json",
+   "size": 5224,
+   "sha1": "5e77a8c00c7f58e1489af5d7f1d5586d596d5e4f",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/chem/plan-organic-2025-2026.json",
+   "storage_path": "content/chem/plan-organic-2025-2026.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/chem/plan-organic-2025-2026.json",
+   "size": 18173,
+   "sha1": "43da40d22d54016f0245cf00415b7cc6ba6bb6ac",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/chem/plan-probability-2025-2026.json",
+   "storage_path": "content/chem/plan-probability-2025-2026.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/chem/plan-probability-2025-2026.json",
+   "size": 5553,
+   "sha1": "5b09835b67cce66f83de9439ca0154933196760f",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/histology/chastnaya-gistologiya.json",
+   "storage_path": "content/histology/chastnaya-gistologiya.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/histology/chastnaya-gistologiya.json",
+   "size": 28054,
+   "sha1": "b1526827c5815b886f17f4fa06fb5c935903a1ef",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/histology/citologiya-embriologiya.json",
+   "storage_path": "content/histology/citologiya-embriologiya.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/histology/citologiya-embriologiya.json",
+   "size": 130567,
+   "sha1": "ad026075d4e0dafea658f45d918e7b0ccac5cd82",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/histology/index.json",
+   "storage_path": "content/histology/index.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/histology/index.json",
+   "size": 2271,
+   "sha1": "c870f1e3bf65f10ee69e2c8d27082ed883012c79",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/histology/obschaya-gistologiya.json",
+   "storage_path": "content/histology/obschaya-gistologiya.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/histology/obschaya-gistologiya.json",
+   "size": 140833,
+   "sha1": "8392e24a644bc9747bffad2736ba080039728483",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/histology/plan-semester3-2026-2027.json",
+   "storage_path": "content/histology/plan-semester3-2026-2027.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/histology/plan-semester3-2026-2027.json",
+   "size": 26258,
+   "sha1": "5c139f94c77b06250bfd094c888551f1ef0d7cb4",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/chemistry/lec-chem-areny.md",
+   "storage_path": "content/lectures/chemistry/lec-chem-areny.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/chemistry/lec-chem-areny.md",
+   "size": 22551,
+   "sha1": "50e0894fba016307476e6d3e3bed3bf23de0af65",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/chemistry/lec-chem-fenoly-efiry.md",
+   "storage_path": "content/lectures/chemistry/lec-chem-fenoly-efiry.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/chemistry/lec-chem-fenoly-efiry.md",
+   "size": 22620,
+   "sha1": "ee78b40cc9983f4d9f71d8ba82d90037d8417491",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/chemistry/lec-chem-galogenoproizvodnye.md",
+   "storage_path": "content/lectures/chemistry/lec-chem-galogenoproizvodnye.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/chemistry/lec-chem-galogenoproizvodnye.md",
+   "size": 22665,
+   "sha1": "9a5c129958541dc52a20793272bf3300c732133b",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/chemistry/lec-chem-karbonovye-kisloty.md",
+   "storage_path": "content/lectures/chemistry/lec-chem-karbonovye-kisloty.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/chemistry/lec-chem-karbonovye-kisloty.md",
+   "size": 23882,
+   "sha1": "9cd5f9668f4fabbfc933c9e7d951ee831a90744b",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/chemistry/lec-chem-oksosoedineniya.md",
+   "storage_path": "content/lectures/chemistry/lec-chem-oksosoedineniya.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/chemistry/lec-chem-oksosoedineniya.md",
+   "size": 21142,
+   "sha1": "aeadcbb2cb5e9d25b4f3b54ed9698c50d4921503",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/chemistry/lec-chem-spirty.md",
+   "storage_path": "content/lectures/chemistry/lec-chem-spirty.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/chemistry/lec-chem-spirty.md",
+   "size": 25504,
+   "sha1": "77893fe0fa35fe3ebefc1ade84e892bb24aa1a28",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-00-gistotekhnika.md",
+   "storage_path": "content/lectures/histology/hist-00-gistotekhnika.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-00-gistotekhnika.md",
+   "size": 40471,
+   "sha1": "57eaf778d2a908894ea72c238b65eff3abba36c5",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-01-citologiya-organelly.md",
+   "storage_path": "content/lectures/histology/hist-01-citologiya-organelly.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-01-citologiya-organelly.md",
+   "size": 75198,
+   "sha1": "6bf968a2c11b3443722d648cd7530e5c95a14a5f",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-02-citologiya-yadro-cikl.md",
+   "storage_path": "content/lectures/histology/hist-02-citologiya-yadro-cikl.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-02-citologiya-yadro-cikl.md",
+   "size": 52564,
+   "sha1": "46b2fdec653996e47901ffb373293770f9dc8207",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-03-embriologiya.md",
+   "storage_path": "content/lectures/histology/hist-03-embriologiya.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-03-embriologiya.md",
+   "size": 64638,
+   "sha1": "9f31e779689f6f508c029ae3efa25078c0ff82a1",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-04-epitelialnye-tkani.md",
+   "storage_path": "content/lectures/histology/hist-04-epitelialnye-tkani.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-04-epitelialnye-tkani.md",
+   "size": 51440,
+   "sha1": "0df540f5b1d513ee3e06928285f1cfd6f4f311cd",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-05-krov.md",
+   "storage_path": "content/lectures/histology/hist-05-krov.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-05-krov.md",
+   "size": 78745,
+   "sha1": "0ff063f77ef836eeca4d5830504112a11633886b",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-06-sobstvenno-st.md",
+   "storage_path": "content/lectures/histology/hist-06-sobstvenno-st.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-06-sobstvenno-st.md",
+   "size": 48706,
+   "sha1": "82e6642a4dd56fc4dbeb7c42c05f66ec5760f1bd",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-07-hryaschevye-kostnye.md",
+   "storage_path": "content/lectures/histology/hist-07-hryaschevye-kostnye.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-07-hryaschevye-kostnye.md",
+   "size": 46241,
+   "sha1": "6899a4ed69259674ef4aa595a554f23a603bb571",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-08-myishechnye-tkani.md",
+   "storage_path": "content/lectures/histology/hist-08-myishechnye-tkani.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-08-myishechnye-tkani.md",
+   "size": 49712,
+   "sha1": "848a3cd2fa02fb979780dfcad260e7581ade8541",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-09-nervnaya-tkan.md",
+   "storage_path": "content/lectures/histology/hist-09-nervnaya-tkan.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-09-nervnaya-tkan.md",
+   "size": 38538,
+   "sha1": "2d08aa361d0a40f84f804a9d42b29554ad94fa07",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-10-nervnaya-sistema.md",
+   "storage_path": "content/lectures/histology/hist-10-nervnaya-sistema.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-10-nervnaya-sistema.md",
+   "size": 32110,
+   "sha1": "2d2b71e541347e630cfcdd3978f17654dcb39902",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-11-kora-mozzhechok-vns.md",
+   "storage_path": "content/lectures/histology/hist-11-kora-mozzhechok-vns.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-11-kora-mozzhechok-vns.md",
+   "size": 50231,
+   "sha1": "0dfacefff5214658271787aa2785b27bd8b3b2af",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-12-zrenie-obonyanie.md",
+   "storage_path": "content/lectures/histology/hist-12-zrenie-obonyanie.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-12-zrenie-obonyanie.md",
+   "size": 34016,
+   "sha1": "a159c6b7340e0326d7a2f51fe21ebf2dc4848c47",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-13-sluh-vkus.md",
+   "storage_path": "content/lectures/histology/hist-13-sluh-vkus.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-13-sluh-vkus.md",
+   "size": 35707,
+   "sha1": "4282fd936d5583e05059253381137ef58d5efa46",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-14-serdechno-sosudistaya.md",
+   "storage_path": "content/lectures/histology/hist-14-serdechno-sosudistaya.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-14-serdechno-sosudistaya.md",
+   "size": 34669,
+   "sha1": "6b34cca9cca285e00bf6df7677a3292579329bfc",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-15-endokrinnaya.md",
+   "storage_path": "content/lectures/histology/hist-15-endokrinnaya.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-15-endokrinnaya.md",
+   "size": 32488,
+   "sha1": "97baa8fb23775f5adf0d09135662bdda50ce3c81",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-16-krovetvorenie.md",
+   "storage_path": "content/lectures/histology/hist-16-krovetvorenie.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-16-krovetvorenie.md",
+   "size": 25764,
+   "sha1": "1ebb38aa8cfcb2ceb90d0de38bcbf9b7d808d107",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-17-limfoidnye-organy.md",
+   "storage_path": "content/lectures/histology/hist-17-limfoidnye-organy.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-17-limfoidnye-organy.md",
+   "size": 26156,
+   "sha1": "1d9bbb01371f9ea6cc7fdc7680f0b9280adeede5",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/histology/hist-18-pishchevaritelnyy-kanal.md",
+   "storage_path": "content/lectures/histology/hist-18-pishchevaritelnyy-kanal.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/histology/hist-18-pishchevaritelnyy-kanal.md",
+   "size": 28512,
+   "sha1": "5bdefcf940c700eb79b563498a0719c812568389",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/digest-01.md",
+   "storage_path": "content/lectures/physiology/digest-01.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/digest-01.md",
+   "size": 25574,
+   "sha1": "7999a8aed97c69cd8e7e2fbe9a459fa32457ad0f",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/digest-02.md",
+   "storage_path": "content/lectures/physiology/digest-02.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/digest-02.md",
+   "size": 25434,
+   "sha1": "f9a26b4bceef79ac66f2c8bca1cf6417b9bd2fbf",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/digest-03.md",
+   "storage_path": "content/lectures/physiology/digest-03.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/digest-03.md",
+   "size": 20096,
+   "sha1": "b5c2cf324c6d3da345bf46785985b42d8b303d2b",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/digest-04.md",
+   "storage_path": "content/lectures/physiology/digest-04.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/digest-04.md",
+   "size": 19576,
+   "sha1": "d2097a766ff05a43baadb671c1eb45abd4a73792",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/digest-05.md",
+   "storage_path": "content/lectures/physiology/digest-05.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/digest-05.md",
+   "size": 17776,
+   "sha1": "02bd04a07d8042cd1f0f18d5ac835a5d328c8ff7",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/krov-01.md",
+   "storage_path": "content/lectures/physiology/krov-01.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/krov-01.md",
+   "size": 43680,
+   "sha1": "272fbead72303e118eceddef8ddcf753d3aafde1",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-44db6ebee0344e24.md",
+   "storage_path": "content/lectures/physiology/lec-44db6ebee0344e24.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-44db6ebee0344e24.md",
+   "size": 96379,
+   "sha1": "c5527630d07f79e0267be3a73808785e19a15dbd",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-6940f5d6a7884a58.md",
+   "storage_path": "content/lectures/physiology/lec-6940f5d6a7884a58.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-6940f5d6a7884a58.md",
+   "size": 103733,
+   "sha1": "fb7ae6208eaf8e26a6f23010e37fc3c8011becaf",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-6fb509db7efb4fbd.md",
+   "storage_path": "content/lectures/physiology/lec-6fb509db7efb4fbd.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-6fb509db7efb4fbd.md",
+   "size": 98588,
+   "sha1": "8bfba37b95510361a3803ac16400d269b56a964f",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-75da7a3c6a354eed.md",
+   "storage_path": "content/lectures/physiology/lec-75da7a3c6a354eed.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-75da7a3c6a354eed.md",
+   "size": 96969,
+   "sha1": "db396de4b79638d5a5a0f5939aeed644bd4a3687",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-7689425cf2c14023.md",
+   "storage_path": "content/lectures/physiology/lec-7689425cf2c14023.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-7689425cf2c14023.md",
+   "size": 64445,
+   "sha1": "5cc2e4258cb5427d03fb81cf08f983e3e522f258",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-7a1a41c1be12466b.md",
+   "storage_path": "content/lectures/physiology/lec-7a1a41c1be12466b.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-7a1a41c1be12466b.md",
+   "size": 85304,
+   "sha1": "b200b8962a082c6fc260fb535555d101bf81fe7c",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-7f9d0be106de460f.md",
+   "storage_path": "content/lectures/physiology/lec-7f9d0be106de460f.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-7f9d0be106de460f.md",
+   "size": 98044,
+   "sha1": "fb2070b06a809439bd5de94b51f1fc210dd9e906",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-8c7c3b4980a04971.md",
+   "storage_path": "content/lectures/physiology/lec-8c7c3b4980a04971.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-8c7c3b4980a04971.md",
+   "size": 57124,
+   "sha1": "27e96cea04cacf9b581acd8c7b584c292d0e6b8c",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-c549c1fe308d4bbb.md",
+   "storage_path": "content/lectures/physiology/lec-c549c1fe308d4bbb.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-c549c1fe308d4bbb.md",
+   "size": 175625,
+   "sha1": "1a5b63fcb622cd94e3f5ac13194ca888d229eee2",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-f032784e3caf4e67.md",
+   "storage_path": "content/lectures/physiology/lec-f032784e3caf4e67.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-f032784e3caf4e67.md",
+   "size": 114434,
+   "sha1": "c849bbeed1abe6bd35cedb756866283a82b25b98",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/lec-fc517dbd545b422c.md",
+   "storage_path": "content/lectures/physiology/lec-fc517dbd545b422c.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/lec-fc517dbd545b422c.md",
+   "size": 126302,
+   "sha1": "158b3a7e986b1cd857e3704d189c32966594fb9e",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/resp-01.md",
+   "storage_path": "content/lectures/physiology/resp-01.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/resp-01.md",
+   "size": 21862,
+   "sha1": "aa1b09073df060aca472eb8ba3612135d5d1030b",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/resp-02.md",
+   "storage_path": "content/lectures/physiology/resp-02.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/resp-02.md",
+   "size": 17599,
+   "sha1": "a904b4f464eac1d99a6000f85bba179406761726",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/resp-03.md",
+   "storage_path": "content/lectures/physiology/resp-03.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/resp-03.md",
+   "size": 21639,
+   "sha1": "0c0253e15abfffd43c14a3052c4ff801433ce620",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/sense-01.md",
+   "storage_path": "content/lectures/physiology/sense-01.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/sense-01.md",
+   "size": 28568,
+   "sha1": "727d6a49b4d82c5f129c5e7fcd4c709bcdbd82e2",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/sense-02.md",
+   "storage_path": "content/lectures/physiology/sense-02.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/sense-02.md",
+   "size": 20218,
+   "sha1": "f5a65c6ec5bf862b57ff74c158566ef4d43aadab",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/sense-03.md",
+   "storage_path": "content/lectures/physiology/sense-03.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/sense-03.md",
+   "size": 19658,
+   "sha1": "823fe177bc3e594ebbd80534b3565fa00dcb7076",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/lectures/physiology/sense-04.md",
+   "storage_path": "content/lectures/physiology/sense-04.md",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/lectures/physiology/sense-04.md",
+   "size": 21040,
+   "sha1": "92ec2424f4c58d7bcd2110803b17d7fdab58ff39",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/cns.json",
+   "storage_path": "content/physiology/cns.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/cns.json",
+   "size": 270710,
+   "sha1": "cb5b674c34487e2b5746099b4cf3a2b2040848b3",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/dyhanie-vydelenie.json",
+   "storage_path": "content/physiology/dyhanie-vydelenie.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/dyhanie-vydelenie.json",
+   "size": 248772,
+   "sha1": "3818e427bc7c35a56a033137c48b32492f62a389",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/index.json",
+   "storage_path": "content/physiology/index.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/index.json",
+   "size": 3228,
+   "sha1": "3f6b2ec8926b1d1a9078e550a38db455435b844d",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/krov-endokrin.json",
+   "storage_path": "content/physiology/krov-endokrin.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/krov-endokrin.json",
+   "size": 347012,
+   "sha1": "de02e1872cc3d684a7da4de704d2028e4b3be1ee",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/pishchevarenie-obmen.json",
+   "storage_path": "content/physiology/pishchevarenie-obmen.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/pishchevarenie-obmen.json",
+   "size": 362509,
+   "sha1": "c455c4709e6953b580daede1adb9b5111b07c15c",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/plan-semester3-2026-2027.json",
+   "storage_path": "content/physiology/plan-semester3-2026-2027.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/plan-semester3-2026-2027.json",
+   "size": 12553,
+   "sha1": "51bef8f25ef803be30a45eb19ac32c0a6ef8fcd9",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/sensornye-vnd.json",
+   "storage_path": "content/physiology/sensornye-vnd.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/sensornye-vnd.json",
+   "size": 275917,
+   "sha1": "bc7a8f9c044d9da4adb1df854c7f09baedb7200f",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/serdce-sosudistaya.json",
+   "storage_path": "content/physiology/serdce-sosudistaya.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/serdce-sosudistaya.json",
+   "size": 305528,
+   "sha1": "9731bb3b1e86664022226852a27650de96080c1e",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/physiology/vozbudimye-sistemy.json",
+   "storage_path": "content/physiology/vozbudimye-sistemy.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/physiology/vozbudimye-sistemy.json",
+   "size": 309373,
+   "sha1": "9351875cf5f6c2744b156696099066b1d595eefd",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/chem-sdf.json",
+   "storage_path": "content/portals/chem-sdf.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/chem-sdf.json",
+   "size": 139251,
+   "sha1": "da0cee7c20def379c557ae75846541bbc1f674a0",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/hoba-practical.json",
+   "storage_path": "content/portals/hoba-practical.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/hoba-practical.json",
+   "size": 247354,
+   "sha1": "e4dfd9987a2bf0277120af5b6c2110923f388dd8",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/hoba-tasks.json",
+   "storage_path": "content/portals/hoba-tasks.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/hoba-tasks.json",
+   "size": 20617,
+   "sha1": "a892239b21050fe9649afd05ea86cba116f93e79",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/hoba-theory.json",
+   "storage_path": "content/portals/hoba-theory.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/hoba-theory.json",
+   "size": 289985,
+   "sha1": "0df3dd5da86e5ea3b73cce145ead3bdf160eb193",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/latin-recipes.json",
+   "storage_path": "content/portals/latin-recipes.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/latin-recipes.json",
+   "size": 25956,
+   "sha1": "ea53fede348d2252290bf9a5b89cc2f87afdecd9",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/lectures-bio.json",
+   "storage_path": "content/portals/lectures-bio.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/lectures-bio.json",
+   "size": 32226,
+   "sha1": "d9b45c7b38289d2f5a322e6f04eaf46fdefe15d3",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/lectures-chem.json",
+   "storage_path": "content/portals/lectures-chem.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/lectures-chem.json",
+   "size": 69781,
+   "sha1": "806269e95a99115d79dcaf33ce72f9baf1f88027",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/lectures-math.json",
+   "storage_path": "content/portals/lectures-math.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/lectures-math.json",
+   "size": 73272,
+   "sha1": "3e689d217a7ceb72df0d205cde36dd27a05bcb7c",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-biology-bio-genetics.json",
+   "storage_path": "content/portals/mc-biology-bio-genetics.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-biology-bio-genetics.json",
+   "size": 2535,
+   "sha1": "cc9b0001aa296f437c9e09b8d22db6160df089fc",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-biology-bio-helminths.json",
+   "storage_path": "content/portals/mc-biology-bio-helminths.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-biology-bio-helminths.json",
+   "size": 2059,
+   "sha1": "983f8ddae652575bcf57c367c080ac5deb5748e6",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-biology-bio-protists.json",
+   "storage_path": "content/portals/mc-biology-bio-protists.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-biology-bio-protists.json",
+   "size": 2247,
+   "sha1": "2940f47be481f37ebd39ed3a222829167b4cb679",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-history-hist-intro.json",
+   "storage_path": "content/portals/mc-history-hist-intro.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-history-hist-intro.json",
+   "size": 1083,
+   "sha1": "df0dd341ad54915495a0716edb7b44166cf09e44",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-index.json",
+   "storage_path": "content/portals/mc-index.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-index.json",
+   "size": 2472,
+   "sha1": "9f8a82a70ebe3a5e482f2d5c2b354a17dceeecde",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-math-math-derivatives-basic.json",
+   "storage_path": "content/portals/mc-math-math-derivatives-basic.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-math-math-derivatives-basic.json",
+   "size": 1641,
+   "sha1": "d4bdf96f83810f105d728c88a1f5c831f658e529",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-math-math-vectors-basic.json",
+   "storage_path": "content/portals/mc-math-math-vectors-basic.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-math-math-vectors-basic.json",
+   "size": 2167,
+   "sha1": "b53e86aa78d52ee3d8e0df1e0c436ab2815f6f03",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-orgchem-chem-kinetics.json",
+   "storage_path": "content/portals/mc-orgchem-chem-kinetics.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-orgchem-chem-kinetics.json",
+   "size": 2005,
+   "sha1": "9ab3380f16c7bc7caa0d9b71c90e53b027c19c91",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-physics-phys-mech.json",
+   "storage_path": "content/portals/mc-physics-phys-mech.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-physics-phys-mech.json",
+   "size": 1406,
+   "sha1": "d23b3e0c30f0490f6383bed6d867c2a81d9e7016",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-physics-phys-optics.json",
+   "storage_path": "content/portals/mc-physics-phys-optics.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-physics-phys-optics.json",
+   "size": 1550,
+   "sha1": "4356fec96faf91d3bab6291c054f385c3c9173db",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-physiology-physio-blood.json",
+   "storage_path": "content/portals/mc-physiology-physio-blood.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-physiology-physio-blood.json",
+   "size": 1141,
+   "sha1": "99019b10acc9546c40e02556e8f676f645c676d7",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/mc-physiology-physio-cardio.json",
+   "storage_path": "content/portals/mc-physiology-physio-cardio.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/mc-physiology-physio-cardio.json",
+   "size": 1744,
+   "sha1": "6bda6422dc138cf1647be2bc59e3e8497b9a11dc",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/parasitology-tests.json",
+   "storage_path": "content/portals/parasitology-tests.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/parasitology-tests.json",
+   "size": 23571,
+   "sha1": "8bfeae2d5d5dd31cd7c9f497bd0f82ef59ff539e",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/biology.json",
+   "storage_path": "content/portals/ticket-banks/biology.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/biology.json",
+   "size": 93928,
+   "sha1": "6a9430e60e64b741181cb0017bcb7e6f608cfe5b",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/histology.json",
+   "storage_path": "content/portals/ticket-banks/histology.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/histology.json",
+   "size": 251949,
+   "sha1": "544e8a6cd4693c98911c3e6d15af10b062624157",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/history.json",
+   "storage_path": "content/portals/ticket-banks/history.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/history.json",
+   "size": 38539,
+   "sha1": "c4be7946628f181c6db5836c14d3325a5b8cb7a5",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/index.json",
+   "storage_path": "content/portals/ticket-banks/index.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/index.json",
+   "size": 889,
+   "sha1": "5826006de624b9b5c6087cb132f7bd290930bf60",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/inorganic_chemistry.json",
+   "storage_path": "content/portals/ticket-banks/inorganic_chemistry.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/inorganic_chemistry.json",
+   "size": 586387,
+   "sha1": "dc6f64335f98cd59030bd0b657c9200b79d46e22",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/math.json",
+   "storage_path": "content/portals/ticket-banks/math.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/math.json",
+   "size": 44356,
+   "sha1": "62ef237e9995402f0b50254369cd08ae3d426456",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/organic_chemistry.json",
+   "storage_path": "content/portals/ticket-banks/organic_chemistry.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/organic_chemistry.json",
+   "size": 110171,
+   "sha1": "03ef1c21049c81f6c5947be60bc5a29dbb4d8f88",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/physics.json",
+   "storage_path": "content/portals/ticket-banks/physics.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/physics.json",
+   "size": 52888,
+   "sha1": "ca3b8fb090ea4cb13ce8db81d3d782ad06df068d",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/portals/ticket-banks/physiology.json",
+   "storage_path": "content/portals/ticket-banks/physiology.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/portals/ticket-banks/physiology.json",
+   "size": 2927,
+   "sha1": "c5c84e141692f1b065b25e6d9773a723181bb6f8",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/study/electronograms.json",
+   "storage_path": "content/study/electronograms.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/study/electronograms.json",
+   "size": 8949,
+   "sha1": "aae1ae8080d6c8e5068d35d85971f7e3320fa494",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  },
+  {
+   "path": "public/content/study/nerve-electronograms.json",
+   "storage_path": "content/study/nerve-electronograms.json",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/content/study/nerve-electronograms.json",
+   "size": 5506,
+   "sha1": "30119b1710e52026be4814d48f512c53cc8a2299",
+   "uploaded_at": "2026-11-12T15:33:18.981Z"
+  }
+ ]
+}

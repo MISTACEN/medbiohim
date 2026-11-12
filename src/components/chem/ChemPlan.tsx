@@ -11,6 +11,7 @@ import {
 } from "@/components/subjects/PlanTimeline";
 import {
   formatPlanDateShort,
+  normalizeApiPlan,
   normalizeStaticPlan,
   splitPlanSessions,
   type NormalizedSubjectPlan,
@@ -24,19 +25,39 @@ import { fetchStaticPlan } from "@/lib/subject-plan-static";
  * Связки: тема → материалы, препараты → тренажёр/практика, ДЗ → /homework,
  * тесты → вкладка тестов, контрольные → аттестации предмета.
  */
-export default function ChemPlan({ planFile, subjectSlug }: { planFile: string; subjectSlug?: string }) {
+export default function ChemPlan({
+  planFile,
+  subjectSlug,
+  apiPlan,
+}: {
+  planFile: string;
+  subjectSlug?: string;
+  /** План из БД (payload site_content через API /subject-plans/:slug). */
+  apiPlan?: unknown;
+}) {
   const [plan, setPlan] = useState<NormalizedSubjectPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
+    // Источник истины — недели из БД: их правка в site_content не требует
+    // деплоя. Статический JSON остаётся фолбэком, пока в БД плана нет
+    // (и для страниц без авторизации).
+    const fromApi = normalizeApiPlan(apiPlan);
+    if (fromApi) {
+      setPlan(fromApi);
+      setError(null);
+      return () => {
+        alive = false;
+      };
+    }
     fetchStaticPlan(planFile)
       .then((raw) => alive && setPlan(normalizeStaticPlan(raw)))
       .catch((e) => alive && setError(String(e?.message || e)));
     return () => {
       alive = false;
     };
-  }, [planFile]);
+  }, [planFile, apiPlan]);
 
   if (error) {
     return (

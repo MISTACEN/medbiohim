@@ -25,6 +25,7 @@ export function LecturesTab({ activeLecture, lectureLoading, lectureError, subje
       <LectureView
         lecture={activeLecture}
         lectureId={String(activeLecture.id || "")}
+        lessonNumber={planLectureWeeks.get(String(activeLecture.id || "")) ?? null}
         onBack={onCloseLecture}
         backLabel="К списку лекций"
       />

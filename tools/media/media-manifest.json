@@ -1,0 +1,1600 @@
+{
+ "generated_at": "2026-11-12T15:24:50.149Z",
+ "bucket": "lecture-media",
+ "base_url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media",
+ "note": "Зеркало картинок лекций из public/library/lectures — второе хранилище рядом с git/Vercel. path — путь в репо, storage_path — ключ в бакете, uploaded_at — когда файл был залит/обновлён.",
+ "files": [
+  {
+   "path": "cns/figs/t1-fig1-reflektornaya-duga.png",
+   "storage_path": "lectures/cns/figs/t1-fig1-reflektornaya-duga.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t1-fig1-reflektornaya-duga.png",
+   "size": 186645,
+   "sha1": "4b1e0d46d0e667af3f2b332672e74c1f88752843",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t1-fig3-reflektornoe-kolco.png",
+   "storage_path": "lectures/cns/figs/t1-fig3-reflektornoe-kolco.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t1-fig3-reflektornoe-kolco.png",
+   "size": 636962,
+   "sha1": "87bc36c4dbce9db758ddbf92c566e44961069758",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t1-fig4-sechenov-centralnoe-tormozhenie.png",
+   "storage_path": "lectures/cns/figs/t1-fig4-sechenov-centralnoe-tormozhenie.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t1-fig4-sechenov-centralnoe-tormozhenie.png",
+   "size": 564120,
+   "sha1": "d69b3a545ae0855d44acd05553984790e24f9c8f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t1-fig5-reciproknoe-tormozhenie.png",
+   "storage_path": "lectures/cns/figs/t1-fig5-reciproknoe-tormozhenie.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t1-fig5-reciproknoe-tormozhenie.png",
+   "size": 369729,
+   "sha1": "ba311f6ccf2a7ca04efba257699bdbfbe4ae7eb9",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t2-fig1-vypryamitelnye-refleksy.png",
+   "storage_path": "lectures/cns/figs/t2-fig1-vypryamitelnye-refleksy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t2-fig1-vypryamitelnye-refleksy.png",
+   "size": 105164,
+   "sha1": "2e81a5a27ebe4c8240039bf8a7c994cf366b23fd",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t2-fig2-statokineticheskie-refleksy.png",
+   "storage_path": "lectures/cns/figs/t2-fig2-statokineticheskie-refleksy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t2-fig2-statokineticheskie-refleksy.png",
+   "size": 108525,
+   "sha1": "61daee549348589fdb55df8bd92b12e8ec5dbd56",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t2-fig3-eeg-otvedeniya.png",
+   "storage_path": "lectures/cns/figs/t2-fig3-eeg-otvedeniya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t2-fig3-eeg-otvedeniya.png",
+   "size": 133040,
+   "sha1": "d17ed49b9814803f74a3254d4d83114b07444103",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t3-fig1-fiziologiya-vns-sim-parasim.png",
+   "storage_path": "lectures/cns/figs/t3-fig1-fiziologiya-vns-sim-parasim.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t3-fig1-fiziologiya-vns-sim-parasim.png",
+   "size": 339926,
+   "sha1": "334679cb9adda6069a6c1e00f9c3b7dfdb253cce",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "cns/figs/t3-fig2-adreno-holinergicheskie-neyrony.png",
+   "storage_path": "lectures/cns/figs/t3-fig2-adreno-holinergicheskie-neyrony.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/cns/figs/t3-fig2-adreno-holinergicheskie-neyrony.png",
+   "size": 888541,
+   "sha1": "1d54f0bb180eae7f42af5233a613defad58ff52c",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t1-fig1-etapy-dyhaniya.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t1-fig1-etapy-dyhaniya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t1-fig1-etapy-dyhaniya.jpg",
+   "size": 78988,
+   "sha1": "fd7bc3649d4b697d965e925d8f6a21dd3566c7b6",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t1-fig2-model-dondersa.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t1-fig2-model-dondersa.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t1-fig2-model-dondersa.jpg",
+   "size": 21211,
+   "sha1": "cc6962bf12c270d4c60698a146157fe30dfb6365",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t1-fig3-spirogramma.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t1-fig3-spirogramma.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t1-fig3-spirogramma.jpg",
+   "size": 137708,
+   "sha1": "84ff58750022c5cea280b284f8abbdc1b495e8d5",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t1-fig4-krivaya-dissociacii.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t1-fig4-krivaya-dissociacii.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t1-fig4-krivaya-dissociacii.jpg",
+   "size": 111625,
+   "sha1": "ffb7b13fad7b14e17d7261e3353ae5a77a0949ad",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t1-fig5-provodimost-dyhateynyh-putey.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t1-fig5-provodimost-dyhateynyh-putey.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t1-fig5-provodimost-dyhateynyh-putey.jpg",
+   "size": 82690,
+   "sha1": "4c615f1c5dcb024ac09215a282b7d63497054795",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t2-fig1-struktury-dyhatelnogo-centra.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t2-fig1-struktury-dyhatelnogo-centra.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t2-fig1-struktury-dyhatelnogo-centra.jpg",
+   "size": 62445,
+   "sha1": "06093459ce440c8330946287eb6612ddf1bfb4d7",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t2-fig2-pererezki-stvola.png",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t2-fig2-pererezki-stvola.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t2-fig2-pererezki-stvola.png",
+   "size": 168870,
+   "sha1": "7add1612064b6a39bb28a7f0dc36e7371498f2e1",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t2-fig3-refleks-geringa-breiera.png",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t2-fig3-refleks-geringa-breiera.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t2-fig3-refleks-geringa-breiera.png",
+   "size": 143752,
+   "sha1": "65a1e670ab3283c00300f0cf4d7d9b7f74176008",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t3-fig1-nefron.png",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t3-fig1-nefron.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t3-fig1-nefron.png",
+   "size": 132928,
+   "sha1": "be6b9a6c57d297c8c18af2074fab5cfe2b678c2f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t3-fig2-processy-mocheobrazovaniya.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t3-fig2-processy-mocheobrazovaniya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t3-fig2-processy-mocheobrazovaniya.jpg",
+   "size": 79697,
+   "sha1": "efeec644c23f029cf56f5cedf98f3599a926cfd7",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t3-fig3-transport-v-nefrone.png",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t3-fig3-transport-v-nefrone.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t3-fig3-transport-v-nefrone.png",
+   "size": 162256,
+   "sha1": "6a77edf0bd8b79a95e672e614fa6514848a5721f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t3-fig4-petlya-genle.png",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t3-fig4-petlya-genle.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t3-fig4-petlya-genle.png",
+   "size": 187600,
+   "sha1": "d05fed74f026363db61858cf99f15ca0e633e763",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t3-fig5-kalubochek.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t3-fig5-kalubochek.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t3-fig5-kalubochek.jpg",
+   "size": 22443,
+   "sha1": "7cbd6236f676ba27414d519b9f9bb702f555a281",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "dyhanie-vydelenie/figs/t3-fig6-gormonalnaya-regulyaciya.jpg",
+   "storage_path": "lectures/dyhanie-vydelenie/figs/t3-fig6-gormonalnaya-regulyaciya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/dyhanie-vydelenie/figs/t3-fig6-gormonalnaya-regulyaciya.jpg",
+   "size": 269988,
+   "sha1": "33c5a693b30c627fea9d7f837a15613aaa132063",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_00-mazok-krovi.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_00-mazok-krovi.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_00-mazok-krovi.png",
+   "size": 371042,
+   "sha1": "101ad15b655f9593229162ec8ec89382c6fbbf95",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_00-otrostchataya-kletka.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_00-otrostchataya-kletka.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_00-otrostchataya-kletka.png",
+   "size": 191138,
+   "sha1": "a25889b5a2ff16daea99d7e3ae316b7ce4c1dde0",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-centrioli.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-centrioli.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-centrioli.png",
+   "size": 404328,
+   "sha1": "0893be5291cf5a046e802b806f6d2274935f4ef1",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-golgi.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-golgi.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-golgi.png",
+   "size": 883533,
+   "sha1": "f560f1187a887b2d8c529bcb502a59d977fc7dc2",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-lizosomy.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-lizosomy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-lizosomy.png",
+   "size": 313961,
+   "sha1": "9b22c5f43f5958a3e60d8dec1f008483693cf7a9",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-membrannaya-sistema-citoplazmy.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-membrannaya-sistema-citoplazmy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-membrannaya-sistema-citoplazmy.png",
+   "size": 581601,
+   "sha1": "747a009a85bef1f2d43e4036cfff7adab5da7d4d",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-membrany-kletochnoj-poverhnosti.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-membrany-kletochnoj-poverhnosti.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-membrany-kletochnoj-poverhnosti.png",
+   "size": 364840,
+   "sha1": "a06fb55864fbb63047550be7a71f35a7f6104ce2",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-mikroskop-hod-luchej.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-mikroskop-hod-luchej.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-mikroskop-hod-luchej.png",
+   "size": 274747,
+   "sha1": "ee9da40bd40960dbe69c6e29c84a20805404252f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-mikrovorsinki.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-mikrovorsinki.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-mikrovorsinki.png",
+   "size": 399027,
+   "sha1": "8da39569b1bf49da8292aab284db7b7acebf715a",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-mitohondrii.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-mitohondrii.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-mitohondrii.png",
+   "size": 954208,
+   "sha1": "41305addf9c4f2b1bc0af2c12d5c11ee16990fca",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_01-resnichki.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_01-resnichki.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_01-resnichki.png",
+   "size": 229741,
+   "sha1": "6582253f85914ce52b9b3051ddb2c79085f56921",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_02-cikl-kletki.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_02-cikl-kletki.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_02-cikl-kletki.png",
+   "size": 179115,
+   "sha1": "f7819dfe1bfcda5c67c36f94b105ea95fe83f4a4",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_02-hromatin.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_02-hromatin.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_02-hromatin.png",
+   "size": 405322,
+   "sha1": "c5807a0f2e61e57c45ed3318acefe0d69854c9f1",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_02-mitoz-tonkaya-kishka.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_02-mitoz-tonkaya-kishka.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_02-mitoz-tonkaya-kishka.png",
+   "size": 811333,
+   "sha1": "d5af06888ec8f345e41a55661f04c617478e3b91",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_02-mitoz.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_02-mitoz.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_02-mitoz.png",
+   "size": 543341,
+   "sha1": "2fe94afb2b03f7b5eddac81bea75adadd1540df8",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_02-struktura-yadra.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_02-struktura-yadra.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_02-struktura-yadra.png",
+   "size": 363131,
+   "sha1": "95cd42db5db1427523589cd04cc7940384834122",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_02-yadernaya-obolochka.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_02-yadernaya-obolochka.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_02-yadernaya-obolochka.png",
+   "size": 550807,
+   "sha1": "84cd1b08fca9a6027a58160385c1ef979c4b591e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_03-blastula.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_03-blastula.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_03-blastula.png",
+   "size": 443265,
+   "sha1": "5c8b162c4b177f71f232dd7805e724cb9a723f1f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_03-droblenie-blastula.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_03-droblenie-blastula.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_03-droblenie-blastula.png",
+   "size": 604661,
+   "sha1": "502cdc88474dc32b72cdc8e36fdadcca33d87617",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_03-gastrulyaciya.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_03-gastrulyaciya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_03-gastrulyaciya.png",
+   "size": 592445,
+   "sha1": "eac6b4da2d19df5d24dedf0c9111f432aa9ac536",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_03-oplodotvorenie-stadii.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_03-oplodotvorenie-stadii.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_03-oplodotvorenie-stadii.png",
+   "size": 778584,
+   "sha1": "9b5543a8f1f8ae6ebe1ea05fadae0e36378e7a06",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_03-osevye-zachatki.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_03-osevye-zachatki.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_03-osevye-zachatki.png",
+   "size": 536730,
+   "sha1": "97c4dd7704836b3ef74c2b00b8d18e178801f98f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_03-polovye-kletki.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_03-polovye-kletki.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_03-polovye-kletki.png",
+   "size": 284164,
+   "sha1": "5a14d61c457460c308daf3e05a93e430f45755c2",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_04-mnogoslojnyj-ploskij.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_04-mnogoslojnyj-ploskij.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_04-mnogoslojnyj-ploskij.png",
+   "size": 384514,
+   "sha1": "4e7451408a70073f053dece3b6da684742e28cd1",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_04-odnoslojnyj-cilindricheskij.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_04-odnoslojnyj-cilindricheskij.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_04-odnoslojnyj-cilindricheskij.png",
+   "size": 438740,
+   "sha1": "99e82ca14fbf482df7f7e49ed58778a66ca79fea",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_04-odnoslojnyj-ploskij.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_04-odnoslojnyj-ploskij.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_04-odnoslojnyj-ploskij.png",
+   "size": 628063,
+   "sha1": "09db26e840076ccb183aa4fef74538cce56e4ef4",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_04-orogovevayushhij.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_04-orogovevayushhij.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_04-orogovevayushhij.png",
+   "size": 819022,
+   "sha1": "82b56da79e83ef2f03cd3de6b3977ccf8a7735a1",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_04-vidy-zhelez.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_04-vidy-zhelez.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_04-vidy-zhelez.png",
+   "size": 485757,
+   "sha1": "4bcb881d466ef554fa43201293ffac46b2c814ab",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_05-agranulocity.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_05-agranulocity.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_05-agranulocity.png",
+   "size": 566397,
+   "sha1": "1a8ff2e9d45f1e1c7bb79326075aee9389836750",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_05-mazok-krovi-1.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_05-mazok-krovi-1.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_05-mazok-krovi-1.png",
+   "size": 548861,
+   "sha1": "cdca11fd59a04b1870358f699d721acfec5ec2d2",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_05-mazok-krovi-2.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_05-mazok-krovi-2.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_05-mazok-krovi-2.png",
+   "size": 503803,
+   "sha1": "185581c8f7ad8855661fdaa461d6b9d7a1825d79",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_06-kollagenovye-volokna.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_06-kollagenovye-volokna.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_06-kollagenovye-volokna.png",
+   "size": 489077,
+   "sha1": "c4ea4d796417d1c21890e51a2671b9a5af11ecc1",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_06-rvst.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_06-rvst.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_06-rvst.png",
+   "size": 542986,
+   "sha1": "e98edeceb951f97598e1e87db48c1e0b2108210c",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_06-spec-svojstva.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_06-spec-svojstva.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_06-spec-svojstva.png",
+   "size": 513267,
+   "sha1": "f6a414f06709dc7b5177e4b21b39b296a1845c8b",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_06-suhozhilie.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_06-suhozhilie.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_06-suhozhilie.png",
+   "size": 370123,
+   "sha1": "e5d7346a5ca057f1ccb1cd944223677477896b20",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_07-gialinovyj-hryash.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_07-gialinovyj-hryash.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_07-gialinovyj-hryash.png",
+   "size": 713608,
+   "sha1": "3039da61b59a33bd9afe8cdaefa7de8fe3718849",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_07-kostnaya-tkan.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_07-kostnaya-tkan.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_07-kostnaya-tkan.png",
+   "size": 278838,
+   "sha1": "d2192177abbed6edd78d2bfa0fc6d23fde8a5f7c",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_07-plastinchastaya-kost.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_07-plastinchastaya-kost.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_07-plastinchastaya-kost.png",
+   "size": 732484,
+   "sha1": "b90dfcb907f65a9e1496f5b8bc84f1fcd088689f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_07-razvitie-kosti-hryash.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_07-razvitie-kosti-hryash.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_07-razvitie-kosti-hryash.png",
+   "size": 821642,
+   "sha1": "e66e1ffda0e66d9ea8001808fcf400ad70d74a72",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_07-razvitie-kosti-mezehima.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_07-razvitie-kosti-mezehima.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_07-razvitie-kosti-mezehima.png",
+   "size": 880933,
+   "sha1": "71de7197f2dd65a9f83b86cee55743ea60460ff0",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_07-tema10-skeletnye-st.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_07-tema10-skeletnye-st.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_07-tema10-skeletnye-st.png",
+   "size": 471320,
+   "sha1": "95735c0c082e7de8eae5b4f482d7cbd0af44e3d9",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_08-gladkaya-myt.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_08-gladkaya-myt.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_08-gladkaya-myt.png",
+   "size": 464433,
+   "sha1": "24e55ce971a2dc1dddb862d32669628d8328e6b8",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_08-membrany-volokna.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_08-membrany-volokna.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_08-membrany-volokna.png",
+   "size": 814938,
+   "sha1": "c413623bf4c58114eff3d2158abf80d41e4ef5fe",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_08-myshca-kak-organ.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_08-myshca-kak-organ.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_08-myshca-kak-organ.png",
+   "size": 382876,
+   "sha1": "878a0ce354ce7416adf0cd76431a69cc8bb90658",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_08-regeneraciya.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_08-regeneraciya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_08-regeneraciya.png",
+   "size": 366885,
+   "sha1": "6710d6917f4e9f0fe9281d29f84dcc4d318aee53",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_08-sarkomer.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_08-sarkomer.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_08-sarkomer.png",
+   "size": 564112,
+   "sha1": "cbfed89369efd53dbdd332fd3696ee67cfbe9a35",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/atlas/kuzn_08-skeletnaya-myt.png",
+   "storage_path": "lectures/gistologiya/atlas/kuzn_08-skeletnaya-myt.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/atlas/kuzn_08-skeletnaya-myt.png",
+   "size": 622596,
+   "sha1": "5f9624cc07230cf51220f2820c78cfd19fa8dc92",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/01-eps.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/01-eps.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/01-eps.png",
+   "size": 7134473,
+   "sha1": "44d16bb6fb5f77cb10056bfa5349c999961a0c94",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/02-golgi-diktiosoma.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/02-golgi-diktiosoma.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/02-golgi-diktiosoma.png",
+   "size": 353915,
+   "sha1": "91507695f1750b77ff61831c2fb7f6420098cf5b",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/03-lizosomy-mitohondrii.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/03-lizosomy-mitohondrii.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/03-lizosomy-mitohondrii.png",
+   "size": 1110240,
+   "sha1": "fd5551a5ff396ca5089d44fefa8c3964509501fd",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/04-ostatochnoe-telce-lipidy.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/04-ostatochnoe-telce-lipidy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/04-ostatochnoe-telce-lipidy.png",
+   "size": 8872721,
+   "sha1": "b18043d4fe827586e4cb0dc20d5c183141f13f61",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/05-mitohondrii.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/05-mitohondrii.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/05-mitohondrii.png",
+   "size": 840318,
+   "sha1": "d635d8ad399a048ccca4a59f4d76aa3370f9f109",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/06-mikrovorsinki.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/06-mikrovorsinki.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/06-mikrovorsinki.png",
+   "size": 747090,
+   "sha1": "f6f727a329ca41a7e92bd951c74331f693823987",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/07-resnichka-zgutik.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/07-resnichka-zgutik.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/07-resnichka-zgutik.png",
+   "size": 437368,
+   "sha1": "a66e8a26dc0f4ab65d3d32870fe8b83ff8cd851d",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/08-fagocitoz-neytrofil.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/08-fagocitoz-neytrofil.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/08-fagocitoz-neytrofil.png",
+   "size": 570281,
+   "sha1": "0800468f055650e7d9e3b31c45b08c59806cbb3c",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/09-pinocitoz-endotelij.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/09-pinocitoz-endotelij.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/09-pinocitoz-endotelij.png",
+   "size": 7614958,
+   "sha1": "0f5edae9c14b8ff46f99da96b375d5546b79f698",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/10-yadro.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/10-yadro.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/10-yadro.png",
+   "size": 6498431,
+   "sha1": "cecb42ed689c33e641296ba2674dfe44276b0926",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/11-apoptoz.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/11-apoptoz.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/11-apoptoz.png",
+   "size": 748607,
+   "sha1": "eee25d143a8518532ef2ebab9f23a4f0aa6df739",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/12-yajcekletka.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/12-yajcekletka.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/12-yajcekletka.png",
+   "size": 3013054,
+   "sha1": "620c011f6f6fd5600244c3e31775c4054ff73828",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/13-spermatozoid.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/13-spermatozoid.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/13-spermatozoid.png",
+   "size": 2380333,
+   "sha1": "0fb7bfc077721ab04abf987f8fb5a890ef2fdc5e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/14-eozinofilnyj-granulocit.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/14-eozinofilnyj-granulocit.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/14-eozinofilnyj-granulocit.png",
+   "size": 7143772,
+   "sha1": "64bcab05c68965f800db321faaf7c09fcb458481",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/15-sarkomer-sarkolemma.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/15-sarkomer-sarkolemma.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/15-sarkomer-sarkolemma.png",
+   "size": 837249,
+   "sha1": "fd716ffa9fe98a05c5ce395a122a111690e1669e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/16-vstavochnyj-disk.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/16-vstavochnyj-disk.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/16-vstavochnyj-disk.png",
+   "size": 698786,
+   "sha1": "4f5221ecb43792c9c22764c6c5cb561597c67aae",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/17-miokard-skan.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/17-miokard-skan.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/17-miokard-skan.png",
+   "size": 9166514,
+   "sha1": "21f9961215538662e9f0db0dff9f130603ee40d3",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/19-uzlovoj-perehvat-ranve.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/19-uzlovoj-perehvat-ranve.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/19-uzlovoj-perehvat-ranve.png",
+   "size": 412636,
+   "sha1": "4e7cfcc78c7471e1aa228cfd881149349b8cdb69",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/osevye-organy-risunok-lekciya.png",
+   "storage_path": "lectures/gistologiya/elektronogrammy/osevye-organy-risunok-lekciya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/osevye-organy-risunok-lekciya.png",
+   "size": 381278,
+   "sha1": "68f36de7616750ac6a3b4e183f71dc3c119967ae",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/elektronogrammy/sarkomer-animaciya.gif",
+   "storage_path": "lectures/gistologiya/elektronogrammy/sarkomer-animaciya.gif",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/elektronogrammy/sarkomer-animaciya.gif",
+   "size": 118233,
+   "sha1": "ea8733085c7abf41520f6d7b2bdb217c683073f7",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/kora-mozzhechka-ge.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/kora-mozzhechka-ge.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/kora-mozzhechka-ge.jpg",
+   "size": 113153,
+   "sha1": "fc4f2536959e07f6cb22c8ba09ac7516dc28d480",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/kora-mozzhechka-serebro.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/kora-mozzhechka-serebro.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/kora-mozzhechka-serebro.jpg",
+   "size": 166967,
+   "sha1": "dc22141fcca4d6ed80284ba03fde066ab122a27a",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/kora-polyusharij-ganglioznyj.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/kora-polyusharij-ganglioznyj.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/kora-polyusharij-ganglioznyj.jpg",
+   "size": 147257,
+   "sha1": "b1e03b4d4a112fd82d4b814b65de3d03dd69f7bb",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/perifericheskij-nerv-ge.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/perifericheskij-nerv-ge.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/perifericheskij-nerv-ge.jpg",
+   "size": 94349,
+   "sha1": "afcf424b3e17d142371b3994aabe48cd55a7a031",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/perifericheskij-nerv-osmij.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/perifericheskij-nerv-osmij.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/perifericheskij-nerv-osmij.jpg",
+   "size": 105437,
+   "sha1": "e22593e19dbb0fd1ca36c593278e88fb5d946bce",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/perifericheskij-nerv-perinevrij.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/perifericheskij-nerv-perinevrij.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/perifericheskij-nerv-perinevrij.jpg",
+   "size": 83139,
+   "sha1": "b7a846d6822021e98c347e6d2a10a51685cfc1c7",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/spinalnyj-ganglij-neurocyty.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/spinalnyj-ganglij-neurocyty.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/spinalnyj-ganglij-neurocyty.jpg",
+   "size": 126714,
+   "sha1": "118da2d5a34570b498a417a5eb04f14ed909bc8a",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "gistologiya/preparaty/spinalnyj-ganglij.jpg",
+   "storage_path": "lectures/gistologiya/preparaty/spinalnyj-ganglij.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/gistologiya/preparaty/spinalnyj-ganglij.jpg",
+   "size": 118887,
+   "sha1": "027de1cbe39bbc4e55ae0d29d2ae5d5f43f31406",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-09-nervnaya-tkan/figs/em-mielinovoe-volokno-poperechnyy.png",
+   "storage_path": "lectures/histology/hist-09-nervnaya-tkan/figs/em-mielinovoe-volokno-poperechnyy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-09-nervnaya-tkan/figs/em-mielinovoe-volokno-poperechnyy.png",
+   "size": 1936018,
+   "sha1": "c4b5265952c4e711cbcaca7c66ca2c7c14f727e3",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "histology/hist-09-nervnaya-tkan/figs/em-nervno-myshechnyy-sinaps.png",
+   "storage_path": "lectures/histology/hist-09-nervnaya-tkan/figs/em-nervno-myshechnyy-sinaps.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-09-nervnaya-tkan/figs/em-nervno-myshechnyy-sinaps.png",
+   "size": 2033961,
+   "sha1": "18869964ef2e0c4ddaa7882f26574068426d8216",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "histology/hist-09-nervnaya-tkan/figs/fig1-tigroid-v-neyrocitah.jpg",
+   "storage_path": "lectures/histology/hist-09-nervnaya-tkan/figs/fig1-tigroid-v-neyrocitah.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-09-nervnaya-tkan/figs/fig1-tigroid-v-neyrocitah.jpg",
+   "size": 79782,
+   "sha1": "cb1eae72be85d358b39405b6b0e6019327638a6e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-10-nervnaya-sistema/figs/em-nervno-myshechnyy-sinaps.png",
+   "storage_path": "lectures/histology/hist-10-nervnaya-sistema/figs/em-nervno-myshechnyy-sinaps.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-10-nervnaya-sistema/figs/em-nervno-myshechnyy-sinaps.png",
+   "size": 2033961,
+   "sha1": "18869964ef2e0c4ddaa7882f26574068426d8216",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "histology/hist-12-zrenie-obonyanie/figs/fig1-razvitie-glaza.jpg",
+   "storage_path": "lectures/histology/hist-12-zrenie-obonyanie/figs/fig1-razvitie-glaza.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-12-zrenie-obonyanie/figs/fig1-razvitie-glaza.jpg",
+   "size": 104984,
+   "sha1": "601012d516cf049b776cd06bc8f3e8c8cd90d889",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-12-zrenie-obonyanie/figs/fig2-zadnyaya-stenka-glaza-setchatka.jpg",
+   "storage_path": "lectures/histology/hist-12-zrenie-obonyanie/figs/fig2-zadnyaya-stenka-glaza-setchatka.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-12-zrenie-obonyanie/figs/fig2-zadnyaya-stenka-glaza-setchatka.jpg",
+   "size": 93016,
+   "sha1": "ae63e4f27ad53329e9078e4665ae01e0c83a8cc9",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-13-sluh-vkus/figs/fig1-uvitka-kortiev-organ.jpg",
+   "storage_path": "lectures/histology/hist-13-sluh-vkus/figs/fig1-uvitka-kortiev-organ.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-13-sluh-vkus/figs/fig1-uvitka-kortiev-organ.jpg",
+   "size": 95388,
+   "sha1": "1e5826db81029c92a76134607d4bb274dfb871ae",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-13-sluh-vkus/figs/fig2-kortiev-organ-bolshoe-uvelichenie.jpg",
+   "storage_path": "lectures/histology/hist-13-sluh-vkus/figs/fig2-kortiev-organ-bolshoe-uvelichenie.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-13-sluh-vkus/figs/fig2-kortiev-organ-bolshoe-uvelichenie.jpg",
+   "size": 81559,
+   "sha1": "850bc19b387c551ec4a56588257454a35226f7e4",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-13-sluh-vkus/figs/fig3-vkusovaya-pochka-shema.png",
+   "storage_path": "lectures/histology/hist-13-sluh-vkus/figs/fig3-vkusovaya-pochka-shema.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-13-sluh-vkus/figs/fig3-vkusovaya-pochka-shema.png",
+   "size": 201458,
+   "sha1": "5bf65a22f2208e763e8d93d323871ed93be7cc3a",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-13-sluh-vkus/figs/fig4-vkusovye-pochki-listovidnye-sosochki.jpg",
+   "storage_path": "lectures/histology/hist-13-sluh-vkus/figs/fig4-vkusovye-pochki-listovidnye-sosochki.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-13-sluh-vkus/figs/fig4-vkusovye-pochki-listovidnye-sosochki.jpg",
+   "size": 109420,
+   "sha1": "2037386125e973e6bb9ea6e39553e428580c5623",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-14-serdechno-sosudistaya/figs/fig1-arteriola-i-venula.jpg",
+   "storage_path": "lectures/histology/hist-14-serdechno-sosudistaya/figs/fig1-arteriola-i-venula.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-14-serdechno-sosudistaya/figs/fig1-arteriola-i-venula.jpg",
+   "size": 85670,
+   "sha1": "0558c29b3b9d7a142f36230221eeb042968df6ec",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-14-serdechno-sosudistaya/figs/fig2-aorta.jpg",
+   "storage_path": "lectures/histology/hist-14-serdechno-sosudistaya/figs/fig2-aorta.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-14-serdechno-sosudistaya/figs/fig2-aorta.jpg",
+   "size": 99730,
+   "sha1": "052c7917c251ff1de6b88759eee33edbb0e9867a",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-14-serdechno-sosudistaya/figs/fig3-arteriya-myshechnogo-tipa.jpg",
+   "storage_path": "lectures/histology/hist-14-serdechno-sosudistaya/figs/fig3-arteriya-myshechnogo-tipa.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-14-serdechno-sosudistaya/figs/fig3-arteriya-myshechnogo-tipa.jpg",
+   "size": 104013,
+   "sha1": "32494cb5aa669323047a23e5b03116de9e3ecfdd",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-14-serdechno-sosudistaya/figs/fig4-stenka-serdca.jpg",
+   "storage_path": "lectures/histology/hist-14-serdechno-sosudistaya/figs/fig4-stenka-serdca.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-14-serdechno-sosudistaya/figs/fig4-stenka-serdca.jpg",
+   "size": 144201,
+   "sha1": "f0c08f0fb87085e4d0e739f029c2e6f7b0998423",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-15-endokrinnaya/figs/fig1-gipofiz.jpg",
+   "storage_path": "lectures/histology/hist-15-endokrinnaya/figs/fig1-gipofiz.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-15-endokrinnaya/figs/fig1-gipofiz.jpg",
+   "size": 136383,
+   "sha1": "7212b4a450a25101343955ca75b0435873ed3dc0",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-15-endokrinnaya/figs/fig2-shchitovidnaya-zheleza.jpg",
+   "storage_path": "lectures/histology/hist-15-endokrinnaya/figs/fig2-shchitovidnaya-zheleza.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-15-endokrinnaya/figs/fig2-shchitovidnaya-zheleza.jpg",
+   "size": 117219,
+   "sha1": "2079908b76b256b05d6d7af3acf17de7c60c237b",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-15-endokrinnaya/figs/fig3-okoloshchitovidnaya-zheleza.jpg",
+   "storage_path": "lectures/histology/hist-15-endokrinnaya/figs/fig3-okoloshchitovidnaya-zheleza.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-15-endokrinnaya/figs/fig3-okoloshchitovidnaya-zheleza.jpg",
+   "size": 106439,
+   "sha1": "c71a18e6e041fceba1d95dda3f0c86ac6cab5697",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-15-endokrinnaya/figs/fig4-nadpochechnik-klubochkovaya-puchkovaya.jpg",
+   "storage_path": "lectures/histology/hist-15-endokrinnaya/figs/fig4-nadpochechnik-klubochkovaya-puchkovaya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-15-endokrinnaya/figs/fig4-nadpochechnik-klubochkovaya-puchkovaya.jpg",
+   "size": 121471,
+   "sha1": "cccbf2f7a9a7b5336328fd1cb65c90d42ecd1860",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-16-krovetvorenie/figs/fig1-retikulyarnaya-tkan.jpg",
+   "storage_path": "lectures/histology/hist-16-krovetvorenie/figs/fig1-retikulyarnaya-tkan.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-16-krovetvorenie/figs/fig1-retikulyarnaya-tkan.jpg",
+   "size": 94365,
+   "sha1": "99d47843a2b7214e7097970f6570665700a305cc",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-16-krovetvorenie/figs/fig2-krasnyy-kostnyy-mozg.jpg",
+   "storage_path": "lectures/histology/hist-16-krovetvorenie/figs/fig2-krasnyy-kostnyy-mozg.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-16-krovetvorenie/figs/fig2-krasnyy-kostnyy-mozg.jpg",
+   "size": 97888,
+   "sha1": "b4bf28f33576e4387c0d6517a8e1b910a4ea66a5",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-16-krovetvorenie/figs/fig3-kostnyy-mozg-megakariocit.jpg",
+   "storage_path": "lectures/histology/hist-16-krovetvorenie/figs/fig3-kostnyy-mozg-megakariocit.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-16-krovetvorenie/figs/fig3-kostnyy-mozg-megakariocit.jpg",
+   "size": 87088,
+   "sha1": "732a688817ca6999bc6036ce4533c6abd0044e4a",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-17-limfoidnye-organy/figs/fig1-timus.jpg",
+   "storage_path": "lectures/histology/hist-17-limfoidnye-organy/figs/fig1-timus.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-17-limfoidnye-organy/figs/fig1-timus.jpg",
+   "size": 154954,
+   "sha1": "4c2f1918c28677b208539c23e97966fe60f3b7d5",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-17-limfoidnye-organy/figs/fig2-limfouzel-korkovoe-veschestvo.jpg",
+   "storage_path": "lectures/histology/hist-17-limfoidnye-organy/figs/fig2-limfouzel-korkovoe-veschestvo.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-17-limfoidnye-organy/figs/fig2-limfouzel-korkovoe-veschestvo.jpg",
+   "size": 148046,
+   "sha1": "08315ed233b4e0c4ac673af6ad5e9f2270f4f5e7",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-17-limfoidnye-organy/figs/fig3-selezenka-follikul.jpg",
+   "storage_path": "lectures/histology/hist-17-limfoidnye-organy/figs/fig3-selezenka-follikul.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-17-limfoidnye-organy/figs/fig3-selezenka-follikul.jpg",
+   "size": 83221,
+   "sha1": "0a576b83b1c189930c57a03538f31bbf1b6e1e71",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-17-limfoidnye-organy/figs/fig4-nebnaya-mindalina-shema.jpg",
+   "storage_path": "lectures/histology/hist-17-limfoidnye-organy/figs/fig4-nebnaya-mindalina-shema.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-17-limfoidnye-organy/figs/fig4-nebnaya-mindalina-shema.jpg",
+   "size": 75912,
+   "sha1": "6da490c04e80ca3a9a7314a7cfd625cd3b1058f9",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-18-pishchevaritelnyy-kanal/figs/fig1-slizistaya-guby-shema.png",
+   "storage_path": "lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig1-slizistaya-guby-shema.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig1-slizistaya-guby-shema.png",
+   "size": 457207,
+   "sha1": "1413345234f1ed94bfc4c1780029b353b32f0c48",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-18-pishchevaritelnyy-kanal/figs/fig2-dentin-pulpa-shema.jpg",
+   "storage_path": "lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig2-dentin-pulpa-shema.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig2-dentin-pulpa-shema.jpg",
+   "size": 58541,
+   "sha1": "f70c1959384c176cf5dd5fd910cdf48b2b930597",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-18-pishchevaritelnyy-kanal/figs/fig3-koncovye-otdely-slyunnoy-zhelezy-shema.jpg",
+   "storage_path": "lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig3-koncovye-otdely-slyunnoy-zhelezy-shema.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig3-koncovye-otdely-slyunnoy-zhelezy-shema.jpg",
+   "size": 71007,
+   "sha1": "e5e173bbb0849b9fb5a451b5f16572a5f8090044",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "histology/hist-18-pishchevaritelnyy-kanal/figs/fig4-pishchevod.jpg",
+   "storage_path": "lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig4-pishchevod.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/histology/hist-18-pishchevaritelnyy-kanal/figs/fig4-pishchevod.jpg",
+   "size": 109773,
+   "sha1": "1a552457e1ed700ba3918a34bd00622895842f3f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/krov1-p197-zhidkie-sredy.jpg",
+   "storage_path": "lectures/krov-endokrin/figs/krov1-p197-zhidkie-sredy.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/krov1-p197-zhidkie-sredy.jpg",
+   "size": 99347,
+   "sha1": "9c5490a46711dff0aae57c4a319d781d6553b80a",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/krov1-p198-vnutrennyaya-sreda.jpg",
+   "storage_path": "lectures/krov-endokrin/figs/krov1-p198-vnutrennyaya-sreda.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/krov1-p198-vnutrennyaya-sreda.jpg",
+   "size": 130463,
+   "sha1": "72786b7bb98bbe9ef84624f0027ecb62c2a984b4",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/krov1-p199-voda.jpg",
+   "storage_path": "lectures/krov-endokrin/figs/krov1-p199-voda.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/krov1-p199-voda.jpg",
+   "size": 55693,
+   "sha1": "7cf830b96c3eb7d41bc3f2683399ef5c9f8ee3a8",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/krov1-p200-sostav-tela.jpg",
+   "storage_path": "lectures/krov-endokrin/figs/krov1-p200-sostav-tela.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/krov1-p200-sostav-tela.jpg",
+   "size": 73986,
+   "sha1": "448041465df888cc0acedcb9f0b98d38a1426755",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/krov1-p201-gomeostaz-gematokrit.jpg",
+   "storage_path": "lectures/krov-endokrin/figs/krov1-p201-gomeostaz-gematokrit.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/krov1-p201-gomeostaz-gematokrit.jpg",
+   "size": 132163,
+   "sha1": "6727cbda628ac7bb875ae735948c9a249ac0744f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/krov1-p202-funkcii-krovi.jpg",
+   "storage_path": "lectures/krov-endokrin/figs/krov1-p202-funkcii-krovi.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/krov1-p202-funkcii-krovi.jpg",
+   "size": 126533,
+   "sha1": "d51cf2be4489d6f86565dff7a35c423f56dc0dab",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t2-fig1-sistema-eritrona.png",
+   "storage_path": "lectures/krov-endokrin/figs/t2-fig1-sistema-eritrona.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t2-fig1-sistema-eritrona.png",
+   "size": 164899,
+   "sha1": "cd4bde6ecbeda813333b48a2407174f484ee14ef",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t2-fig2-sostav-krovi.png",
+   "storage_path": "lectures/krov-endokrin/figs/t2-fig2-sostav-krovi.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t2-fig2-sostav-krovi.png",
+   "size": 161779,
+   "sha1": "fc9bcae53393242c318725ec62fb92cde50a99a8",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t3-fig1-koagulyacionnyy-gemostaz.png",
+   "storage_path": "lectures/krov-endokrin/figs/t3-fig1-koagulyacionnyy-gemostaz.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t3-fig1-koagulyacionnyy-gemostaz.png",
+   "size": 91232,
+   "sha1": "d2e101819ad9695173e2b40303ddf212427ef8f5",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t3-fig2-estestvennye-antikoagulyanty.png",
+   "storage_path": "lectures/krov-endokrin/figs/t3-fig2-estestvennye-antikoagulyanty.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t3-fig2-estestvennye-antikoagulyanty.png",
+   "size": 86699,
+   "sha1": "9fed77ee601b8ef77867e3aa11ff3c0e98385f1f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t3-fig3-sistema-fibrinoliza.png",
+   "storage_path": "lectures/krov-endokrin/figs/t3-fig3-sistema-fibrinoliza.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t3-fig3-sistema-fibrinoliza.png",
+   "size": 64904,
+   "sha1": "c1a4e2cf9baf10457b49811696d86cd989797793",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t5-fig2-gipotalamo-gipofizarnaya-sistema.png",
+   "storage_path": "lectures/krov-endokrin/figs/t5-fig2-gipotalamo-gipofizarnaya-sistema.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t5-fig2-gipotalamo-gipofizarnaya-sistema.png",
+   "size": 416015,
+   "sha1": "9cc0d90f00b7248050ce0b32391db750d9f2bf9b",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t5-fig3-gormony-shchitovidnoy-zhelezy.png",
+   "storage_path": "lectures/krov-endokrin/figs/t5-fig3-gormony-shchitovidnoy-zhelezy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t5-fig3-gormony-shchitovidnoy-zhelezy.png",
+   "size": 526988,
+   "sha1": "d0076609a0c54ccaaa7cb4fd4e4ee2c31d1f12c3",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "krov-endokrin/figs/t5-fig4-gormony-nadpochechnikov.png",
+   "storage_path": "lectures/krov-endokrin/figs/t5-fig4-gormony-nadpochechnikov.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/krov-endokrin/figs/t5-fig4-gormony-nadpochechnikov.png",
+   "size": 1339111,
+   "sha1": "61c6656b0ccc4a8f9d0d0602a6eca60ec3737f09",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t1-fig1-ion-transport.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t1-fig1-ion-transport.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t1-fig1-ion-transport.jpg",
+   "size": 223449,
+   "sha1": "5c7dc708400f7dfeecfbf283bacb9cc205dca31e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t1-fig2-fus-slyunoobrazovaniya.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t1-fig2-fus-slyunoobrazovaniya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t1-fig2-fus-slyunoobrazovaniya.png",
+   "size": 255341,
+   "sha1": "7528770e68591567d5c673b1100d733e5c0448eb",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t1-fig3-zhevanie.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t1-fig3-zhevanie.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t1-fig3-zhevanie.png",
+   "size": 449674,
+   "sha1": "cb718cf7016bd5cf2b6b02e021a4a5a7040b30ea",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t1-fig4-glotanie.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t1-fig4-glotanie.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t1-fig4-glotanie.jpg",
+   "size": 81356,
+   "sha1": "eca6f775a3440030da684a1c204d728f013a09c9",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t1-fig5-mastikaciografiya.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t1-fig5-mastikaciografiya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t1-fig5-mastikaciografiya.png",
+   "size": 37479,
+   "sha1": "0b68960b064ec29e003a8019a50302c083c2f11d",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t1-fig6-mastikaciogrammy.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t1-fig6-mastikaciogrammy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t1-fig6-mastikaciogrammy.png",
+   "size": 50959,
+   "sha1": "5216c4bb3ce926e14183de06622bde85e20205c5",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig1-zheludok.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig1-zheludok.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig1-zheludok.png",
+   "size": 240801,
+   "sha1": "9e6c85941018b4adaac4ebf74a8b1ce1d77dcc4f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig2-krivye-zheludochnogo-soka.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig2-krivye-zheludochnogo-soka.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig2-krivye-zheludochnogo-soka.png",
+   "size": 18358,
+   "sha1": "3a5f58c64c1b0fd7ad3e3da2228ef48282b44370",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig3-elektrogastrografiya.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig3-elektrogastrografiya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig3-elektrogastrografiya.jpg",
+   "size": 46332,
+   "sha1": "5c87fa5139b58f487b2030958884bccc6f2e9610",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig4-elektrod-pishchevod.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig4-elektrod-pishchevod.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig4-elektrod-pishchevod.jpg",
+   "size": 14136,
+   "sha1": "d7ed141fb894e015a514d89e0f502f3bb5a342e4",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig5-ph-pishchevod.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig5-ph-pishchevod.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig5-ph-pishchevod.png",
+   "size": 26719,
+   "sha1": "8a470e6ae0be8af6ad29558b383dd10f1f25cda0",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig6-ph-zheludok.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig6-ph-zheludok.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig6-ph-zheludok.png",
+   "size": 26996,
+   "sha1": "cda74125bec0637c041a81d6b4192842fd94a490",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig7-miogramma-meh.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig7-miogramma-meh.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig7-miogramma-meh.png",
+   "size": 6918,
+   "sha1": "bf0f0aa1a2f9b587f36093a8e63aba2a4b69313e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig8-miogramma-acetilholin.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig8-miogramma-acetilholin.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig8-miogramma-acetilholin.png",
+   "size": 5794,
+   "sha1": "3578be8e35ebbccab2d614e78d6bb732a10dc6d0",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-fig9-miogramma-adrenalin.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-fig9-miogramma-adrenalin.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-fig9-miogramma-adrenalin.png",
+   "size": 6010,
+   "sha1": "ed22490b132327a7770304865cec6483fef14a5c",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-reflex-duga-podzheludochnaya.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-reflex-duga-podzheludochnaya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-reflex-duga-podzheludochnaya.png",
+   "size": 337940,
+   "sha1": "15fbb40fca7ec222a3a0a76f00ef448a69d3af97",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t2-reflex-duga-sekrecia-zheludka.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t2-reflex-duga-sekrecia-zheludka.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t2-reflex-duga-sekrecia-zheludka.png",
+   "size": 182677,
+   "sha1": "16bf9ab05c51ff6a8e4cc8adce41534670aaf88d",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t3-fig1-fermenty-konveyera.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t3-fig1-fermenty-konveyera.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t3-fig1-fermenty-konveyera.jpg",
+   "size": 143174,
+   "sha1": "edc615e087763d03eede918e4460fe06931f48a3",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t3-fig2-gidroliz-tonkiy-kishechnik.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t3-fig2-gidroliz-tonkiy-kishechnik.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t3-fig2-gidroliz-tonkiy-kishechnik.png",
+   "size": 208785,
+   "sha1": "d07b7c94f7b7ea698128313ecc4fa9247d417a86",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t3-fig3-peristalticheskaya-volna.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t3-fig3-peristalticheskaya-volna.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t3-fig3-peristalticheskaya-volna.jpg",
+   "size": 126195,
+   "sha1": "baf96cbefa7ed7c78dacdd24b438be6dfc178445",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t3-fig4-defekaciya.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t3-fig4-defekaciya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t3-fig4-defekaciya.jpg",
+   "size": 199131,
+   "sha1": "e50632c81bfa822471a6a25095c8efd2f62b4c83",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t4-fig1-osnovnoy-obmen.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t4-fig1-osnovnoy-obmen.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t4-fig1-osnovnoy-obmen.jpg",
+   "size": 136645,
+   "sha1": "bfcf4567ddf57bb817477547d6eb4b7e5efb33fb",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t4-fig2-nomogramma-osnovnogo-obmena.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t4-fig2-nomogramma-osnovnogo-obmena.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t4-fig2-nomogramma-osnovnogo-obmena.png",
+   "size": 40114,
+   "sha1": "10c99d1bb2e2d4e42e77d2388c6072301529d4b4",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t4-fig3-energozatraty.png",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t4-fig3-energozatraty.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t4-fig3-energozatraty.png",
+   "size": 47239,
+   "sha1": "8edc9092b20126a7480f5f159a7780af6a0b78aa",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t5-fig1-fus-termoregulyacii.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t5-fig1-fus-termoregulyacii.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t5-fig1-fus-termoregulyacii.jpg",
+   "size": 81483,
+   "sha1": "cb940dd726cef55600b32452726b98a1e559c00e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t5-fig2a-termogenez.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t5-fig2a-termogenez.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t5-fig2a-termogenez.jpg",
+   "size": 157371,
+   "sha1": "8cdd5a5ea23db703ae737b7596c347b9617b277f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t5-fig2b-potoobrazovanie.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t5-fig2b-potoobrazovanie.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t5-fig2b-potoobrazovanie.jpg",
+   "size": 95884,
+   "sha1": "785637b88badb9287772f410b28f5f4872d30d11",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t5-fig3-teplootdacha.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t5-fig3-teplootdacha.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t5-fig3-teplootdacha.jpg",
+   "size": 59167,
+   "sha1": "ddb65fbb6e14cb3424577d33db33492d1cbbb5df",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t5-fig4a-kozhnyy-krovotok.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t5-fig4a-kozhnyy-krovotok.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t5-fig4a-kozhnyy-krovotok.jpg",
+   "size": 208541,
+   "sha1": "fed7e5457a47fcfcdaf522e83a4c7d76b3b5d9c9",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "pishchevarenie-obmen/figs/t5-fig4b-kozhnyy-krovotok.jpg",
+   "storage_path": "lectures/pishchevarenie-obmen/figs/t5-fig4b-kozhnyy-krovotok.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/pishchevarenie-obmen/figs/t5-fig4b-kozhnyy-krovotok.jpg",
+   "size": 264917,
+   "sha1": "ebe5efecd566eb34363cadac3559858be87e7525",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t1-fig1-somatosensornaya-sistema.png",
+   "storage_path": "lectures/sensornye-vnd/figs/t1-fig1-somatosensornaya-sistema.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t1-fig1-somatosensornaya-sistema.png",
+   "size": 28027,
+   "sha1": "1f259c6e361093b7b46551d752264af973f7e0a3",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t1-fig2-nociceptivnaya-sistema.jpg",
+   "storage_path": "lectures/sensornye-vnd/figs/t1-fig2-nociceptivnaya-sistema.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t1-fig2-nociceptivnaya-sistema.jpg",
+   "size": 87005,
+   "sha1": "791894103d6cae648664ae825f8727021fc41f2f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t1-fig3-obonyatelnaya-sistema.jpg",
+   "storage_path": "lectures/sensornye-vnd/figs/t1-fig3-obonyatelnaya-sistema.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t1-fig3-obonyatelnaya-sistema.jpg",
+   "size": 109859,
+   "sha1": "a2ae26b34dcaaa0c991e8fc390f2632406fac7d0",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t1-fig4-interoceptivnaya-sistema.jpg",
+   "storage_path": "lectures/sensornye-vnd/figs/t1-fig4-interoceptivnaya-sistema.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t1-fig4-interoceptivnaya-sistema.jpg",
+   "size": 65512,
+   "sha1": "8b7febb274774567c8ba6a9e1550bf0148b63c3f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t1-fig5-retseptsiya-sladkogo.jpg",
+   "storage_path": "lectures/sensornye-vnd/figs/t1-fig5-retseptsiya-sladkogo.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t1-fig5-retseptsiya-sladkogo.jpg",
+   "size": 55371,
+   "sha1": "7cabc07473c2dc18a48eb21324c899c16e57599c",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t1-fig6-estesiometriya.png",
+   "storage_path": "lectures/sensornye-vnd/figs/t1-fig6-estesiometriya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t1-fig6-estesiometriya.png",
+   "size": 157384,
+   "sha1": "513b778f4843216126f5940e4f485ce5c305ee78",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t2-fig1-cvetovoe-zrenie.jpg",
+   "storage_path": "lectures/sensornye-vnd/figs/t2-fig1-cvetovoe-zrenie.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t2-fig1-cvetovoe-zrenie.jpg",
+   "size": 91328,
+   "sha1": "dc37d673aa809064cd6d16e911373b0bdd259ebc",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t2-fig2-ostrota-zreniya.jpg",
+   "storage_path": "lectures/sensornye-vnd/figs/t2-fig2-ostrota-zreniya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t2-fig2-ostrota-zreniya.jpg",
+   "size": 79103,
+   "sha1": "573df9cc76871e87d9340d3341ddb1810da493de",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t2-fig3-polya-zreniya.jpg",
+   "storage_path": "lectures/sensornye-vnd/figs/t2-fig3-polya-zreniya.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t2-fig3-polya-zreniya.jpg",
+   "size": 127184,
+   "sha1": "cce5c433c78e708934020a1cafda8c10f2327571",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t2-fig4-binauralnyy-sluh.png",
+   "storage_path": "lectures/sensornye-vnd/figs/t2-fig4-binauralnyy-sluh.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t2-fig4-binauralnyy-sluh.png",
+   "size": 15676,
+   "sha1": "0bd94403dfa8ee0e1dc29e46695cf42e0977add8",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t3-fig1-uslovnye-i-bezuslovnye-refleksy.png",
+   "storage_path": "lectures/sensornye-vnd/figs/t3-fig1-uslovnye-i-bezuslovnye-refleksy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t3-fig1-uslovnye-i-bezuslovnye-refleksy.png",
+   "size": 152222,
+   "sha1": "273bd6fbb85f750e7d89251727d6c51bdd5f40c5",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t4-fig1-vidy-vnd-temperamenty.png",
+   "storage_path": "lectures/sensornye-vnd/figs/t4-fig1-vidy-vnd-temperamenty.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t4-fig1-vidy-vnd-temperamenty.png",
+   "size": 756718,
+   "sha1": "546668dccfc01aa9516a354b063ee1378689ac29",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t4-fig2-asimmetriya-polushariy.png",
+   "storage_path": "lectures/sensornye-vnd/figs/t4-fig2-asimmetriya-polushariy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t4-fig2-asimmetriya-polushariy.png",
+   "size": 110932,
+   "sha1": "23cdbbc998f27d44c071eec8a5fc91210f305047",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "sensornye-vnd/figs/t4-fig3-emocionalnye-vozbuzhdeniya.png",
+   "storage_path": "lectures/sensornye-vnd/figs/t4-fig3-emocionalnye-vozbuzhdeniya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/sensornye-vnd/figs/t4-fig3-emocionalnye-vozbuzhdeniya.png",
+   "size": 642005,
+   "sha1": "c93539131ec062ee82ba61e9784822a4718889b1",
+   "uploaded_at": "2026-11-12T15:24:50.149Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig1-metody-issledovaniya.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig1-metody-issledovaniya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig1-metody-issledovaniya.png",
+   "size": 65684,
+   "sha1": "1d887d5307588b1b876ccc79fcf3dc7dc6e40b93",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig2-osnovnye-ponyatiya.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig2-osnovnye-ponyatiya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig2-osnovnye-ponyatiya.png",
+   "size": 46102,
+   "sha1": "624dd9bf090e5825992d9fb8a0d04e06a483c09b",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig3-apparatura.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig3-apparatura.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig3-apparatura.png",
+   "size": 41458,
+   "sha1": "9295e92c511ded3488cdd4dd50704b996e420ca4",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig4-stroenie-membrany.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig4-stroenie-membrany.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig4-stroenie-membrany.png",
+   "size": 31851,
+   "sha1": "bb48619abe94a83b261cd5051cbc992ab3245270",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig5-transport-cherez-membranu.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig5-transport-cherez-membranu.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig5-transport-cherez-membranu.png",
+   "size": 840296,
+   "sha1": "0a4231f22f637ebcb8efcc8348d9cfbec4a35a61",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig6-ionnye-kanaly-pd.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig6-ionnye-kanaly-pd.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig6-ionnye-kanaly-pd.png",
+   "size": 969432,
+   "sha1": "77dc6ae5ee655edad03fbfea5bd6917e7bd0c8af",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig7-pd-provodimosti.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig7-pd-provodimosti.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig7-pd-provodimosti.png",
+   "size": 60295,
+   "sha1": "d2dcc1cdbefc63f29662e5ac4de5daed3df02272",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t1-fig8-pd-vozbudimost.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t1-fig8-pd-vozbudimost.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t1-fig8-pd-vozbudimost.png",
+   "size": 69321,
+   "sha1": "bde6e7bdd8d2e9f28ac3567d60731b9da6927bd5",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t2-fig1-miogrammy-chastota-razdrazheniya.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t2-fig1-miogrammy-chastota-razdrazheniya.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t2-fig1-miogrammy-chastota-razdrazheniya.png",
+   "size": 180431,
+   "sha1": "f7e04b768d7a01163ac71100eece5486df1c597e",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t3-fig1-neironogrammy.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t3-fig1-neironogrammy.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t3-fig1-neironogrammy.png",
+   "size": 34894,
+   "sha1": "7caf92c6cef4345aecd9287a72445221e98b277f",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t3-fig2-impulsy-nervnogo-volokna.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t3-fig2-impulsy-nervnogo-volokna.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t3-fig2-impulsy-nervnogo-volokna.png",
+   "size": 505487,
+   "sha1": "0e2794c0489ce1c24b5dcf9db2a8e6a42c349556",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t4-fig1-pd-vozbudimost-mehanogramma.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t4-fig1-pd-vozbudimost-mehanogramma.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t4-fig1-pd-vozbudimost-mehanogramma.png",
+   "size": 67114,
+   "sha1": "aaad20e76e70d4af28ed948793afb77343ab8718",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t4-fig2-emg.png",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t4-fig2-emg.png",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t4-fig2-emg.png",
+   "size": 1603,
+   "sha1": "41d7acd06093419cb5b886fb3a450d4393f4c1c6",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  },
+  {
+   "path": "vozbudimye-sistemy/figs/t4-fig3-miogramma.jpg",
+   "storage_path": "lectures/vozbudimye-sistemy/figs/t4-fig3-miogramma.jpg",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/lecture-media/lectures/vozbudimye-sistemy/figs/t4-fig3-miogramma.jpg",
+   "size": 20340,
+   "sha1": "64974c86e114f96ce5172060729e001f30afd8f8",
+   "uploaded_at": "2026-11-11T23:08:03.908Z"
+  }
+ ]
+}

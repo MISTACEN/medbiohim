@@ -458,7 +458,7 @@ export function TodaySummary({ date, isToday, isTomorrow, lessons, homeworks, ev
             Все задания <ChevronRight className="h-4 w-4" />
           </Link>
           <Link
-            href="/academic"
+            href="/study#plan"
             className="inline-flex min-h-[40px] items-center gap-1 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 motion-reduce:transition-none"
           >
             Академический план <ChevronRight className="h-4 w-4" />

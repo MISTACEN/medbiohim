@@ -62,9 +62,23 @@ const SECTIONS: Array<{ id: ChemistrySection; label: string; hint: string }> = [
   },
 ];
 
-export function ChemistryModule({ className }: { className?: string }) {
-  const [section, setSection] = useState<ChemistrySection>("structures");
-  const [opened, setOpened] = useState<ChemistrySection[]>(["structures"]);
+export function ChemistryModule({
+  className,
+  initialSection,
+  initialEquation,
+  initialSubstances,
+}: {
+  className?: string;
+  /** Раздел, который открывается сразу (по умолчанию «Структуры»). */
+  initialSection?: ChemistrySection;
+  /** Уравнение из текста лекции — подставляется в решатель. */
+  initialEquation?: string;
+  /** Вещества из текста лекции — первое подставляется в поиск структуры. */
+  initialSubstances?: string[];
+}) {
+  const start = initialSection ?? "structures";
+  const [section, setSection] = useState<ChemistrySection>(start);
+  const [opened, setOpened] = useState<ChemistrySection[]>([start]);
 
   function select(next: ChemistrySection) {
     setSection(next);
@@ -95,8 +109,8 @@ export function ChemistryModule({ className }: { className?: string }) {
           hidden={section !== item.id}
           className="min-w-0"
         >
-          {item.id === "structures" && <ChemistryWorkbench embedded />}
-          {item.id === "reactions" && <ReactionBalancer />}
+          {item.id === "structures" && <ChemistryWorkbench embedded initialSubstances={initialSubstances} />}
+          {item.id === "reactions" && <ReactionBalancer initialEquation={initialEquation} />}
           {item.id === "solutions" && <ChemTools />}
           {item.id === "lab" && <LabBench />}
           {item.id === "practice" && <PracticeRunner />}

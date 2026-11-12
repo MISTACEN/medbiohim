@@ -524,7 +524,7 @@ export default function DashboardPage() {
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/academic" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+            <Link href="/study#plan" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
               Открыть план
             </Link>
             <button
@@ -648,7 +648,7 @@ export default function DashboardPage() {
           <Link href="/tutor" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-700">
             <Sparkles className="h-4 w-4 text-indigo-500" /> AI-тьютор
           </Link>
-          <Link href="/progress" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-700">
+          <Link href="/study#progress" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-700">
             <GraduationCap className="h-4 w-4 text-indigo-500" /> Прогресс
           </Link>
         </div>
@@ -809,13 +809,13 @@ export default function DashboardPage() {
               Задания
             </Link>
             <Link
-              href="/assignments"
+              href="/study#assignments"
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Отработки
             </Link>
             <Link
-              href="/academic"
+              href="/study#plan"
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Учебный план

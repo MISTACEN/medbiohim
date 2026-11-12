@@ -23,20 +23,29 @@ type TabKey = (typeof structureTabs)[number]["key"];
 const projectionKeys: ProjectionKind[] = ["fischer", "haworth", "newman", "chair"];
 
 /** Химическое ядро: resolver + 2D/3D + проекции + механизмы. */
-export function ChemistryWorkbench({ embedded = false }: { embedded?: boolean }) {
-  const [query, setQuery] = useState("glucose");
+export function ChemistryWorkbench({
+  embedded = false,
+  initialSubstances,
+}: {
+  embedded?: boolean;
+  /** Вещества из лекции: первое подставляется в запрос, остальные — чипами. */
+  initialSubstances?: string[];
+}) {
+  const [query, setQuery] = useState(initialSubstances?.[0] ?? "glucose");
   const [molecule, setMolecule] = useState<ChemicalMolecule | null>(null);
   const [tab, setTab] = useState<TabKey>("2d");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showMech, setShowMech] = useState(0);
 
-  async function resolve(event?: FormEvent) {
+  async function resolve(event?: FormEvent, override?: string) {
     event?.preventDefault();
+    const term = (override ?? query).trim();
+    if (!term) return;
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/v1/chemistry/resolve?query=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/v1/chemistry/resolve?query=${encodeURIComponent(term)}`);
       const data = await response.json();
       const payload = data?.data ?? data;
       if (!response.ok || data?.error) throw new Error(data?.error?.message || data?.error || "Не удалось найти вещество");
@@ -87,6 +96,25 @@ export function ChemistryWorkbench({ embedded = false }: { embedded?: boolean })
           {loading ? "Поиск…" : "Получить структуру"}
         </button>
       </form>
+
+      {initialSubstances && initialSubstances.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-[var(--muted)]">Из лекции:</span>
+          {initialSubstances.map((substance) => (
+            <button
+              key={substance}
+              type="button"
+              onClick={() => {
+                setQuery(substance);
+                void resolve(undefined, substance);
+              }}
+              className="rounded-lg border border-[var(--border)] px-2 py-1 font-mono hover:border-indigo-300"
+            >
+              {substance}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {error && <p role="alert" className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] p-4 text-sm text-[var(--status-critical-fg)]">{error}</p>}
 

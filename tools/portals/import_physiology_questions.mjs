@@ -34,6 +34,9 @@ function collect() {
   const rows = [];
   for (const fname of fs.readdirSync(DIR).filter((f) => f.endsWith(".json") && f !== "index.json")) {
     const manual = JSON.parse(fs.readFileSync(path.join(DIR, fname), "utf8"));
+    // В каталоге лежат не только методички: план семестра — тоже .json,
+    // но без lessons. Берём только файлы с занятиями.
+    if (!Array.isArray(manual.lessons)) continue;
     for (const lesson of manual.lessons) {
       const topicNote = `${manual.title} · ${lesson.title}`;
       for (const group of lesson.tests || []) {
@@ -122,21 +125,33 @@ function collect() {
     console.log(`проход ${pass}: connected`);
     inserted = 0;
     try {
-      for (const row of rows) {
-        const res = await client.query(
-          `insert into questions (subject_id, type, text, answer, options, is_published, source_key)
-           values ($1, $2, $3, $4, $5, true, $6)
-           on conflict (subject_id, source_key) where source_key is not null do nothing`,
-          [
+      // Пакетная вставка: один запрос на 200 строк вместо 200 round-trip'ов
+      // к пулеру — на полном банке (≈3 тыс. вопросов) это минуты вместо часов.
+      const CHUNK = 200;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const values = [];
+        const params = [];
+        for (const row of chunk) {
+          const base = params.length;
+          values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, true, $${base + 6})`);
+          params.push(
             PHYSIOLOGY_SUBJECT,
             row.kind,
             row.note ? `${row.text}\n\n[${row.note}]` : row.text,
             row.answer,
             JSON.stringify(row.options || []),
             `phys_${row.kind}:${row.key}`,
-          ],
+          );
+        }
+        const res = await client.query(
+          `insert into questions (subject_id, type, text, answer, options, is_published, source_key)
+           values ${values.join(",\n")}
+           on conflict (subject_id, source_key) where source_key is not null do nothing`,
+          params,
         );
         inserted += res.rowCount;
+        console.log(`  ${Math.min(i + CHUNK, rows.length)}/${rows.length} (новых ${inserted})`);
       }
     } catch (e) {
       console.log(`  обрыв: ${e.message}`);

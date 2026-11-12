@@ -108,7 +108,18 @@ plans.get("/subject-plans/:slug", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");
   const slug = String(c.req.param("slug") || "").trim().toLowerCase();
-  const allowedPlanSlugs = new Set(["histology", "physiology", "organic_chemistry", "chemistry_organic_physical"]);
+  // Планы кафедры из site_content (subject_plan:<slug>): правка в БД
+  // применяется без деплоя статики, поэтому список слагов — только те, для
+  // которых в site_content есть размеченный план.
+  const allowedPlanSlugs = new Set([
+    "histology",
+    "physiology",
+    "organic_chemistry",
+    "chemistry_organic_physical",
+    "optics",
+    "probability",
+    "informatics",
+  ]);
   const databaseSlug = slug === "organic_chemistry" ? "chemistry_organic_physical" : slug;
 
   const parseOptionalNumber = (value: string | undefined, max: number) => {

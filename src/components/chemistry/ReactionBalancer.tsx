@@ -60,9 +60,9 @@ function sign(value: number): string {
   return String(value);
 }
 
-export function ReactionBalancer() {
-  const [equation, setEquation] = useState("");
-  const [result, setResult] = useState<BalanceResult | null>(null);
+export function ReactionBalancer({ initialEquation }: { initialEquation?: string } = {}) {
+  const [equation, setEquation] = useState(initialEquation ?? "");
+  const [result, setResult] = useState<BalanceResult | null>(initialEquation ? balanceEquation(initialEquation) : null);
 
   const rows = useMemo(() => (result?.ok ? buildRows(result) : []), [result]);
 

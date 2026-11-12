@@ -1,70 +1,72 @@
 "use client";
 
 /**
- * «План подготовки» — рабочая страница, а не пересказ ДЗ.
+ * «Учёба» — одна страница вместо четырёх.
  *
- * Механика:
- *  1. Программа (блоки, задачи, сроки) лежит в `@/lib/study/program` как данные.
- *  2. Студент отмечает сданное — из отметок пересобираются «ход сдачи» и план
- *     по дням. Перегруз дня и просрочки не прячутся.
- *  3. Сайтовый AI переписывает акценты, порядок блоков и советы; даты и состав
- *     задач он менять не может — в патч попадают только известные дни/блоки.
- *  4. Отработки дополнительно синхронизируются с трекером /assignments.
+ * Раньше /study, /academic, /assignments и /progress показывали разные срезы
+ * одного и того же: что задано, что просрочено, что сдано и сколько осталось.
+ * Студент ходил между вкладками, чтобы собрать картину. Теперь это один экран:
+ *
+ *  1. сводка — прогресс, ДЗ, тесты, долги, дни до КР;
+ *  2. «что делать сейчас» — общий список из отработок, занятий и плана
+ *     подготовки, отсортированный по сроку;
+ *  3. подробные разделы: учебный план, прогресс по предметам, отработки
+ *     и подготовка к КР — без переключения страниц.
+ *
+ * Старые адреса /academic, /assignments и /progress ведут сюда якорями.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  CalendarDays,
-  ClipboardList,
-  Loader2,
-  Printer,
-  Sparkles,
-  TriangleAlert,
-  Wand2,
-} from "lucide-react";
+import { CalendarDays, GraduationCap, Loader2, Target, TriangleAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
+  getAcademicState,
+  getProgress,
   hasToken,
   listMyAssignments,
-  saveMyAssignments,
-  updateMyAssignment,
+  type AcademicState,
   type MyAssignment,
-  type MyAssignmentStatus,
 } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
-import { aiChat } from "@/lib/features-api";
-import {
-  HISTOLOGY_PROGRAM,
-  KR_DATE_DEFAULT,
-  buildAiPromptV2,
-  buildRoadmap,
-  buildStudyPlanV2,
-  orderRoadmap,
-  parseAiPlanV2,
-  progressOf,
-  toIcs,
-  type AiPlanPatch,
-} from "@/lib/study/program";
-import { ProgramOverview } from "@/components/study/ProgramOverview";
-import { PlanDays, PlanPrintSheet } from "@/components/study/PlanDays";
-import {
-  ElectronogramPrintSheet,
-  Electronograms,
-  type Electronogram,
-  type NerveElectronogram,
-} from "@/components/study/Electronograms";
-import { StudyTrainer } from "@/components/study/StudyTrainer";
+import { HISTOLOGY_PROGRAM, KR_DATE_DEFAULT, progressOf } from "@/lib/study/program";
+import { AcademicSection } from "@/components/learning/AcademicSection";
+import { AssignmentsSection } from "@/components/learning/AssignmentsSection";
+import { ProgressSection } from "@/components/learning/ProgressSection";
+import { StudySection } from "@/components/learning/StudySection";
 
 const DONE_KEY = "study.program.done.v2";
 const KR_KEY = "study.program.krDate.v2";
-const STATUS_LABEL: Record<MyAssignmentStatus, string> = {
-  pending: "Ожидает",
-  retake_needed: "На отработку",
-  passed: "Сдано",
-  failed: "Не сдано",
+
+type ProgressPayload = {
+  overall_pct?: number | null;
+  homework?: { total: number; done: number };
+  tests?: { attempts: number; finished?: number; avg_score?: number | null };
 };
 
-type Tab = "overview" | "plan" | "em" | "tests";
+const EVENT_LABEL: Record<string, string> = {
+  retake: "пересдача",
+  makeup: "досдача",
+  exam: "экзамен",
+  credit: "зачёт",
+  colloquium: "коллоквиум",
+  control_work: "контрольная",
+  assessment: "аттестация",
+};
+
+const ASSIGNMENT_LABEL: Record<string, string> = {
+  pending: "ожидает",
+  retake_needed: "на отработку",
+  passed: "сдано",
+  failed: "не сдано",
+};
+
+type Action = {
+  id: string;
+  title: string;
+  meta: string;
+  date: string | null;
+  source: "Отработка" | "Занятие" | "Подготовка";
+};
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -75,18 +77,15 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-function writeJson(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* приватный режим — прогресс не сохранится, но страница работает */
-  }
+function isoToday(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function fingerprint(text: string): string {
-  let hash = 5381;
-  for (let index = 0; index < text.length; index += 1) hash = ((hash << 5) + hash + text.charCodeAt(index)) | 0;
-  return Math.abs(hash).toString(36);
+function fmt(value?: string | null): string {
+  if (!value) return "без срока";
+  const iso = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join(".") : value;
 }
 
 function daysBetween(a: string, b: string): number {
@@ -95,459 +94,193 @@ function daysBetween(a: string, b: string): number {
   return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86_400_000);
 }
 
-function topicFor(block: { short: string }): string {
-  return block.short;
-}
-
-const PRINT_CSS = `
-@media print {
-  body * { visibility: hidden !important; }
-  .study-print, .study-print * { visibility: visible !important; }
-  .study-print { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
-  @page { size: A4; margin: 12mm; }
-}`;
-
 export default function StudyPage() {
-  const { user, loading: authLoading } = useAuth();
-  const [mounted, setMounted] = useState(false);
-  const [todayIso, setTodayIso] = useState("");
-  const [nowHour, setNowHour] = useState(12);
-  const [tab, setTab] = useState<Tab>("overview");
+  const { loading: authLoading } = useAuth();
+  const [academic, setAcademic] = useState<AcademicState | null>(null);
+  const [progress, setProgress] = useState<ProgressPayload | null>(null);
+  const [assignments, setAssignments] = useState<MyAssignment[]>([]);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [krDate, setKrDate] = useState(KR_DATE_DEFAULT);
-  const [patch, setPatch] = useState<AiPlanPatch | null>(null);
-  const [aiState, setAiState] = useState<"idle" | "loading" | "done" | "unavailable">("idle");
-  const [printTarget, setPrintTarget] = useState<"em" | "plan" | null>(null);
-  const [ems, setEms] = useState<Electronogram[]>([]);
-  const [nerveEms, setNerveEms] = useState<NerveElectronogram[]>([]);
-  const [emsError, setEmsError] = useState("");
+  const [today, setToday] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
 
-  const [assignments, setAssignments] = useState<MyAssignment[]>([]);
-  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
-  const [assignmentsSettled, setAssignmentsSettled] = useState(false);
-  const [assignmentsError, setAssignmentsError] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [syncBusy, setSyncBusy] = useState(false);
-  const aiRun = useRef(0);
-
-  // Дата и время — только на клиенте: иначе SSR и гидратация разойдутся на границе суток.
   useEffect(() => {
-    const current = new Date();
-    setTodayIso(
-      `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(current.getDate()).padStart(2, "0")}`,
-    );
-    setNowHour(current.getHours());
     setDone(readJson<Record<string, boolean>>(DONE_KEY, {}));
-    const savedKr = readJson<string>(KR_KEY, KR_DATE_DEFAULT);
-    setKrDate(/^\d{4}-\d{2}-\d{2}$/.test(savedKr) ? savedKr : KR_DATE_DEFAULT);
-    setMounted(true);
+    const saved = readJson<string>(KR_KEY, KR_DATE_DEFAULT);
+    setKrDate(/^\d{4}-\d{2}-\d{2}$/.test(saved) ? saved : KR_DATE_DEFAULT);
+    setToday(isoToday());
+    setLoggedIn(hasToken());
   }, []);
 
-  useEffect(() => {
-    if (mounted) writeJson(DONE_KEY, done);
-  }, [done, mounted]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    const [academicResult, progressResult] = await Promise.allSettled([
+      getAcademicState(),
+      getProgress(),
+    ]);
 
-  useEffect(() => {
-    if (mounted) writeJson(KR_KEY, krDate);
-  }, [krDate, mounted]);
+    if (academicResult.status === "fulfilled" && academicResult.value.ok) {
+      const data = academicResult.value.data as AcademicState;
+      setAcademic({
+        ...data,
+        debts: Array.isArray(data.debts) ? data.debts : [],
+        upcoming: Array.isArray(data.upcoming) ? data.upcoming : [],
+        weak_topics: Array.isArray(data.weak_topics) ? data.weak_topics : [],
+      });
+    } else if (academicResult.status === "fulfilled" && !academicResult.value.ok) {
+      setError(describeApiError(academicResult.value.error));
+    }
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const [kr, nerve] = await Promise.all([
-          fetch("/content/study/electronograms.json").then((response) => response.json()),
-          fetch("/content/study/nerve-electronograms.json").then((response) => response.json()),
-        ]);
-        if (cancelled) return;
-        setEms(Array.isArray(kr) ? (kr as Electronogram[]) : []);
-        setNerveEms(Array.isArray(nerve) ? (nerve as NerveElectronogram[]) : []);
-      } catch {
-        if (!cancelled) setEmsError("Не удалось загрузить электронограммы. Открой страницу через сайт, а не как файл.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (progressResult.status === "fulfilled" && progressResult.value.ok) {
+      setProgress(progressResult.value.data as ProgressPayload);
+    }
+
+    if (hasToken()) {
+      const listed = await listMyAssignments();
+      if (listed.ok && Array.isArray(listed.data?.items)) setAssignments(listed.data.items as MyAssignment[]);
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!hasToken()) {
-      setAssignmentsSettled(true);
-      return;
-    }
-    setAssignmentsLoading(true);
-    void (async () => {
-      const result = await listMyAssignments();
-      if (result.ok) {
-        setAssignments(Array.isArray(result.data?.items) ? (result.data.items as MyAssignment[]) : []);
-      } else {
-        setAssignmentsError(describeApiError(result.error));
-      }
-      setAssignmentsLoading(false);
-      setAssignmentsSettled(true);
-    })();
-  }, [authLoading]);
+    void load();
+  }, [authLoading, load]);
 
-  const plan = useMemo(() => {
-    if (!mounted) return null;
-    return buildStudyPlanV2({
-      program: HISTOLOGY_PROGRAM,
-      done,
-      today: new Date(`${todayIso}T12:00:00`),
-      now: new Date(`${todayIso}T${String(nowHour).padStart(2, "0")}:00:00`),
-      krDate,
-      assignments,
+  const studyProgress = useMemo(() => progressOf(HISTOLOGY_PROGRAM, done), [done]);
+  const openAssignments = useMemo(() => assignments.filter((item) => item.status !== "passed"), [assignments]);
+  const academicDebts = academic?.debts?.length ?? 0;
+  const totalDebts = openAssignments.length + academicDebts;
+  const overall = progress?.overall_pct ?? null;
+  const homework = progress?.homework;
+  const tests = progress?.tests;
+  const daysLeft = krDate && today ? daysBetween(krDate, today) : 0;
+
+  // Один список дел из трёх источников: отработки, занятия и план подготовки.
+  const actions = useMemo<Action[]>(() => {
+    const list: Action[] = [];
+    for (const item of openAssignments) {
+      list.push({
+        id: `assignment-${item.id}`,
+        title: item.topic,
+        meta: `${item.subject} · ${ASSIGNMENT_LABEL[item.status] ?? item.status}`,
+        date: item.due_date,
+        source: "Отработка",
+      });
+    }
+    for (const event of academic?.upcoming ?? []) {
+      list.push({
+        id: `event-${event.id ?? `${event.date}-${event.start_time}`}`,
+        title: `${event.subject_name || "Предмет"} — ${EVENT_LABEL[event.event_kind || ""] || event.event_kind || "занятие"}`,
+        meta: [event.start_time ? String(event.start_time).slice(0, 5) : null, event.room ? `ауд. ${event.room}` : null].filter(Boolean).join(" · ") || "по расписанию",
+        date: event.date ?? null,
+        source: "Занятие",
+      });
+    }
+    for (const block of HISTOLOGY_PROGRAM.blocks) {
+      const left = block.tasks.filter((task) => !done[task.id]);
+      if (!left.length) continue;
+      list.push({
+        id: `block-${block.id}`,
+        title: block.short,
+        meta: `${block.theme} · осталось ${left.length} из ${block.tasks.length}`,
+        date: block.due ?? null,
+        source: "Подготовка",
+      });
+    }
+    return list.sort((a, b) => {
+      if (a.date && b.date) return a.date.localeCompare(b.date);
+      if (a.date) return -1;
+      if (b.date) return 1;
+      return a.title.localeCompare(b.title);
     });
-  }, [mounted, done, todayIso, nowHour, krDate, assignments]);
-
-  const roadmap = useMemo(() => {
-    if (!mounted) return [];
-    return buildRoadmap({ program: HISTOLOGY_PROGRAM, done, today: todayIso, krDate });
-  }, [mounted, done, todayIso, krDate]);
-
-  const orderedRoadmap = useMemo(
-    () => orderRoadmap(roadmap, patch?.priority ?? []),
-    [roadmap, patch],
-  );
-
-  const planKey = useMemo(
-    () =>
-      fingerprint(
-        JSON.stringify({ done: Object.keys(done).sort(), krDate, todayIso, assignments: assignments.map((item) => item.id + item.status) }),
-      ),
-    [done, krDate, todayIso, assignments],
-  );
-
-  const runAi = useCallback(
-    async (force = false) => {
-      if (!plan || !user) return;
-      const key = `study.ai.v2.${planKey}`;
-      const failKey = `study.ai.fail.v2.${planKey}`;
-      if (!force) {
-        const cached = readJson<AiPlanPatch | null>(key, null);
-        if (cached) {
-          setPatch(cached);
-          setAiState("done");
-          return;
-        }
-        if (Number(localStorage.getItem(failKey) || 0) > Date.now() - 3_600_000) {
-          setAiState("unavailable");
-          return;
-        }
-      } else {
-        try {
-          localStorage.removeItem(key);
-          localStorage.removeItem(failKey);
-        } catch {
-          /* не критично */
-        }
-      }
-
-      const run = aiRun.current + 1;
-      aiRun.current = run;
-      setAiState("loading");
-      setPatch(null);
-
-      let parsed: AiPlanPatch | null = null;
-      try {
-        const sent = await aiChat([{ role: "user", content: buildAiPromptV2(plan, roadmap) }], "auto");
-        if (sent.ok) parsed = parseAiPlanV2(sent.data.message.content, plan, roadmap);
-      } catch {
-        parsed = null;
-      }
-      if (aiRun.current !== run) return;
-      if (!parsed || (!Object.keys(parsed.days).length && !parsed.advice.length && !parsed.priority.length)) {
-        setAiState("unavailable");
-        try {
-          localStorage.setItem(failKey, String(Date.now()));
-        } catch {
-          /* не критично */
-        }
-        return;
-      }
-      setPatch(parsed);
-      setAiState("done");
-      writeJson(key, parsed);
-    },
-    [plan, planKey, roadmap, user],
-  );
-
-  // Автопересборка: отметил задачу → через секунду план уже с новыми акцентами.
-  useEffect(() => {
-    if (!mounted || !user || !assignmentsSettled || !plan) return;
-    const timer = setTimeout(() => void runAi(), 900);
-    return () => clearTimeout(timer);
-  }, [mounted, user, assignmentsSettled, plan, runAi]);
-
-  const toggleTask = useCallback((id: string) => {
-    setDone((current) => {
-      const next = { ...current };
-      if (next[id]) delete next[id];
-      else next[id] = true;
-      return next;
-    });
-  }, []);
-
-  const toggleAll = useCallback((ids: string[], value: boolean) => {
-    setDone((current) => {
-      const next = { ...current };
-      for (const id of ids) {
-        if (value) next[id] = true;
-        else delete next[id];
-      }
-      return next;
-    });
-  }, []);
-
-  const setStatus = async (item: MyAssignment, status: MyAssignmentStatus) => {
-    setBusyId(item.id);
-    setAssignmentsError("");
-    const result = await updateMyAssignment(item.id, { status });
-    if (result.ok) {
-      setAssignments((current) => current.map((entry) => (entry.id === item.id ? { ...entry, status } : entry)));
-    } else {
-      setAssignmentsError(describeApiError(result.error));
-    }
-    setBusyId(null);
-  };
-
-  const syncDebts = async () => {
-    setSyncBusy(true);
-    setAssignmentsError("");
-    const existing = new Set(assignments.map((item) => item.topic));
-    const items = HISTOLOGY_PROGRAM.blocks
-      .filter((block) => !existing.has(topicFor(block)))
-      .map((block) => ({
-        subject: "Гистология",
-        topic: topicFor(block),
-        due_date: block.due ?? krDate,
-        status: (block.tasks.every((task) => done[task.id]) ? "passed" : "retake_needed") as MyAssignmentStatus,
-        note: block.theme,
-        source: "manual" as const,
-      }));
-    if (!items.length) {
-      setSyncBusy(false);
-      return;
-    }
-    const saved = await saveMyAssignments(items);
-    if (saved.ok) {
-      const refreshed = await listMyAssignments();
-      if (refreshed.ok) {
-        setAssignments(Array.isArray(refreshed.data?.items) ? (refreshed.data.items as MyAssignment[]) : []);
-      }
-    } else {
-      setAssignmentsError(describeApiError(saved.error));
-    }
-    setSyncBusy(false);
-  };
-
-  const downloadCalendar = () => {
-    if (!plan) return;
-    const blob = new Blob([toIcs(plan)], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "plan-kr-gistologiya.ics";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const print = (target: "em" | "plan") => {
-    setPrintTarget(target);
-    setTimeout(() => window.print(), 120);
-  };
-
-  const daysLeft = mounted ? daysBetween(krDate, todayIso) : 0;
-  const overall = progressOf(HISTOLOGY_PROGRAM, done);
-  const missingDebts = HISTOLOGY_PROGRAM.blocks.filter(
-    (block) => !assignments.some((item) => item.topic === topicFor(block)),
-  ).length;
-
-  const tabs: Array<{ id: Tab; label: string }> = [
-    { id: "overview", label: "Сводка" },
-    { id: "plan", label: "План по дням" },
-    { id: "em", label: "Электронограммы" },
-    { id: "tests", label: "Тренажёр" },
-  ];
+  }, [openAssignments, academic, done]);
 
   return (
     <div className="space-y-5">
-      <style>{PRINT_CSS}</style>
-
       <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 shadow-sm dark:border-indigo-500/20 dark:from-indigo-500/10 dark:via-transparent dark:to-violet-500/10">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-600">
-              <Sparkles className="h-3.5 w-3.5" /> План подготовки
-            </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Гистология: отработки и КР</h1>
-            <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
-              Отмечай, что уже сдано. План по дням и порядок отработок пересоберутся сами; сайтовый ИИ расставит акценты.
-              Сроки и темы — из текста преподавателя, без выдуманных дат.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/assignments" className="inline-flex items-center gap-1.5 rounded-xl border bg-[var(--card)] px-3 py-2 text-sm font-semibold">
-              <ClipboardList className="h-4 w-4" /> Отработки
-            </Link>
-            <Link href="/academic" className="inline-flex items-center gap-1.5 rounded-xl border bg-[var(--card)] px-3 py-2 text-sm font-semibold">
-              <CalendarDays className="h-4 w-4" /> Учебный план
-            </Link>
-            <button
-              type="button"
-              onClick={() => void runAi(true)}
-              disabled={!user || aiState === "loading"}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {aiState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              {aiState === "loading" ? "ИИ собирает…" : "Собрать с ИИ"}
-            </button>
-          </div>
+        <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-600">
+          <GraduationCap className="h-3.5 w-3.5" /> Учёба
+        </p>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight">План, отработки и прогресс в одном месте</h1>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
+          Сводка считается по расписанию, официальному плану, тестам и вашим отметкам. Ниже — что делать сейчас и где это отметить.
+        </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "Общий прогресс", value: overall != null ? `${Math.round(Number(overall))}%` : "—", tone: "text-indigo-700" },
+            { label: "ДЗ", value: homework && homework.total > 0 ? `${homework.done}/${homework.total}` : "—", tone: "text-slate-800" },
+            { label: "Тесты", value: tests && tests.attempts > 0 ? `${tests.finished ?? 0}/${tests.attempts}` : "—", tone: "text-slate-800" },
+            { label: "Долги", value: String(totalDebts), tone: totalDebts ? "text-[var(--status-critical-fg)]" : "text-[var(--status-ok-fg)]" },
+          ].map((card) => (
+            <div key={card.label} className="rounded-xl border border-white/60 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+              <div className={`text-xl font-extrabold tabular-nums ${card.tone}`}>{card.value}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{card.label}</div>
+            </div>
+          ))}
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-          <span className="rounded-full bg-white/70 px-2.5 py-1 font-semibold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">
-            {aiState === "done" ? "Акценты — AI, сроки — из текста" : aiState === "unavailable" ? "AI недоступен — план по правилам" : "План по правилам из текста"}
-          </span>
-          <span className="text-[var(--muted)]">Отработано {overall.done} из {overall.total}</span>
-          <span className="text-[var(--muted)]">КР: {krDate.split("-").reverse().join(".")}</span>
-          {daysLeft > 0 ? <span className="font-semibold text-indigo-700 dark:text-indigo-200">осталось {daysLeft} дн.</span> : null}
+
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
+          <span>Подготовка к КР: {fmt(krDate)}{daysLeft > 0 ? ` · осталось ${daysLeft} дн.` : ""}</span>
+          <span>Задачи подготовки: {studyProgress.done} из {studyProgress.total}</span>
+          {authLoading || loading ? <span className="inline-flex items-center gap-1"><Loader2 className="h-3.5 w-3.5 animate-spin" /> обновляем</span> : null}
+          {!loggedIn && !authLoading ? <Link href="/login" className="font-semibold text-indigo-600">Войти, чтобы вести отработки</Link> : null}
         </div>
+        {error ? (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-[var(--status-critical-fg)]">
+            <TriangleAlert className="h-4 w-4" /> {error}
+          </p>
+        ) : null}
       </header>
 
-      <nav className="flex flex-wrap gap-2" aria-label="Разделы подготовки">
-        {tabs.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            onClick={() => setTab(entry.id)}
-            aria-pressed={tab === entry.id}
-            className={
-              "rounded-full border px-4 py-1.5 text-sm font-semibold transition " +
-              (tab === entry.id
-                ? "border-indigo-600 bg-indigo-600 text-white"
-                : "border-[var(--border)] bg-[var(--card)] hover:border-indigo-300")
-            }
-          >
-            {entry.label}
-          </button>
-        ))}
-      </nav>
-
-      {!mounted || !plan ? (
-        <section className="card flex items-center gap-2 p-6 text-sm text-[var(--muted)]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Собираем план…
-        </section>
-      ) : tab === "overview" ? (
-        <div className="space-y-4">
-          <ProgramOverview
-            program={HISTOLOGY_PROGRAM}
-            roadmap={orderedRoadmap}
-            plan={plan}
-            done={done}
-            krDate={krDate}
-            todayIso={todayIso}
-            daysLeft={daysLeft}
-            patch={patch}
-            aiState={aiState}
-            onToggle={toggleTask}
-            onToggleAll={toggleAll}
-            onKrDate={setKrDate}
-            onRebuild={() => void runAi(true)}
-            onPrint={() => print("em")}
-          />
-
-          <section className="card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
-                <ClipboardList className="h-4 w-4" /> Отработки на сайте
-              </h2>
-              {user && missingDebts > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => void syncDebts()}
-                  disabled={syncBusy}
-                  className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                >
-                  {syncBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Перенести долги в трекер
-                </button>
-              ) : null}
-            </div>
-            {!user ? (
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                Войди, чтобы перенести долги в трекер отработок и включить ИИ на сайте.{" "}
-                <Link href="/login" className="font-semibold text-indigo-600">Войти</Link>
-              </p>
-            ) : assignmentsLoading ? (
-              <p className="mt-2 inline-flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin" /> Загружаем…</p>
-            ) : assignments.length === 0 ? (
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                В трекере пока пусто. Нажми «Перенести долги в трекер» — появятся 4 блока с датами и статусами.
-              </p>
-            ) : (
-              <ul className="mt-2 space-y-2">
-                {assignments.map((item) => (
-                  <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-3 py-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{item.topic}</div>
-                      <div className="text-xs text-[var(--muted)]">
-                        {item.subject}
-                        {item.due_date ? ` · до ${item.due_date.split("-").reverse().join(".")}` : " · без срока"}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {busyId === item.id && <Loader2 className="h-4 w-4 animate-spin" />}
-                      <select
-                        value={item.status}
-                        onChange={(event) => void setStatus(item, event.target.value as MyAssignmentStatus)}
-                        disabled={busyId === item.id}
-                        aria-label={`Статус: ${item.topic}`}
-                        className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs font-semibold"
-                      >
-                        {(Object.keys(STATUS_LABEL) as MyAssignmentStatus[]).map((status) => (
-                          <option key={status} value={status}>{STATUS_LABEL[status]}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {assignmentsError && <p className="mt-2 text-sm text-[var(--status-critical-fg)]">{assignmentsError}</p>}
-          </section>
+      <section className="card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <Target className="h-4 w-4" /> Что делать сейчас
+          </h2>
+          <span className="text-xs text-[var(--muted)]">отработки, занятия и подготовка — одним списком</span>
         </div>
-      ) : tab === "plan" ? (
-        <PlanDays
-          plan={plan}
-          patch={patch}
-          done={done}
-          onToggle={toggleTask}
-          onPrint={() => print("plan")}
-          onExport={downloadCalendar}
-        />
-      ) : tab === "em" ? (
-        <div className="space-y-3">
-          {emsError ? (
-            <p className="card flex items-center gap-2 p-4 text-sm text-[var(--status-critical-fg)]">
-              <TriangleAlert className="h-4 w-4" /> {emsError}
-            </p>
-          ) : null}
-          <Electronograms ems={ems} nerve={nerveEms} onPrint={() => print("em")} />
-        </div>
-      ) : (
-        <StudyTrainer />
-      )}
+        {loading && !actions.length ? (
+          <p className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin" /> Собираем список…</p>
+        ) : actions.length === 0 ? (
+          <p className="mt-3 text-sm text-[var(--status-ok-fg)]">Открытых дел нет: отработки закрыты, события не назначены.</p>
+        ) : (
+          <ol className="mt-3 space-y-2">
+            {actions.slice(0, 8).map((action) => (
+              <li key={action.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-3 py-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold">{action.title}</div>
+                  <div className="text-xs text-[var(--muted)]">{action.meta}</div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700">{action.source}</span>
+                  <span className="inline-flex items-center gap-1 text-[var(--muted)]"><CalendarDays className="h-3.5 w-3.5" /> {fmt(action.date)}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
-      {printTarget === "em" ? <ElectronogramPrintSheet ems={ems} /> : null}
-      {printTarget === "plan" && plan ? <PlanPrintSheet plan={plan} patch={patch} /> : null}
+      <section id="plan" className="scroll-mt-24">
+        <AcademicSection />
+      </section>
 
-      <p className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
-        <Printer className="h-3.5 w-3.5" /> Печать электронограмм идёт без интерфейса: только карточки с названиями и подписями.
-      </p>
+      <section id="progress" className="scroll-mt-24">
+        <ProgressSection />
+      </section>
+
+      <section id="assignments" className="scroll-mt-24">
+        <AssignmentsSection />
+      </section>
+
+      <section id="prep" className="scroll-mt-24">
+        <StudySection />
+      </section>
     </div>
   );
 }

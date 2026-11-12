@@ -25,8 +25,7 @@
    "date": "2026-09-04",
    "date_label": "04.09",
    "lecture": {
-    "num": 1,
-    "lecture_id": "hist-00-gistotekhnika",
+    "num": 1, "lecture_id": "hist-00-gistotekhnika",
     "title": "Введение в предмет. Цитология.",
     "topics": [
      "Введение в гистологию",
@@ -68,8 +67,7 @@
    "date": "2026-09-11",
    "date_label": "11.09",
    "lecture": {
-    "num": 2,
-    "lecture_id": "hist-01-citologiya-organelly",
+    "num": 2, "lecture_id": "hist-01-citologiya-organelly",
     "title": "Клетка. Структуры цитоплазмы. Ядро клетки. Деление клетки и его регуляция. Жизненный цикл клетки.",
     "test_id": "b137a7ca-9ffb-4d10-bfa3-f48686c8ff3d",
     "topics": [
@@ -113,8 +111,7 @@
    "date": "2026-09-18",
    "date_label": "18.09",
    "lecture": {
-    "num": 3,
-    "lecture_id": "hist-03-embriologiya",
+    "num": 3, "lecture_id": "hist-03-embriologiya",
     "title": "Основы общей эмбриологии. Строение половых клеток. Этапы и механизмы эмбриогенеза. Дифференцировка зародышевых листков.",
     "topics": [
      "Эмбриология",
@@ -154,8 +151,7 @@
    "date": "2026-09-25",
    "date_label": "25.09",
    "lecture": {
-    "num": 4,
-    "lecture_id": "hist-04-epitelialnye-tkani",
+    "num": 4, "lecture_id": "hist-04-epitelialnye-tkani",
     "title": "Учение о тканях. Эпителии покровные и железистые.",
     "topics": [
      "Ткани",
@@ -211,8 +207,7 @@
    "date": "2026-10-02",
    "date_label": "02.10",
    "lecture": {
-    "num": 5,
-    "lecture_id": "hist-05-krov",
+    "num": 5, "lecture_id": "hist-05-krov",
     "title": "Кровь и лимфа.",
     "topics": [
      "Кровь",
@@ -256,8 +251,7 @@
    "date": "2026-10-09",
    "date_label": "09.10",
    "lecture": {
-    "num": 6,
-    "lecture_id": "hist-06-sobstvenno-st",
+    "num": 6, "lecture_id": "hist-06-sobstvenno-st",
     "title": "Соединительные ткани. Рыхлая волокнистая соединительная ткань. Плотная волокнистая соединительная ткань. Ткани со специальными свойствами.",
     "topics": [
      "Соединительная ткань",
@@ -293,8 +287,7 @@
    "date": "2026-10-16",
    "date_label": "16.10",
    "lecture": {
-    "num": 7,
-    "lecture_id": "hist-07-hryaschevye-kostnye",
+    "num": 7, "lecture_id": "hist-07-hryaschevye-kostnye",
     "title": "Скелетные ткани. Хрящевые ткани. Костные ткани.",
     "topics": [
      "Хрящ",
@@ -348,8 +341,7 @@
    "date": "2026-10-23",
    "date_label": "23.10",
    "lecture": {
-    "num": 8,
-    "lecture_id": "hist-08-myishechnye-tkani",
+    "num": 8, "lecture_id": "hist-08-myishechnye-tkani",
     "title": "Мышечные ткани. Поперечно-полосатые. Гладкие.",
     "topics": [
      "Мышечная ткань",
@@ -400,8 +392,7 @@
    "date": "2026-10-30",
    "date_label": "30.10",
    "lecture": {
-    "num": 9,
-    "lecture_id": "hist-09-nervnaya-tkan",
+    "num": 9, "lecture_id": "hist-09-nervnaya-tkan",
     "title": "Нервная ткань. Нейроглия, нейроциты, нервные волокна и окончания.",
     "topics": [
      "Нервная ткань",
@@ -445,8 +436,7 @@
    "date": "2026-11-06",
    "date_label": "06.11",
    "lecture": {
-    "num": 10,
-    "lecture_id": "hist-10-nervnaya-sistema",
+    "num": 10, "lecture_id": "hist-10-nervnaya-sistema",
     "title": "Частная гистология. Нервная система. Спинной мозг. Спинальный ганглий. Периферический нерв. Понятие о рефлекторной дуге.",
     "topics": [
      "Нервная система",
@@ -493,8 +483,7 @@
    "date": "2026-11-13",
    "date_label": "13.11",
    "lecture": {
-    "num": 11,
-    "lecture_id": "hist-11-kora-mozzhechok-vns",
+    "num": 11, "lecture_id": "hist-11-kora-mozzhechok-vns",
     "title": "Строение коры больших полушарий головного мозга и мозжечка. Вегетативная нервная система. Симпатическая и парасимпатическая рефлекторные дуги.",
     "topics": [
      "Кора больших полушарий",
@@ -531,8 +520,7 @@
    "date": "2026-11-20",
    "date_label": "20.11",
    "lecture": {
-    "num": 12,
-    "lecture_id": "hist-12-zrenie-obonyanie",
+    "num": 12, "lecture_id": "hist-12-zrenie-obonyanie",
     "title": "Сенсорные системы. Анализаторы. Зрительный и обонятельный. Строение глаза. Сетчатка.",
     "topics": [
      "Зрительный анализатор",
@@ -566,8 +554,7 @@
    "date": "2026-11-27",
    "date_label": "27.11",
    "lecture": {
-    "num": 13,
-    "lecture_id": "hist-13-sluh-vkus",
+    "num": 13, "lecture_id": "hist-13-sluh-vkus",
     "title": "Сенсорные системы. Анализаторы. Органы слуха, равновесия, вкуса. Внутреннее ухо. Строение Кортиева органа.",
     "topics": [
      "Слух",
@@ -600,8 +587,7 @@
    "date": "2026-12-04",
    "date_label": "04.12",
    "lecture": {
-    "num": 14,
-    "lecture_id": "hist-14-serdechno-sosudistaya",
+    "num": 14, "lecture_id": "hist-14-serdechno-sosudistaya",
     "title": "Частная гистология. Сердечно-сосудистая система.",
     "topics": [
      "Сердечно-сосудистая система"
@@ -634,8 +620,7 @@
    "date": "2026-12-11",
    "date_label": "11.12",
    "lecture": {
-    "num": 15,
-    "lecture_id": "hist-15-endokrinnaya",
+    "num": 15, "lecture_id": "hist-15-endokrinnaya",
     "title": "Центральные и периферические звенья эндокринной системы.",
     "topics": [
      "Эндокринная система"
@@ -681,8 +666,7 @@
    "date": "2026-12-18",
    "date_label": "18.12",
    "lecture": {
-    "num": 16,
-    "lecture_id": "hist-16-krovetvorenie",
+    "num": 16, "lecture_id": "hist-16-krovetvorenie",
     "title": "Учение о кроветворении. Красный костный мозг. Миелопоэз.",
     "topics": [
      "Кроветворение",
@@ -723,8 +707,7 @@
    "date": "2026-12-25",
    "date_label": "25.12",
    "lecture": {
-    "num": 17,
-    "lecture_id": "hist-17-limfoidnye-organy",
+    "num": 17, "lecture_id": "hist-17-limfoidnye-organy",
     "title": "Органы лимфоидного кроветворения и иммунологической защиты.",
     "topics": [
      "Лимфоидные органы",
@@ -759,8 +742,7 @@
    "date": "2027-01-18",
    "date_label": "18.01.27",
    "lecture": {
-    "num": 18,
-    "lecture_id": "hist-18-pishchevaritelnyy-kanal",
+    "num": 18, "lecture_id": "hist-18-pishchevaritelnyy-kanal",
     "title": "Пищеварительный канал. Органы ротовой полости.",
     "topics": [
      "Пищеварительный канал",

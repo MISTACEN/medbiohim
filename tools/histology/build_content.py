@@ -6,9 +6,13 @@
 Источники (read-only):
   3_Сборники тестовых заданий/Сборник тестовых заданий по цитологии и эмбриологии.doc  (ДВГМУ, 2007)
   3_Сборники тестовых заданий/Сборник тестовых заданий по общей гистологии.doc         (ДВГМУ, 2003)
+  3_Сборники тестовых заданий/Сборник тест зад по общ. и частн. гист. 2008.doc         (открытые, без эталонов)
   База тестовых заданий/федеральные тесты стом.doc                                     (ключи в таблице)
   База тестовых заданий/федеральные тесты пед. и леч.doc                               (без эталонов)
   экзаменационные вопросы/задачи по гистологии.doc + эталоны ответов к задачам.docx
+  экзаменационные вопросы/экзаменационные вопросы леч. пед.doc + экзам.вопросы стом.doc (открытые)
+  Контрольные работы к диагностикам/контрольная работа к 1 диагностике леч.пед..doc    (открытые)
+  Контрольные работы к диагностикам/контрольная работа 2 диагностика.doc               (открытые)
 
 Выход: public/content/histology/index.json + {citologiya-embriologiya,
 obschaya-gistologiya, chastnaya-gistologiya}.json.
@@ -58,6 +62,26 @@ SOURCES = {
     "etalons": (
         "экзаменационные вопросы/эталоны ответов к задачам.docx",
         "Эталоны ответов к экзаменационным задачам",
+    ),
+    "h2008": (
+        "3_Сборники тестовых заданий/Сборник тест зад по общ. и частн. гист. 2008.doc",
+        "Гистология: сборник тестовых заданий (ДВГМУ, 2008, открытые)",
+    ),
+    "examlp": (
+        "экзаменационные вопросы/экзаменационные вопросы леч. пед.doc",
+        "Экзаменационные вопросы по гистологии (лечебное и педиатрическое дело)",
+    ),
+    "examstom": (
+        "экзаменационные вопросы/экзам.вопросы стом.doc",
+        "Экзаменационные вопросы по гистологии (стоматология)",
+    ),
+    "kontrol1": (
+        "Контрольные работы к диагностикам/контрольная работа к 1 диагностике леч.пед..doc",
+        "Контрольная работа к 1 диагностике (леч. и пед. факультеты)",
+    ),
+    "kontrol2": (
+        "Контрольные работы к диагностикам/контрольная работа 2 диагностика.doc",
+        "Вопросы к итоговой контрольной работе (2 диагностика)",
     ),
 }
 
@@ -360,6 +384,254 @@ def source_fedped():
     return [{"title": title, "questions": qs}]
 
 
+# ------------------------------------------------- открытые задания (без эталонов)
+
+def open_bank(title: str, questions: list) -> dict:
+    """Банк открытых заданий без эталонов (режим разбора)."""
+    for q in questions:
+        q["options"] = []
+        q["answer"] = ""
+    return {"title": title, "kind": "open", "questions": questions}
+
+
+def parse_open_numbered(seg: str, indent_max: int = 10) -> list:
+    """Пронумерованные текстовые задания «N. текст», многострочные.
+    Строки таблиц («|…») и «[pic]» пропускаются. Артефакт двойной
+    автонумерации («1. 1.Спинной мозг…») убирается."""
+    items = []
+    cur = None
+    expected = 1
+    for raw in seg.split("\n"):
+        if "|" in raw or "[pic]" in raw:
+            continue
+        m = re.match(r"^ {0,%d}(\d{1,3})\s*[.\-)]\s*(.*)$" % indent_max, raw)
+        if m and int(m.group(1)) == expected:
+            text = m.group(2).strip()
+            # «1. 1.Спинной мозг…» — артефакт двойной нумерации Word
+            text = re.sub(r"^%d\s*[.)]\s*" % int(m.group(1)), "", text)
+            cur = {"number": int(m.group(1)), "text": text}
+            items.append(cur)
+            expected += 1
+        elif cur is not None and raw.strip():
+            cur["text"] = join_cont(cur["text"], raw)
+    for it in items:
+        it["text"] = re.sub(r"\s+", " ", it["text"]).strip()
+    return items
+
+
+# ---------------------------------------------------------------- сборник 2008
+
+# Темы-упражнения по карточкам/схемам: текстовых заданий не содержат
+# (карточки с изображениями — импортировать в текстовый банк нельзя)
+H2008_SKIP_THEMES = {
+    "ЛЕЙКОЦИТАРНАЯ ФОРМУЛА И ЕЕ АНАЛИЗ",
+    "СИСТЕМА СПИННОГО МОЗГА (В СХЕМАХ)",
+    "КРОВЕТВОРЕНИЕ",
+}
+
+
+def source_h2008() -> dict:
+    """Сборник 2008: открытые задания «…( х )» без эталонов. Внутренние
+    темы сборника делятся на эмбриологию, общую и частную гистологию;
+    точка деления — тема «СИСТЕМА СПИННОГО МОЗГА (в схемах)» (первая
+    тема частной части). «ВОПРОСНИК … за полный курс» — отдельный
+    смешанный банк (частичная дубликация тематических заданий снимается
+    общей дедупликацией)."""
+    text = antiword(SRC / SOURCES["h2008"][0])
+
+    def norm_title(t: str) -> str:
+        return re.sub(r"\s+", " ", t).strip().rstrip(".").upper()
+
+    vop = re.search(r"^\s*ВОПРОСНИК\s*$", text, re.M)
+    oglavl = text.find("ОГЛАВЛЕНИЕ")
+    assert vop and oglavl > vop.start(), "h2008: ВОПРОСНИК/ОГЛАВЛЕНИЕ не найдены"
+    themes = [
+        (m.start(), norm_title(m.group(1)))
+        for m in re.finditer(r"(?m)^\s*Тема[.:]\s+(.+)$", text)
+        if m.start() < vop.start()
+    ]
+    split = next(p for p, n in themes if "В СХЕМАХ" in n)
+
+    emb, obs, chast = [], [], []
+    for i, (pos, name) in enumerate(themes):
+        end = themes[i + 1][0] if i + 1 < len(themes) else vop.start()
+        qs = parse_open_numbered(text[pos:end])
+        if name in H2008_SKIP_THEMES:
+            continue
+        if "ЭМБРИОЛОГИ" in name and pos < split:
+            emb += qs
+        elif pos < split:
+            obs += qs
+        else:
+            chast += qs
+    voprosnik = parse_open_numbered(text[vop.start():oglavl])
+
+    # контроль детерминированности разбора
+    for name, qs, expected in (
+        ("эмбриология", emb, 42),
+        ("общая", obs, 200),
+        ("частная", chast, 412),
+        ("вопросник", voprosnik, 102),
+    ):
+        if len(qs) != expected:
+            raise SystemExit("h2008: %s: %d заданий вместо %d" % (name, len(qs), expected))
+
+    return {
+        "cit": [open_bank("Основы сравнительной эмбриологии (2008, открытые)", emb)],
+        "obs": [open_bank("Общая гистология (2008, открытые)", obs)],
+        "chas": [
+            open_bank("Частная гистология (2008, открытые)", chast),
+            open_bank("Вопросник за полный курс (2008, открытые)", voprosnik),
+        ],
+    }
+
+
+# ------------------------------------------------- экзаменационные вопросы
+
+EXAM_LP_SECTIONS = [  # заголовок раздела -> manual part
+    ("Цитология", "cit"),
+    ("Эмбриология", "cit"),
+    ("Общая гистология", "obs"),
+    ("Нервная система", "chas"),
+    ("Сердечно-сосудистая система", "chas"),
+    ("Кроветворение", "chas"),
+    ("Эндокринная система", "chas"),
+    ("Пищеварительная система", "chas"),
+    ("Дыхательная система. Система кожных покровов", "chas"),
+    ("Мочевая система", "chas"),
+    ("Половая система", "chas"),
+]
+EXAM_STOM_SECTIONS = [
+    ("Вопросы по цитологии", "cit"),
+    ("Вопросы по эмбриологии", "cit"),
+    ("Вопросы по общей гистологии", "obs"),
+    ("Вопросы по частной гистологии", "chas"),
+    ("Профильные", "chas"),
+]
+# ожидаемое число вопросов по разделам — страховка от сбоя разбора
+EXAM_EXPECTED = {
+    "examlp": {"cit": 32, "obs": 44, "chas": 57},
+    "examstom": {"cit": 12, "obs": 36, "chas": 39, "prof": 38},
+}
+
+
+def source_exam_list(source_key: str, sections, titles) -> dict:
+    text = antiword(SRC / SOURCES[source_key][0])
+    marks = []
+    for header, part in sections:
+        for m in re.finditer(r"(?m)^\s*%s\s*[.]?\s*$" % re.escape(header), text):
+            marks.append((m.start(), part))
+    marks.sort()
+    result = {"cit": [], "obs": [], "chas": [], "prof": []}
+    for i, (pos, part) in enumerate(marks):
+        end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
+        result[part] += parse_open_numbered(text[pos:end], indent_max=6)
+    for part, expected in EXAM_EXPECTED[source_key].items():
+        got = len(result[part])
+        if got != expected:
+            raise SystemExit(
+                "%s: раздел %s: %d вопросов вместо %d" % (source_key, part, got, expected)
+            )
+    out = {}
+    for part, title in titles.items():
+        if result[part]:
+            out[part] = [open_bank(title, result[part])]
+    return out
+
+
+def source_examlp() -> dict:
+    return source_exam_list(
+        "examlp",
+        EXAM_LP_SECTIONS,
+        {
+            "cit": "Экзаменационные вопросы (лечебное дело). Цитология и эмбриология",
+            "obs": "Экзаменационные вопросы (лечебное дело). Общая гистология",
+            "chas": "Экзаменационные вопросы (лечебное дело). Частная гистология",
+        },
+    )
+
+
+def source_examstom() -> dict:
+    return source_exam_list(
+        "examstom",
+        EXAM_STOM_SECTIONS,
+        {
+            "cit": "Экзаменационные вопросы (стоматология). Цитология и эмбриология",
+            "obs": "Экзаменационные вопросы (стоматология). Общая гистология",
+            "chas": "Экзаменационные вопросы (стоматология). Частная гистология",
+            "prof": "Экзаменационные вопросы (стоматология). Профильные (зубочелюстная система)",
+        },
+    )
+
+
+# ------------------------------------------------- контрольные работы
+
+KONTROL_EXPECTED = {"kontrol1": 39, "kontrol2": 40}
+
+
+def source_kontrol(source_key: str) -> list:
+    """Контрольная работа: разделы «I./1. заголовок», задания — пункты
+    «• …». Каждый пункт становится отдельным открытым заданием; разделы
+    без пунктов — одним заданием. Эталонов нет."""
+    text = antiword(SRC / SOURCES[source_key][0])
+    questions = []
+    header = None    # накопленный текст заголовка раздела
+    bullet = None    # накопленный текст текущего пункта
+
+    def flush_bullet():
+        nonlocal bullet
+        if bullet is not None:
+            questions.append({"text": join_cont(header, bullet)})
+            bullet = None
+
+    def flush_section():
+        nonlocal header, bullet
+        flush_bullet()
+        if header is not None:
+            questions.append({"text": header})
+        header = None
+
+    for raw in text.split("\n"):
+        s = raw.strip()
+        if not s:
+            continue
+        m = re.match(r"^\s*((?:[IVX]{1,5})|\d{1,2})\s*[.)]\s+(.*)$", raw)
+        if m:
+            flush_section()
+            header = m.group(2).strip()
+            continue
+        if s.startswith("•"):
+            flush_bullet()
+            bullet = s.lstrip("•").strip()
+            continue
+        if bullet is not None:
+            bullet = join_cont(bullet, s)
+        elif header is not None:
+            header = join_cont(header, s)
+    flush_section()
+    for q in questions:
+        q["text"] = re.sub(r"\s+", " ", q["text"]).strip()
+    if len(questions) != KONTROL_EXPECTED[source_key]:
+        raise SystemExit(
+            "%s: %d заданий вместо %d" % (source_key, len(questions), KONTROL_EXPECTED[source_key])
+        )
+    title = {
+        "kontrol1": "Контрольная работа №1 (диагностика)",
+        "kontrol2": "Контрольная работа №2 (диагностика)",
+    }[source_key]
+    return [open_bank(title, questions)]
+
+
+def source_kontrol_all() -> dict:
+    """Контрольная №1 (цитология, эмбриология и общая гистология) —
+    manual citologiya-embriologiya; итоговая контрольная №2 (общая и
+    частная гистология) — manual chastnaya-gistologiya."""
+    return {
+        "cit": source_kontrol("kontrol1"),
+        "chas": source_kontrol("kontrol2"),
+    }
+
+
 # ---------------------------------------------------------------- задачи
 
 TASK_SECTIONS = [  # заголовок раздела -> (банк, manual-slug)
@@ -471,28 +743,67 @@ def norm_key(text: str) -> str:
     return re.sub(r"[\s.,;:!?()«»„“\"'\-–—…]", "", s)
 
 
+# Новые источники открытых заданий (задача «импортировать все вопросы»):
+# порядок добавления банков в каждый manual и их раскладка по manual'ам.
+NEW_BANK_PARTS = {
+    "citologiya-embriologiya": [
+        ("h2008", "cit"),
+        ("examlp", "cit"),
+        ("examstom", "cit"),
+        ("kontrol", "cit"),
+    ],
+    "obschaya-gistologiya": [
+        ("h2008", "obs"),
+        ("examlp", "obs"),
+        ("examstom", "obs"),
+    ],
+    "chastnaya-gistologiya": [
+        ("h2008", "chas"),
+        ("examlp", "chas"),
+        ("examstom", "chas"),
+        ("examstom", "prof"),
+        ("kontrol", "chas"),
+    ],
+}
+
+
 def build():
     per_source = {
         "cit": source_cit(),
         "obs": source_obs(),
         "fedstom": source_fedstom(),
         "fedped": source_fedped(),
+        "h2008": source_h2008(),
+        "examlp": source_examlp(),
+        "examstom": source_examstom(),
+        "kontrol": source_kontrol_all(),
     }
     task_banks = source_tasks()  # список банков по разделам (с _slug)
 
     manuals = []
     seen = set()  # norm_key вопросов (дедупликация между источниками)
     dropped = []
+    assembled = []  # (manual spec, banks, new_banks)
     for spec in MANUALS:
-        banks = []
+        old_banks = []
         for src_key in spec["bank_sources"]:
             for b in per_source[src_key]:
-                banks.append(dict(b, questions=list(b["questions"])))
+                old_banks.append(dict(b, questions=list(b["questions"])))
         for tb in task_banks:
             if tb["_slug"] == spec["slug"]:
-                banks.append(dict(tb, questions=list(tb["questions"])))
-        # дедупликация по нормализованному тексту вопроса
-        for bank in banks:
+                old_banks.append(dict(tb, questions=list(tb["questions"])))
+        new_banks = []
+        for key, part in NEW_BANK_PARTS[spec["slug"]]:
+            for b in per_source[key][part]:
+                new_banks.append(dict(b, questions=list(b["questions"])))
+        assembled.append((spec, old_banks, new_banks))
+
+    # Дедупликация по нормализованному тексту вопроса. Сначала все
+    # прежние банки (приоритет 0) — в прежнем порядке, поэтому
+    # содержимое существующих банков при добавлении источников не
+    # меняется; дубликаты снимаются только из новых банков.
+    for spec, old_banks, _new in assembled:
+        for bank in old_banks:
             unique = []
             for q in bank["questions"]:
                 key = norm_key(q["text"])
@@ -502,7 +813,20 @@ def build():
                 seen.add(key)
                 unique.append(q)
             bank["questions"] = unique
-        banks = [b for b in banks if b["questions"]]
+    for _spec, _old, new_banks in assembled:
+        for bank in new_banks:
+            unique = []
+            for q in bank["questions"]:
+                key = norm_key(q["text"])
+                if key in seen:
+                    dropped.append((bank["title"], q["text"][:60]))
+                    continue
+                seen.add(key)
+                unique.append(q)
+            bank["questions"] = unique
+
+    for spec, old_banks, new_banks in assembled:
+        banks = [b for b in old_banks + new_banks if b["questions"]]
         # перенумерация внутри банка
         for bank in banks:
             bank.pop("_slug", None)
@@ -568,9 +892,10 @@ def report(manuals, dropped):
             ans = sum(1 for q in b["questions"] if q["answer"])
             noans = [q["number"] for q in b["questions"] if not q["answer"]]
             kind = b.get("kind", "mcq")
+            noans_show = (" (показаны первые %d из %d): %s" % (len(noans[:15]), len(noans), noans[:15])
+                          if len(noans) > 15 else ((" bez etalona: %s" % noans) if noans else ""))
             print("  [%s] %s: %d (answered %d)%s" % (
-                kind, b["title"], len(b["questions"]), ans,
-                (" bez etalona: %s" % noans) if noans else ""))
+                kind, b["title"], len(b["questions"]), ans, noans_show))
             opt_counts = {}
             for q in b["questions"]:
                 opt_counts[len(q["options"])] = opt_counts.get(len(q["options"]), 0) + 1

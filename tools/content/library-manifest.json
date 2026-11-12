@@ -1,0 +1,72 @@
+{
+ "generated_at": "2026-11-12T15:43:34.628Z",
+ "bucket": "content-mirror",
+ "base_url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror",
+ "note": "Зеркало статики из public: path — путь в репо, storage_path — ключ в бакете. JSON из public/content дополнительно лежит в site_content под ключом static_content:<путь без .json>.",
+ "files": [
+  {
+   "path": "public/library/physiology/agadzhanyan-fiziologiya-t1.pdf",
+   "storage_path": "library/physiology/agadzhanyan-fiziologiya-t1.pdf",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/agadzhanyan-fiziologiya-t1.pdf",
+   "size": 6124447,
+   "sha1": "898d39ba92363e7c85362ce906bbfb1b2b5aa882",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  },
+  {
+   "path": "public/library/physiology/cns.doc",
+   "storage_path": "library/physiology/cns.doc",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/cns.doc",
+   "size": 2563072,
+   "sha1": "7ae1ae1da24e2ac51ea755b2fbc29611c7a17862",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  },
+  {
+   "path": "public/library/physiology/dyhanie-vydelenie.doc",
+   "storage_path": "library/physiology/dyhanie-vydelenie.doc",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/dyhanie-vydelenie.doc",
+   "size": 2859520,
+   "sha1": "637a9c4821235e9f2503bf92f91f3869746e866c",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  },
+  {
+   "path": "public/library/physiology/krov-endokrin.doc",
+   "storage_path": "library/physiology/krov-endokrin.doc",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/krov-endokrin.doc",
+   "size": 1681920,
+   "sha1": "e7b11f6ed4c9e6180626223afdd689faf9fb939f",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  },
+  {
+   "path": "public/library/physiology/pishchevarenie-obmen.docx",
+   "storage_path": "library/physiology/pishchevarenie-obmen.docx",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/pishchevarenie-obmen.docx",
+   "size": 4768382,
+   "sha1": "678a8eff28bd226f2ced7fce714628df96a87acb",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  },
+  {
+   "path": "public/library/physiology/sensornye-vnd.doc",
+   "storage_path": "library/physiology/sensornye-vnd.doc",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/sensornye-vnd.doc",
+   "size": 1699840,
+   "sha1": "f1690e3fe500b0808a903d1dc2a4f565dd45022c",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  },
+  {
+   "path": "public/library/physiology/serdce-sosudistaya.doc",
+   "storage_path": "library/physiology/serdce-sosudistaya.doc",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/serdce-sosudistaya.doc",
+   "size": 12832768,
+   "sha1": "d5058c461feb336e951a5afd654f42a3b1dfa045",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  },
+  {
+   "path": "public/library/physiology/vozbudimye-sistemy.docx",
+   "storage_path": "library/physiology/vozbudimye-sistemy.docx",
+   "url": "https://gnobvyjywtqbdfeejxmf.supabase.co/storage/v1/object/public/content-mirror/library/physiology/vozbudimye-sistemy.docx",
+   "size": 3076727,
+   "sha1": "1ed510167140f21eaf9a26fb0572c26a3ec2dbc2",
+   "uploaded_at": "2026-11-12T15:43:34.628Z"
+  }
+ ]
+}

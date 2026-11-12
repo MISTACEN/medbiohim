@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   HISTOLOGY_PROGRAM,
   KR_RISK,
+  STUDY_SEED_PATCH,
   buildAiPromptV2,
   buildRoadmap,
   buildStudyPlanV2,
@@ -181,6 +182,22 @@ describe("AI-слой не может сдвинуть сроки", () => {
 
   it("на мусор отвечает пустым патчем", () => {
     expect(parseAiPlanV2("не могу", plan, roadmap)).toEqual({ days: {}, advice: [], priority: [], cut: [] });
+  });
+});
+
+describe("заранее собранный план (ИИ-слой по умолчанию)", () => {
+  it("ставит КР и тесты выше старого долга и не ссылается на неизвестные блоки", () => {
+    const steps = buildRoadmap({ done: {}, today: TODAY_ISO });
+    const ids = new Set(steps.map((step) => step.id));
+    expect(STUDY_SEED_PATCH.priority.every((id) => ids.has(id))).toBe(true);
+    expect(orderRoadmap(steps, STUDY_SEED_PATCH.priority).map((step) => step.id)).toEqual([
+      "nerve",
+      "kr",
+      "cyto",
+      "skel",
+    ]);
+    expect(STUDY_SEED_PATCH.advice.join(" ")).toMatch(/17\.11/);
+    expect(STUDY_SEED_PATCH.advice.join(" ")).toMatch(/продольный/);
   });
 });
 

@@ -58,7 +58,7 @@ import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { describeApiError } from "@/lib/errors";
 import { sessionsFromApiPlanWeeks } from "@/lib/subject-plan-next";
-import { SUBJECT_STATIC_PLANS } from "@/lib/subject-plan-static";
+import { DB_FIRST_PLAN_SLUGS, SUBJECT_STATIC_PLANS } from "@/lib/subject-plan-static";
 
 type Subject = {
   id: string;
@@ -630,7 +630,13 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
         {tab === "lessons" && slug === "physiology" && (
           <PhysiologyPractice backHref={`/subjects/${encodeURIComponent(subjectId)}?tab=plan`} backLabel="К учебному плану" />
         )}
-        {tab === "plan" && SUBJECT_STATIC_PLANS[slug] && <ChemPlan planFile={SUBJECT_STATIC_PLANS[slug]} subjectSlug={slug} />}
+        {tab === "plan" && SUBJECT_STATIC_PLANS[slug] && (
+          <ChemPlan
+            planFile={SUBJECT_STATIC_PLANS[slug]}
+            subjectSlug={slug}
+            apiPlan={DB_FIRST_PLAN_SLUGS.has(slug) ? plan : undefined}
+          />
+        )}
         {tab === "plan" && !SUBJECT_STATIC_PLANS[slug] && (
           <PlanTab
             plan={plan}

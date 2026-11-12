@@ -119,7 +119,7 @@ export default function JournalPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
       <header className="space-y-2">
-        <Link href="/assignments" className="inline-flex items-center gap-1 text-sm text-indigo-700">
+        <Link href="/study#assignments" className="inline-flex items-center gap-1 text-sm text-indigo-700">
           <ArrowLeft className="h-4 w-4" /> К отработкам
         </Link>
         <h1 className="page-title">Журнал: только ваша строка</h1>
@@ -190,7 +190,7 @@ export default function JournalPage() {
             <button type="button" onClick={() => void copyRow()} className="btn-secondary inline-flex items-center gap-2 text-sm">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copied ? "Скопировано" : "Скопировать строку"}
             </button>
-            <Link href="/assignments" className="btn-primary inline-flex items-center gap-2 text-sm">Добавить отработку вручную</Link>
+            <Link href="/study#assignments" className="btn-primary inline-flex items-center gap-2 text-sm">Добавить отработку вручную</Link>
           </div>
           {row.grades.length > 0 && (
             <p className="text-xs text-slate-500">

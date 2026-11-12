@@ -15,6 +15,7 @@ import { lectureSolvedCount, lectureTaskTotal, splitLectureBlocks } from "@/lib/
 import { resolveLectureSubjectKey, submoduleOf } from "@/lib/lectures/submodules";
 import { readChemPanelOpen, writeChemPanelOpen } from "@/lib/lectures/chemPanelState";
 import { resetPrintScope } from "@/lib/chemistry/export";
+import { lectureChemContext } from "@/lib/chemistry/lectureContext";
 
 /**
  * Оформление лекции в одном месте: отдельная страница /lectures/:id и чтение
@@ -64,6 +65,12 @@ export function LectureView({
   // Внутри лекции меняются только блоки-подтемы: оглавление и рендер берут
   // один и тот же разбор markdown по H2/H3.
   const blocks = useMemo(() => splitLectureBlocks((lecture as any)?.body_markdown), [lecture]);
+  // Панель открывается на том разделе, который нужен этой лекции: уравнения из
+  // текста → «Реакции», только формулы → «Структуры» с первым веществом.
+  const chemContext = useMemo(
+    () => lectureChemContext(String((lecture as any)?.body_markdown || (lecture as any)?.body_md || "")),
+    [lecture],
+  );
   const [activeBlock, setActiveBlock] = useState(0);
   // На телефоне читать по одному блоку неудобно: по умолчанию показываем
   // всю лекцию подряд, а переключатель оставляет режим «по блокам».
@@ -161,9 +168,32 @@ export function LectureView({
     setActiveBlock(0);
   }, [id]);
 
+  // На телефоне оглавление — раскрывающаяся панель прямо над текстом: если
+  // скроллить сразу, её схлопывание сдвигает текст и экран «прыгает». Поэтому
+  // ждём кадр после перерисовки и ведём плавно к заголовку выбранного блока,
+  // а не к началу карточки лекции.
+  const scrollToBlock = (next: number) => {
+    const hasMatchMedia = typeof window.matchMedia === "function";
+    const reduced = hasMatchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const behavior: ScrollBehavior = reduced ? "auto" : "smooth";
+    if (hasMatchMedia && window.matchMedia("(max-width: 640px)").matches) {
+      const title = blocks[next]?.title;
+      const nodes = contentRef.current?.querySelectorAll<HTMLElement>("[data-lec-title]") ?? [];
+      const node = title ? Array.from(nodes).find((el) => el.dataset.lecTitle === title) : null;
+      const target = node ?? contentRef.current;
+      if (!target) return;
+      const top = target.getBoundingClientRect().top + window.scrollY - 8;
+      window.scrollTo({ top: Math.max(0, top), behavior });
+      return;
+    }
+    contentRef.current?.scrollIntoView({ behavior, block: "start" });
+  };
+
   const changeBlock = (next: number) => {
     setActiveBlock(next);
-    contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Двойной кадр: сначала перерисовка (сменился блок, закрылось оглавление),
+    // потом скролл — иначе координаты считаются по старой раскладке.
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToBlock(next)));
   };
 
   const total = lectureTaskTotal((lecture as any)?.body_markdown);
@@ -421,7 +451,11 @@ export function LectureView({
               </button>
             </header>
             <div className="chem-panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-              <ChemistryModule />
+              <ChemistryModule
+                initialSection={chemContext.section ?? undefined}
+                initialEquation={chemContext.equation ?? undefined}
+                initialSubstances={chemContext.substances}
+              />
             </div>
             <footer className="chem-panel-chrome border-t border-[var(--border)] px-4 py-3">
               <Link href="/chemistry" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--primary)]">

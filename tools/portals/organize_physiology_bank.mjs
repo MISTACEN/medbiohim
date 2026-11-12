@@ -140,20 +140,37 @@ function stripNote(text) {
   console.log("тем создано:", createdTopics, "| всего:", topicId.size);
 
   // 3. Вопросы: привязка к модулю/теме + чистка примечания из текста.
+  // Пакетный UPDATE через VALUES: 200 строк на запрос вместо 200 round-trip'ов.
   let updatedQ = 0;
-  for (const r of rows) {
+  const CHUNK_Q = 200;
+  for (let i = 0; i < rows.length; i += CHUNK_Q) {
+    const chunk = rows.slice(i, i + CHUNK_Q);
+    const values = chunk.map((_, j) => `($${j * 4 + 1}::uuid, $${j * 4 + 2}::uuid, $${j * 4 + 3}, $${j * 4 + 4})`);
+    const params = [];
+    for (const r of chunk) {
+      params.push(moduleId.get(r.module), topicId.get(`${r.module}|${r.topic}`), stripNote(r.text), `phys_${r.kind}:${r.key}`);
+    }
     const res = await client.query(
-      `update questions set module_id=$1, topic_id=$2, text=$3
-       where subject_id=$4 and source_key=$5 and (module_id is null or topic_id is null or text like '%[%')`,
-      [moduleId.get(r.module), topicId.get(`${r.module}|${r.topic}`), stripNote(r.text), PHYSIOLOGY_SUBJECT, `phys_${r.kind}:${r.key}`],
+      `update questions q set module_id = v.module_id, topic_id = v.topic_id, text = v.text
+       from (values ${values.join(",")}) as v(module_id, topic_id, text, source_key)
+       where q.subject_id = $${chunk.length * 4 + 1} and q.source_key = v.source_key
+         and (q.module_id is null or q.topic_id is null or q.text like '%[%')`,
+      [...params, PHYSIOLOGY_SUBJECT],
     );
     updatedQ += res.rowCount;
   }
   console.log("вопросов обновлено:", updatedQ);
 
   // 4. Тесты по темам + связи с вопросами.
+  // Вопросы и связи читаются/пишутся пакетами: на банке в 3 тыс. строк
+  // построчные round-trip'ы к пулеру растягивают шаг на десятки минут.
   let createdTests = 0, linked = 0;
   const testOrder = { module: null, n: 10 };
+  const qIdByKey = new Map(
+    (await client.query("select id, source_key from questions where subject_id=$1 and source_key like 'phys_%'", [PHYSIOLOGY_SUBJECT])).rows.map(
+      (row) => [row.source_key, row.id],
+    ),
+  );
   for (const r of tests) {
     const sourceKey = `phys_testset:${sha(`${r.kind}:${r.module}|${r.testTitle}`)}`;
     let testRow = (await client.query("select id from tests where subject_id=$1 and source_key=$2 limit 1", [PHYSIOLOGY_SUBJECT, sourceKey])).rows[0];
@@ -168,19 +185,27 @@ function stripNote(text) {
       createdTests += 1;
     }
     const members = rows.filter((x) => x.module === r.module && x.topic === r.topic && x.testTitle === r.testTitle);
-    let idx = 0;
-    for (const m of members) {
-      const q = (await client.query("select id from questions where subject_id=$1 and source_key=$2 limit 1", [PHYSIOLOGY_SUBJECT, `phys_${m.kind}:${m.key}`])).rows[0];
-      if (!q) continue;
-      const link = await client.query(
-        "select 1 from test_questions where test_id=$1 and question_id=$2 limit 1",
-        [testRow.id, q.id],
+    const pairs = [];
+    members.forEach((m, idx) => {
+      const qid = qIdByKey.get(`phys_${m.kind}:${m.key}`);
+      if (qid) pairs.push([qid, idx]);
+    });
+    if (!pairs.length) continue;
+    const have = new Set(
+      (await client.query("select question_id from test_questions where test_id=$1", [testRow.id])).rows.map((row) => row.question_id),
+    );
+    const fresh = pairs.filter(([qid]) => !have.has(qid));
+    const CHUNK = 200;
+    for (let i = 0; i < fresh.length; i += CHUNK) {
+      const chunk = fresh.slice(i, i + CHUNK);
+      const values = chunk.map((_, j) => `($1, $${j * 2 + 2}, $${j * 2 + 3})`);
+      const params = [testRow.id];
+      for (const [qid, idx] of chunk) params.push(qid, idx);
+      const res = await client.query(
+        `insert into test_questions (test_id, question_id, order_index) values ${values.join(",")} on conflict do nothing`,
+        params,
       );
-      if (!link.rows.length) {
-        await client.query("insert into test_questions (test_id,question_id,order_index) values ($1,$2,$3)", [testRow.id, q.id, idx]);
-        linked += 1;
-      }
-      idx += 1;
+      linked += res.rowCount;
     }
   }
   console.log("тестов создано:", createdTests, "| связей добавлено:", linked);

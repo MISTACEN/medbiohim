@@ -173,6 +173,51 @@ function apiWeekHomework(week: Record<string, any>): PlanSession["homework"] {
   return normalizeHomework(week.homework) || normalizeHomework(asRecord(week.metadata)?.homework);
 }
 
+/**
+ * План из БД (payload site_content, который отдаёт API /subject-plans/:slug)
+ * → модель страницы. Недели — единственное, что берётся из БД: правка плана
+ * в site_content применяется без деплоя статики. Если недель нет — null,
+ * и вызывающая сторона использует статический JSON как фолбэк.
+ */
+export function normalizeApiPlan(raw: unknown): NormalizedSubjectPlan | null {
+  const data = asRecord(raw);
+  if (!data) return null;
+  const weeks = Array.isArray(data.weeks) ? data.weeks : null;
+  if (!weeks || weeks.length === 0) return null;
+  const sessions = sessionsFromApiPlanWeeks(weeks);
+  if (!sessions.length) return null;
+  const controls: PlanControl[] = Array.isArray(data.controls)
+    ? data.controls
+        .map((rawControl: unknown, index: number): PlanControl | null => {
+          const control = asRecord(rawControl);
+          if (!control) return null;
+          const title = String(control.title || "").trim();
+          if (!title) return null;
+          return {
+            n: toNumberOrNull(control.n) ?? index + 1,
+            date: parsePlanDate(control.date),
+            title,
+            covers: Array.isArray(control.covers) ? control.covers.map(String) : [],
+            prepHref: control.prep_href ? String(control.prep_href) : null,
+            prepNote: control.prep_note ? String(control.prep_note) : null,
+          };
+        })
+        .filter((c): c is PlanControl => !!c)
+    : [];
+  return {
+    subject: String(data.subject || ""),
+    slug: data.subject_slug ? String(data.subject_slug) : data.slug ? String(data.slug) : undefined,
+    course: toNumberOrNull(data.course_number ?? data.course),
+    semester: toNumberOrNull(data.semester),
+    year: data.year ? String(data.year) : data.academic_year ? String(data.academic_year) : undefined,
+    faculty: data.faculty ? String(data.faculty) : undefined,
+    departments: data.departments ? String(data.departments) : undefined,
+    note: data.note ? String(data.note) : undefined,
+    sessions,
+    controls,
+  };
+}
+
 /** Недели плана из API /subject-plans → единые занятия. */
 export function sessionsFromApiPlanWeeks(weeks: unknown): PlanSession[] {
   if (!Array.isArray(weeks)) return [];

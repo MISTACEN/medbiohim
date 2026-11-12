@@ -828,7 +828,9 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
           )}
           {singleGroup ? (
             <div className="space-y-3">
-              <h2 className="text-lg font-extrabold leading-snug text-slate-900 sm:text-xl">{singleGroup.title}</h2>
+              <h2 data-lec-title={singleGroup.title} className="text-lg font-extrabold leading-snug text-slate-900 sm:text-xl">
+                {singleGroup.title}
+              </h2>
               {parseBlocks(singleGroup.markdown).map((part, pi) => renderPart(part, "single-" + pi))}
             </div>
           ) : stream.map((g, gi) => {
@@ -841,12 +843,16 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
               </>
             );
             if (!foldable || !g.title || g.isTail) {
-              return <div key={gi} className="space-y-2">{inner}</div>;
+              return (
+                <div key={gi} className="space-y-2" data-lec-title={g.title || undefined}>
+                  {inner}
+                </div>
+              );
             }
             const open = allOpen || gi === 0;
             const readDone = readSections.includes(g.title);
             return (
-              <details key={gi} className={"lec-fold rounded-2xl border bg-[var(--card)] shadow-sm " + (readDone ? "border-[var(--status-ok-border)]" : "border-[var(--border)]")} open={open}>
+              <details key={gi} data-lec-title={g.title} className={"lec-fold rounded-2xl border bg-[var(--card)] shadow-sm " + (readDone ? "border-[var(--status-ok-border)]" : "border-[var(--border)]")} open={open}>
                 <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-extrabold text-slate-900 dark:text-slate-100">
                   <span className="mr-2 inline-block text-indigo-500">▸</span>
                   {g.title}

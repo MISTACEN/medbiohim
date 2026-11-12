@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { getLecture, type Lecture } from "@/lib/api";
 import { LectureView } from "@/components/lectures/LectureView";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
+import { fetchStaticPlan, SUBJECT_STATIC_PLANS } from "@/lib/subject-plan-static";
+import { normalizeStaticPlan } from "@/lib/subject-plan-next";
 
 export default function LectureViewPage() {
   const params = useParams();
@@ -18,6 +21,33 @@ export default function LectureViewPage() {
     // API отдаёт лекцию плоско (поля в data), но старые сборки — в data.lecture.
     return r.data?.lecture || r.data || null;
   }, [id], { enabled: Boolean(id) });
+
+  // Номер занятия ищем в кафедральном плане по lecture_id: API лекции не отдаёт
+  // поле topic, поэтому без этого ссылка «Лекция + тест по теме» не рисуется.
+  const subjectSlug = String((lec as { subject_slug?: string } | null)?.subject_slug || "");
+  const [lessonNumber, setLessonNumber] = useState<number | null>(null);
+  useEffect(() => {
+    const file = SUBJECT_STATIC_PLANS[subjectSlug];
+    if (!file || !id) {
+      setLessonNumber(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchStaticPlan(file)
+      .then((raw) => {
+        if (cancelled) return;
+        const session = normalizeStaticPlan(raw).sessions.find(
+          (entry) => String(entry.lecture?.lectureId || "") === id
+        );
+        setLessonNumber(session?.lecture?.num ?? session?.num ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setLessonNumber(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectSlug, id]);
 
   if (loading) return <div className="card p-6 text-sm text-[var(--muted)]">Загрузка лекции…</div>;
   if (error || !lec) {
@@ -34,7 +64,13 @@ export default function LectureViewPage() {
   // То же оформление, что при чтении лекции прямо в предмете.
   return (
     <div className="mx-auto max-w-6xl">
-      <LectureView lecture={lec} lectureId={id} backHref="/lectures" backLabel="Все модули" />
+      <LectureView
+        lecture={lec}
+        lectureId={id}
+        lessonNumber={lessonNumber}
+        backHref="/lectures"
+        backLabel="Все модули"
+      />
     </div>
   );
 }
