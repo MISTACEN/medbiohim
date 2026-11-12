@@ -32,7 +32,7 @@ import {
   type MyAssignmentStatus,
 } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
-import { aiCreateConversation, aiSendMessage } from "@/lib/features-api";
+import { aiChat } from "@/lib/features-api";
 import {
   HISTOLOGY_PROGRAM,
   KR_DATE_DEFAULT,
@@ -252,11 +252,8 @@ export default function StudyPage() {
 
       let parsed: AiPlanPatch | null = null;
       try {
-        const conversation = await aiCreateConversation({ title: "План подготовки", provider: "auto" });
-        if (conversation.ok) {
-          const sent = await aiSendMessage(conversation.data.conversation.id, buildAiPromptV2(plan, roadmap), "auto");
-          if (sent.ok) parsed = parseAiPlanV2(sent.data.assistant_message.content, plan, roadmap);
-        }
+        const sent = await aiChat([{ role: "user", content: buildAiPromptV2(plan, roadmap) }], "auto");
+        if (sent.ok) parsed = parseAiPlanV2(sent.data.message.content, plan, roadmap);
       } catch {
         parsed = null;
       }
