@@ -224,28 +224,39 @@ export function ProgramOverview({
               <div className="h-full bg-[var(--status-ok-fg)]" style={{ width: `${step.total ? (step.doneCount / step.total) * 100 : 0}%` }} />
             </div>
 
+            <ul className="divide-y divide-[var(--border)]">
+              {[...step.tasks]
+                .sort((a, b) => Number(Boolean(done[a.id])) - Number(Boolean(done[b.id])))
+                .map((task) => {
+                  const checked = Boolean(done[task.id]);
+                  return (
+                    <li key={task.id}>
+                      <button
+                        type="button"
+                        onClick={() => onToggle(task.id)}
+                        aria-pressed={checked}
+                        className="flex w-full items-start gap-2.5 px-4 py-2 text-left text-sm hover:bg-[var(--background)]"
+                      >
+                        {checked ? (
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-ok-fg)]" />
+                        ) : (
+                          <Circle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]" />
+                        )}
+                        <span className="min-w-0">
+                          <span className={"block " + (checked ? "line-through opacity-60" : "")}>{task.text}</span>
+                          {!checked && task.hint ? <span className="mt-0.5 block text-xs text-[var(--muted)]">{task.hint}</span> : null}
+                        </span>
+                        <span className="ml-auto shrink-0 text-[11px] text-[var(--muted)]">{task.minutes} мин</span>
+                      </button>
+                    </li>
+                  );
+                })}
+            </ul>
             {step.pending.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-[var(--status-ok-fg)]">Шаг закрыт. Ничего не осталось.</p>
-            ) : (
-              <ul className="divide-y divide-[var(--border)]">
-                {step.pending.map((task) => (
-                  <li key={task.id}>
-                    <button
-                      type="button"
-                      onClick={() => onToggle(task.id)}
-                      className="flex w-full items-start gap-2.5 px-4 py-2 text-left text-sm hover:bg-[var(--background)]"
-                    >
-                      <Circle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]" />
-                      <span className="min-w-0">
-                        <span className="block">{task.text}</span>
-                        {task.hint ? <span className="mt-0.5 block text-xs text-[var(--muted)]">{task.hint}</span> : null}
-                      </span>
-                      <span className="ml-auto shrink-0 text-[11px] text-[var(--muted)]">{task.minutes} мин</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+              <p className="border-t border-[var(--border)] px-4 py-2 text-sm text-[var(--status-ok-fg)]">
+                Шаг закрыт. Любую задачу можно вернуть кликом.
+              </p>
+            ) : null}
 
             {step.blockIds.length > 0 && (
               <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-2 text-xs">
