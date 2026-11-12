@@ -20,7 +20,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 // Several authenticated Worker routes perform multiple Supabase/Blob calls.
 // Keep the proxy alive long enough for those bounded upstream operations.
-export const maxDuration = 30;
+// AI chat is the long pole: external providers get up to 16 s, then Workers AI
+// gets up to 25 s, so 18 s cut the request off before the fallback could answer.
+export const maxDuration = 60;
 
 // Dual-read (RFC docs/COOKIES-RFC-E1.md §5 этап 1): Authorization header first
 // (legacy localStorage client and browser extension), then the HttpOnly cookie.
@@ -103,7 +105,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const url = new URL(req.url);
   let bodyBuffer: ArrayBuffer | null = null;
   if (!["GET", "HEAD"].includes(req.method.toUpperCase())) bodyBuffer = await req.arrayBuffer();
-  const init = requestInit(req, bodyBuffer, 18000);
+  const init = requestInit(req, bodyBuffer, 45000);
 
   let upstream: Response | null = null;
   let source = "cloudflare";
