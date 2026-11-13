@@ -35,6 +35,7 @@ import myLectures from "./routes/my-lectures";
 import myQuestions from "./routes/my-questions";
 import myTools from "./routes/my-tools";
 import materials from "./routes/materials";
+import contentSources from "./routes/content-sources";
 import tests from "./routes/tests";
 import preparation from "./routes/preparation";
 import tickets from "./routes/tickets";
@@ -50,6 +51,7 @@ import trainings from "./routes/trainings";
 import trainers from "./routes/trainers";
 import progress from "./routes/progress";
 import srs from "./routes/srs";
+import cardPacks from "./routes/card-packs";
 import sessions from "./routes/sessions";
 import settings from "./routes/settings";
 import accountData from "./routes/export";
@@ -202,6 +204,8 @@ v1.route("/my-tools", studentOnly(myTools));
 // Личный банк вопросов автора.
 v1.route("/my-questions", studentOnly(myQuestions));
 v1.route("/materials", gatedModule("library", materials));
+// Метаданные первоисточников контента — та же «библиотека», что и материалы.
+v1.route("/content-sources", gatedModule("library", contentSources));
 v1.route("/tests", gatedModule("subjects", preparation));
 v1.route("/tests", gatedModule("subjects", tests));
 v1.route("/tickets", gatedModule("subjects", tickets));
@@ -218,6 +222,8 @@ v1.route("/trainings", gatedModule("subjects", trainings));
 v1.route("/trainers", gatedModule("subjects", trainers));
 v1.route("/progress", gatedModule("progress", progress));
 v1.route("/srs", gatedModule("subjects", srs));
+// Карточки-паки: свои колоды, публикация в мастерскую, ИИ-генерация по лекциям.
+v1.route("/card-packs", gatedModule("subjects", cardPacks));
 v1.route("/sessions", studentOnly(sessions));
 v1.route("/settings", settings);
 // Уведомления — личные и не привязаны к модулю: без гейта "group".

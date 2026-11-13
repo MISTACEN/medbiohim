@@ -30,6 +30,11 @@ const eslintConfig = [
       "browser-extension/**",
       // Historical source snippets kept as reference material for retired CI workflows.
       "scripts/p0/**",
+      // Local scratch directories: downloads, dumps and screenshots, not source.
+      ".tmp/**",
+      ".tmp-arch/**",
+      ".tmp-figs/**",
+      ".tmp-fixtures/**",
     ],
   },
 ];

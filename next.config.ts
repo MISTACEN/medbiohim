@@ -48,6 +48,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/trainers", destination: "/subjects", permanent: false },
       { source: "/me", destination: "/settings", permanent: false },
+      // Help и changelog объединены: «Что нового» — вкладка страницы помощи.
+      { source: "/changelog", destination: "/help?tab=news", permanent: false },
     ];
   },
 };

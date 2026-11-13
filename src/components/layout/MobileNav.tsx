@@ -11,7 +11,7 @@ import { useModuleAccess } from "@/hooks/useModuleAccess";
 // (сервер дополнительно проверяет каждый маршрут).
 const items = [
   { href: "/", label: "Главная", icon: Home },
-  { href: "/subjects", label: "Учёба", icon: BookOpen, moduleKey: "subjects" },
+  { href: "/study", label: "Учёба", icon: BookOpen },
   { href: "/university", label: "Вуз", icon: Landmark, moduleKey: "university" },
   { href: "/homework", label: "ДЗ", icon: ClipboardList },
   { href: "/community", label: "Группа", icon: Users, moduleKey: "community" },
@@ -37,8 +37,15 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t bg-[var(--card)]/95 px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-xl lg:hidden"
-      style={{ borderColor: "var(--border)", boxShadow: "0 -8px 30px rgba(15,23,42,.08)" }}
+      // iOS: fixed-элементы с backdrop-filter «уезжают» вместе со страницей
+      // (WebKit bug 297779) и дрожат при rubber-banding. Непрозрачный фон и
+      // собственный compositing-слой (translateZ) держат бар на месте.
+      className="fixed inset-x-0 bottom-0 z-50 border-t bg-[var(--card)] px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-1.5 lg:hidden"
+      style={{
+        borderColor: "var(--border)",
+        boxShadow: "0 -8px 30px rgba(15,23,42,.08)",
+        transform: "translateZ(0)",
+      }}
       aria-label="Основная навигация"
     >
       <div

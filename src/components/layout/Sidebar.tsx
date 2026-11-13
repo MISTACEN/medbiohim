@@ -5,7 +5,7 @@
  * Лекции, билеты, практика, материалы, SRS — внутри страницы предмета.
  */
 import Link from "next/link";
-import { SosButton } from "./SosButton";
+import { SiteFeedbackButton } from "./SiteFeedbackButton";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
@@ -19,10 +19,9 @@ import {
   HelpCircle,
   Shield,
   Bot,
-  Calculator,
   Search,
   Landmark,
-  Microscope,
+  Wrench,
   Layers,
   Sparkles,
   Bookmark,
@@ -51,11 +50,11 @@ const moreItems = [
   { href: "/search", label: "Поиск", icon: Search, moduleKey: "search" },
   { href: "/library", label: "Библиотека", icon: BookOpen, moduleKey: "library" },
   { href: "/university", label: "Вуз и ЕИОС", icon: Landmark, moduleKey: "university" },
-  { href: "/atlas", label: "Атлас", icon: Microscope, moduleKey: "atlas" },
+  // Атлас, калькуляторы и тьютор объединены в хаб /tools (старые маршруты
+  // редиректят с сохранением параметров).
+  { href: "/tools", label: "Инструменты", icon: Wrench },
   { href: "/workshop", label: "Мастерская", icon: Layers, moduleKey: "workshop" },
-  { href: "/calculators", label: "Калькуляторы", icon: Calculator, moduleKey: "calculators" },
   { href: "/attestations", label: "Аттестации", icon: ClipboardList, moduleKey: "attestations" },
-  { href: "/tutor", label: "AI-тьютор", icon: Bot, moduleKey: "tutor" },
 ];
 
 const bottomItems: Array<{
@@ -243,7 +242,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               );
             })}
         </ul>
-        {user ? <SosButton /> : null}
+        {user ? <SiteFeedbackButton /> : null}
         <div className="mt-3 rounded-xl bg-white/5 px-3 py-2.5">
           <div className="truncate text-sm font-semibold">{displayName}</div>
           <div className="text-[11px] opacity-60">{roleLabel}</div>

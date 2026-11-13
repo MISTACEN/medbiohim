@@ -9,6 +9,7 @@ import {
   FileQuestion,
   FileText,
   GraduationCap,
+  Layers,
   Library,
   Loader2,
   Microscope,
@@ -40,6 +41,7 @@ const TYPE_OPTIONS = [
   { value: "questions", label: "Вопросы" },
   { value: "tickets", label: "Билеты" },
   { value: "lectures", label: "Лекции" },
+  { value: "packs", label: "Паки карточек" },
 ];
 
 const TYPE_LABEL: Record<string, string> = {
@@ -50,6 +52,7 @@ const TYPE_LABEL: Record<string, string> = {
   ticket: "Билет",
   lecture: "Лекция",
   test: "Тест",
+  pack: "Пак карточек",
 };
 
 const TYPE_ICON: Record<string, typeof BookOpen> = {
@@ -60,6 +63,7 @@ const TYPE_ICON: Record<string, typeof BookOpen> = {
   ticket: GraduationCap,
   lecture: BookOpen,
   test: ClipboardCheck,
+  pack: Layers,
 };
 
 const OPEN_LABEL: Record<string, string> = {
@@ -70,6 +74,7 @@ const OPEN_LABEL: Record<string, string> = {
   question: "Открыть вопросы →",
   ticket: "Открыть билеты →",
   test: "Открыть тест →",
+  pack: "Открыть пак →",
 };
 
 const DEFAULT_EXAMPLES = [

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Database, AlertTriangle, X, BookOpen, GraduationCap, CheckCircle2, Target, Layers3, ClipboardList, Plus, Upload, Loader2, Search, CalendarClock,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { listSchedule, getScheduleMeta, getStudentPlanner, markAttendance, hasToken, getLessonPlan, setHomeworkDone, submitHomework, uploadFile, createHomework, updateHomework, smartParseHomework, type ScheduleItem, type ScheduleMeta, type SubjectPlanWeek } from "@/lib/api";
@@ -760,12 +761,19 @@ export default function SchedulePage() {
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center" onClick={()=>setSelected(null)}>
-          <div className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-5 shadow-xl" onClick={(e)=>e.stopPropagation()}>
+          <div className="card max-h-[85dvh] w-full max-w-lg overflow-y-auto p-5 shadow-xl" onClick={(e)=>e.stopPropagation()}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wide opacity-60">{TYPE_LABELS[selected.type || ""]||selected.type}</div>
                 <h2 className="text-xl font-bold">{selected.subject_name}</h2>
                 <p className="text-sm opacity-70">{selected.date} · {selected.start_time.slice(0,5)}–{selected.end_time.slice(0,5)} · Хабаровск</p>
+                {/* Синхронизация с /study: план дня и ИИ-подготовка собирают
+                    события из того же хука useStudentAgenda. */}
+                {!canCreateHomework && (
+                  <Link href="/study" className="mt-2 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold" style={{ color: "var(--primary)", borderColor: "var(--border)" }}>
+                    <Sparkles className="h-3.5 w-3.5" /> Готовиться с ИИ — в «Учёбе»
+                  </Link>
+                )}
               </div>
               <button type="button" className="rounded-lg p-2 hover:bg-black/5" onClick={()=>{setSelected(null);setAddHomeworkOpen(false);setAddHomeworkFiles([])}} aria-label="Закрыть"><X className="h-5 w-5" /></button>
             </div>

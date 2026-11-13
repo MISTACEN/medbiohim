@@ -284,6 +284,11 @@ export default function TopicPage() {
     return linked.map((session) => session.testId).filter((id): id is string => Boolean(id));
   }, [lecture, staticSessions, week]);
 
+  // Химический предмет — по той же эвристике, что и вкладка chem на странице
+  // предмета (/chem|хим/). Второй признак покрывает переход по UUID-слагу:
+  // у химических лекций id вида «lec-chem-*».
+  const isChemistrySubject = /chem|хим/i.test(slug) || /chem/i.test(String(lecture?.id || ""));
+
   const topicTests = useMemo(() => {
     if (isControlWeek) return [];
     return selectTopicTests({
@@ -383,7 +388,11 @@ export default function TopicPage() {
       {!loading && !lecture && !isControlWeek && (
         <div className="card p-5 text-sm text-slate-500">
           Лекции по этой теме пока нет.{" "}
-          <Link href={`/subjects/${encodeURIComponent(slug)}?tab=lessons`} className="font-semibold text-[var(--primary)]">
+          {/* Вкладка lessons есть только у физиологии; остальным — общий каталог лекций. */}
+          <Link
+            href={slug === "physiology" ? `/subjects/${encodeURIComponent(slug)}?tab=lessons` : "/lectures"}
+            className="font-semibold text-[var(--primary)]"
+          >
             Все лекции предмета
           </Link>
         </div>
@@ -479,9 +488,14 @@ export default function TopicPage() {
           <Link href={`/subjects/${encodeURIComponent(slug)}?tab=tests`} className="rounded-xl border border-[var(--border)] px-3 py-2 font-semibold">
             Все тесты предмета
           </Link>
-          <Link href={`/subjects/${encodeURIComponent(slug)}?tab=chem`} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 font-semibold">
-            <FlaskConical className="h-4 w-4" /> Химический модуль: структуры и тренажёры
-          </Link>
+          {/* Вкладка chem есть только у химических предметов: на странице предмета
+              она рендерится по тому же признаку (/chem|хим/). Для остальных предметов
+              кнопка ведёт в пустую панель — не показываем. */}
+          {isChemistrySubject && (
+            <Link href={`/subjects/${encodeURIComponent(slug)}?tab=chem`} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 font-semibold">
+              <FlaskConical className="h-4 w-4" /> Химический модуль: структуры и тренажёры
+            </Link>
+          )}
         </div>
       </section>
     </div>

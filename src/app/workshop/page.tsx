@@ -381,6 +381,11 @@ export default function WorkshopPage() {
         <div>
           <h1 className="page-title">Мастерская</h1>
           <p className="page-subtitle">Фотолекции, конспекты и вопросы от студентов — с версиями и модерацией</p>
+          {/* Карточки-паки живут в своей вкладке карточек: сюда ведёт ссылка,
+              чтобы не дублировать список в двух местах. */}
+          <Link href="/cards?tab=workshop" className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)]">
+            <Layers className="h-3.5 w-3.5" /> Карточки-паки в мастерской →
+          </Link>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className={"inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold " + (settings.moderation_mode === "manual" ? "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]" : "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]")}>

@@ -54,7 +54,7 @@ function systemPrompt(subjectSlug?: string | null): string {
  * вхождениям слов запроса делается в памяти воркера на каждое сообщение;
  * фрагменты вырезаются вокруг первых вхождений.
  */
-async function buildLectureContext(
+export async function buildLectureContext(
   supabase: any,
   subjectSlug: string | null | undefined,
   query: string
@@ -332,6 +332,96 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
   }, rid));
 });
 
+/**
+ * Срез учебного контекста для режима «study» (/study): расписание вперёд,
+ * несданные ДЗ, слабые темы, долги, SRS-очередь. Собирается по запросу
+ * (context_scope) из пользовательского клиента (RLS) и НЕ сохраняется
+ * в историю чата. Компактный текст — чтобы не съедать бюджет токенов.
+ */
+async function buildStudyContext(supabase: any, userId: string): Promise<string | null> {
+  const today = new Date().toISOString().slice(0, 10);
+  const horizon = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);
+  const parts: string[] = [];
+
+  try {
+    const { data: events } = await supabase
+      .from("schedule_entries")
+      .select("date,start_time,event_kind,subject_name,room,schedules!inner(group_id,is_active)")
+      .gte("date", today).lte("date", horizon)
+      .order("date", { ascending: true }).limit(10);
+    const rows = (events || []).filter((e: any) => {
+      const sch = Array.isArray(e.schedules) ? e.schedules[0] : e.schedules;
+      return sch?.is_active !== false;
+    });
+    if (rows.length) {
+      parts.push("Ближайшие события расписания:");
+      for (const e of rows) {
+        parts.push(`- ${e.date}${e.start_time ? " " + String(e.start_time).slice(0, 5) : ""}: ${e.subject_name || "Предмет"} — ${e.event_kind || "занятие"}${e.room ? ", ауд. " + e.room : ""}`);
+      }
+    }
+  } catch { /* расписание необязательно для ответа */ }
+
+  try {
+    const { data: memberships } = await supabase
+      .from("group_memberships")
+      .select("group_id").eq("user_id", userId).eq("is_active", true).limit(10);
+    const groupIds = (memberships || []).map((m: any) => m.group_id).filter(Boolean);
+    if (groupIds.length) {
+      const { data: homeworks } = await supabase
+        .from("homeworks")
+        .select("id,title,due_date,subject_id,subjects(name)")
+        .or(groupIds.map((id: string) => `group_id.eq.${id}`).join(",") + ",group_id.is.null")
+        .order("due_date", { ascending: true }).limit(40);
+      const hwIds = (homeworks || []).map((h: any) => h.id).filter(Boolean);
+      let doneIds = new Set<string>();
+      if (hwIds.length) {
+        const { data: progress } = await supabase
+          .from("homework_progress")
+          .select("homework_id,completed").eq("user_id", userId).in("homework_id", hwIds).limit(200);
+        doneIds = new Set((progress || []).filter((p: any) => p.completed === true).map((p: any) => String(p.homework_id)));
+      }
+      const pending = (homeworks || [])
+        .filter((h: any) => !doneIds.has(String(h.id)) && (!h.due_date || h.due_date <= horizon))
+        .slice(0, 10);
+      if (pending.length) {
+        parts.push("Несданные ДЗ (по сроку):");
+        for (const h of pending) {
+          const subject = Array.isArray(h.subjects) ? h.subjects[0] : h.subjects;
+          parts.push(`- ${h.due_date || "без срока"}: ${subject?.name || ""} — ${h.title || "задание"}${h.due_date && h.due_date < today ? " (ПРОСРОЧЕНО)" : ""}`);
+        }
+      }
+    }
+  } catch { /* ДЗ необязательны */ }
+
+  try {
+    const { data: weak } = await supabase
+      .from("user_topic_progress")
+      .select("percent,topics(title,modules(subject_id,subjects(name)))")
+      .eq("user_id", userId).lt("percent", 70)
+      .order("percent", { ascending: true }).limit(8);
+    const rows = (weak || []).map((p: any) => {
+      const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics;
+      const module_ = Array.isArray(topic?.modules) ? topic.modules[0] : topic?.modules;
+      const subject = Array.isArray(module_?.subjects) ? module_.subjects[0] : module_?.subjects;
+      return { name: topic?.title || "тема", subject: subject?.name || "", percent: p.percent };
+    });
+    if (rows.length) {
+      parts.push("Слабые темы (прогресс ниже 70%):");
+      for (const w of rows) parts.push(`- ${w.subject} — ${w.name} (${w.percent}%)`);
+    }
+  } catch { /* слабые темы необязательны */ }
+
+  try {
+    const { count } = await supabase
+      .from("srs_cards")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId).lte("due_at", new Date().toISOString());
+    if (Number(count || 0) > 0) parts.push(`Карточек к повторению сегодня: ${count}.`);
+  } catch { /* SRS необязателен */ }
+
+  return parts.length ? parts.join("\n") : null;
+}
+
 // Compatibility endpoint used by lightweight clients.
 ai.post("/chat", requireAuth, async (c) => {
   const rid = requestId();
@@ -341,7 +431,7 @@ ai.post("/chat", requireAuth, async (c) => {
     const { body, status } = fail("RATE_LIMIT", "Лимит AI-запросов исчерпан", 429, rid);
     return c.json(body, status as 429);
   }
-  let payload: { messages?: { role?: string; content?: string }[]; model?: string; provider?: string } = {};
+  let payload: { messages?: { role?: string; content?: string }[]; model?: string; provider?: string; context_scope?: string } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
     return c.json(body, status as 400);
@@ -354,6 +444,25 @@ ai.post("/chat", requireAuth, async (c) => {
     role: message.role === "assistant" || message.role === "system" ? message.role : "user",
     content: String(message.content || "").slice(0, 12000),
   }));
+  // Режим «study»: ассистент /study получает срез учебного состояния студента
+  // как system-контекст. Срез собирается на каждый запрос и в историю не пишется.
+  if (payload.context_scope === "study") {
+    try {
+      const snapshot = await buildStudyContext(c.get("supabase"), user.id);
+      if (snapshot) {
+        messages.unshift({
+          role: "system",
+          content: systemPrompt(null)
+            + " Ты — учебный ассистент студента. Ниже — актуальный срез его учебного состояния"
+            + " (расписание, ДЗ, слабые темы, очереди повторения). Используй его для конкретных"
+            + " советов: что делать сегодня, к чему готовиться и в каком порядке. Не выдумывай"
+            + " события, которых нет в данных.\n\n=== УЧЕБНЫЙ КОНТЕКСТ ===\n" + snapshot,
+        });
+      }
+    } catch (contextError) {
+      console.error("[ai:study-context]", contextError instanceof Error ? contextError.message : String(contextError));
+    }
+  }
   try {
     const result = await generateWithFallback(c.env, messages, payload.provider);
     return c.json(ok({ message: { role: "assistant", content: result.text }, provider: result.provider, model: result.model }, rid));

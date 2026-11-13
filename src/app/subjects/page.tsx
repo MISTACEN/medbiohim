@@ -213,7 +213,7 @@ export default function SubjectsPage() {
       <header>
         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">Начнём с главного</p>
         <h1 className="page-title mt-1">Какой предмет вы сейчас учите?</h1>
-        <p className="page-subtitle">Выберите предмет — откроется план, билеты и AI-тьютор. Поиск работает по названию.</p>
+        <p className="page-subtitle">Каталог предметов: план, билеты, тесты и тренажёры каждого предмета. Сводка «Учёба» — в разделе /study, а тьютор и калькуляторы — в /tools. Поиск работает по названию.</p>
       </header>
 
       <div className="relative">

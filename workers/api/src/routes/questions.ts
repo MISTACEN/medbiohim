@@ -200,7 +200,12 @@ questions.get("/mini-quiz", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   try {
-    const { data, error } = await supabase.from("questions").select("id,text,options,type,subject_id,is_published,source_item_id").in("id", ids).eq("subject_id", subjectId).eq("is_published", true).is("archived_at", null).limit(20);
+    // Блоки лекций явно перечисляют questionIds; фильтр по subject_id отбрасывал
+    // валидные ссылки из канонических лекций (исторические блоки ссылаются на
+    // вопросы другого subject). POST /mini-quiz/check уже резолвит по ID без
+    // subject-фильтра — GET приведён к тому же контракту: отдаём только
+    // существующие, опубликованные и не архивированные вопросы.
+    const { data, error } = await supabase.from("questions").select("id,text,options,type,subject_id,is_published,source_item_id").in("id", ids).eq("is_published", true).is("archived_at", null).limit(20);
     if (error) {
       const { body, status } = fail("DB_UNAVAILABLE", "Mini-quiz unavailable", 503, rid);
       return c.json(body, status as 503);

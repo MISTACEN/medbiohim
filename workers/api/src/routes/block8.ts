@@ -324,6 +324,11 @@ block8.post("/sos", requireAuth, async (c) => {
   if (!message) return err(c, rid, 422, "VALIDATION_ERROR", "Опишите проблему");
   if (message.length > 2000) return err(c, rid, 413, "PAYLOAD_TOO_LARGE", "Сообщение слишком длинное");
   const pageUrl = String(input?.page_url || "").slice(0, 500) || null;
+  // Категория жалобы (форма «Жалоба на ошибку на сайте»): недопустимое
+  // значение молча приводим к «other», чтобы не ломать старые клиенты.
+  const ALLOWED_CATEGORIES = new Set(["content", "test", "broken", "typo", "other"]);
+  const rawCategory = String(input?.category || "").trim();
+  const category = ALLOWED_CATEGORIES.has(rawCategory) ? rawCategory : "other";
   const service = createServiceClient(c.env);
   if (!service) return err(c, rid, 503, "SERVICE_UNAVAILABLE", "Сервис недоступен");
   try {
@@ -340,7 +345,7 @@ block8.post("/sos", requireAuth, async (c) => {
     }
     const { data, error: insertError } = await service
       .from("sos_reports")
-      .insert({ user_id: userId, message, page_url: pageUrl })
+      .insert({ user_id: userId, message, page_url: pageUrl, category })
       .select("id,created_at")
       .single();
     if (insertError) throw insertError;
@@ -359,7 +364,7 @@ block8.get("/admin/sos", requireAuth, requireAdmin, async (c) => {
   try {
     const { data, error: readError } = await service
       .from("sos_reports")
-      .select("id,user_id,message,page_url,status,created_at,users!sos_reports_user_id_fkey(full_name,display_name,email)")
+      .select("id,user_id,message,page_url,category,status,created_at,users!sos_reports_user_id_fkey(full_name,display_name,email)")
       .order("created_at", { ascending: false }).limit(200);
     if (readError) throw readError;
     const items = (data || []).map((row: any) => {

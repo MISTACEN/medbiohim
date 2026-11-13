@@ -550,6 +550,15 @@ trainers.get("/feed/:id/image", async (c) => {
       }
     }
 
+    // ?variant=clean — версия скана БЕЗ подписей для вопросов тренажёра:
+    // preparation.imageCleanPath кладёт скрипт match_clean_em при загрузке
+    // чистых оригиналов. Подписанная версия остаётся для атласа и объяснения.
+    const wantsClean = c.req.query("variant") === "clean";
+    const prep = (card.preparation as Record<string, any> | null) || null;
+    if (wantsClean && prep?.imageCleanPath && !sourceKeyLooksLikeUuid) {
+      card.preparation = { ...prep, imagePath: prep.imageCleanPath };
+    }
+
     const candidates = trainerImageCandidateKeys(
       {
         source_key: card.source_key,

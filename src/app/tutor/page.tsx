@@ -5,6 +5,7 @@ import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConve
 import { listSubjectsCatalog } from "@/lib/api";
 import { Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 
 export default function TutorPage() {
   const [items,setItems]=useState<AiConversation[]>([]);
@@ -23,6 +24,8 @@ export default function TutorPage() {
   const [mobileList,setMobileList]=useState(true);
   const bottomRef=useRef<HTMLDivElement>(null);
   const inputRef=useRef<HTMLTextAreaElement>(null);
+  // iOS: клавиатура накрывает ввод — приподнимаем контейнер на её инсент.
+  const keyboardInset = useKeyboardInset();
 
   const loadConversation = useCallback(async (id:string)=>{
     setLoading(true); setError(null);
@@ -112,10 +115,10 @@ export default function TutorPage() {
     if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}
   }
 
-  if(booting) return <div className="flex h-[calc(100vh-6rem)] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]"/></div>;
+  if(booting) return <div className="flex h-[calc(100dvh-6rem)] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]"/></div>;
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-5.5rem)] max-w-6xl flex-col gap-3">
+    <div className="mx-auto flex h-[calc(100dvh-5.5rem)] max-w-6xl flex-col gap-3" style={keyboardInset ? { height: `calc(100dvh - 5.5rem - ${keyboardInset}px)` } : undefined}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Bot className="h-7 w-7 text-[var(--primary)]"/>AI-тьютор</h1><p className="mt-1 text-sm text-[var(--muted)]">История сохраняется и восстанавливается после перезагрузки страницы.</p></div>
         <div className="flex items-center gap-2 text-xs">

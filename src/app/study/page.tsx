@@ -1,38 +1,38 @@
 "use client";
 
 /**
- * «Учёба» — одна страница вместо четырёх.
- *
- * Раньше /study, /academic, /assignments и /progress показывали разные срезы
- * одного и того же: что задано, что просрочено, что сдано и сколько осталось.
- * Студент ходил между вкладками, чтобы собрать картину. Теперь это один экран:
+ * «Учёба» — центральный учебный хаб.
  *
  *  1. сводка — прогресс, ДЗ, тесты, долги, дни до КР;
- *  2. «что делать сейчас» — общий список из отработок, занятий и плана
- *     подготовки, отсортированный по сроку;
- *  3. подробные разделы: учебный план, прогресс по предметам, отработки
- *     и подготовка к КР — без переключения страниц.
+ *  2. план на сегодня — ИИ-план (context_scope=study) с фолбэком по срокам;
+ *  3. лента «Ближайшее» — аттестации, ДЗ, отработки одним таймлайном
+ *     (общий buildAgenda с /schedule), у аттестаций — ИИ-чеклист «Готовиться»;
+ *  4. слабые места и очередь карточек SRS;
+ *  5. ИИ-ассистент с учебным контекстом;
+ *  6. подробные разделы: план, прогресс, отработки, подготовка к КР.
  *
  * Старые адреса /academic, /assignments и /progress ведут сюда якорями.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, GraduationCap, Loader2, Target, TriangleAlert } from "lucide-react";
+import { GraduationCap, Loader2, TriangleAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import {
-  getAcademicState,
-  getProgress,
-  hasToken,
-  listMyAssignments,
-  type AcademicState,
-  type MyAssignment,
-} from "@/lib/api";
+import { getProgress, hasToken } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { HISTOLOGY_PROGRAM, KR_DATE_DEFAULT, progressOf } from "@/lib/study/program";
+import { useStudentAgenda } from "@/lib/study/agenda";
+import { fmtDate } from "@/lib/study/agenda-fmt";
 import { AcademicSection } from "@/components/learning/AcademicSection";
 import { AssignmentsSection } from "@/components/learning/AssignmentsSection";
 import { ProgressSection } from "@/components/learning/ProgressSection";
 import { StudySection } from "@/components/learning/StudySection";
+import { AgendaTimeline } from "@/components/study/AgendaTimeline";
+import { PrepChecklist } from "@/components/study/PrepChecklist";
+import { SrsDueCard } from "@/components/study/SrsDueCard";
+import { StudyAssistant } from "@/components/study/StudyAssistant";
+import { TodayPlan } from "@/components/study/TodayPlan";
+import { WeakTopics } from "@/components/study/WeakTopics";
+import type { AgendaItem } from "@/lib/study/agenda";
 
 const DONE_KEY = "study.program.done.v2";
 const KR_KEY = "study.program.krDate.v2";
@@ -41,31 +41,6 @@ type ProgressPayload = {
   overall_pct?: number | null;
   homework?: { total: number; done: number };
   tests?: { attempts: number; finished?: number; avg_score?: number | null };
-};
-
-const EVENT_LABEL: Record<string, string> = {
-  retake: "пересдача",
-  makeup: "досдача",
-  exam: "экзамен",
-  credit: "зачёт",
-  colloquium: "коллоквиум",
-  control_work: "контрольная",
-  assessment: "аттестация",
-};
-
-const ASSIGNMENT_LABEL: Record<string, string> = {
-  pending: "ожидает",
-  retake_needed: "на отработку",
-  passed: "сдано",
-  failed: "не сдано",
-};
-
-type Action = {
-  id: string;
-  title: string;
-  meta: string;
-  date: string | null;
-  source: "Отработка" | "Занятие" | "Подготовка";
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -77,15 +52,9 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-function isoToday(): string {
+function isoTodayLocal(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function fmt(value?: string | null): string {
-  if (!value) return "без срока";
-  const iso = value.slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join(".") : value;
 }
 
 function daysBetween(a: string, b: string): number {
@@ -96,108 +65,47 @@ function daysBetween(a: string, b: string): number {
 
 export default function StudyPage() {
   const { loading: authLoading } = useAuth();
-  const [academic, setAcademic] = useState<AcademicState | null>(null);
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
-  const [assignments, setAssignments] = useState<MyAssignment[]>([]);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [krDate, setKrDate] = useState(KR_DATE_DEFAULT);
   const [today, setToday] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
+  const [prepTarget, setPrepTarget] = useState<AgendaItem | null>(null);
+
+  const { agenda, academic, assignments, loading: agendaLoading } = useStudentAgenda();
 
   useEffect(() => {
     setDone(readJson<Record<string, boolean>>(DONE_KEY, {}));
     const saved = readJson<string>(KR_KEY, KR_DATE_DEFAULT);
     setKrDate(/^\d{4}-\d{2}-\d{2}$/.test(saved) ? saved : KR_DATE_DEFAULT);
-    setToday(isoToday());
+    setToday(isoTodayLocal());
     setLoggedIn(hasToken());
-  }, []);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const [academicResult, progressResult] = await Promise.allSettled([
-      getAcademicState(),
-      getProgress(),
-    ]);
-
-    if (academicResult.status === "fulfilled" && academicResult.value.ok) {
-      const data = academicResult.value.data as AcademicState;
-      setAcademic({
-        ...data,
-        debts: Array.isArray(data.debts) ? data.debts : [],
-        upcoming: Array.isArray(data.upcoming) ? data.upcoming : [],
-        weak_topics: Array.isArray(data.weak_topics) ? data.weak_topics : [],
-      });
-    } else if (academicResult.status === "fulfilled" && !academicResult.value.ok) {
-      setError(describeApiError(academicResult.value.error));
-    }
-
-    if (progressResult.status === "fulfilled" && progressResult.value.ok) {
-      setProgress(progressResult.value.data as ProgressPayload);
-    }
-
-    if (hasToken()) {
-      const listed = await listMyAssignments();
-      if (listed.ok && Array.isArray(listed.data?.items)) setAssignments(listed.data.items as MyAssignment[]);
-    }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     if (authLoading) return;
-    void load();
-  }, [authLoading, load]);
+    let cancelled = false;
+    setProgressLoading(true);
+    setProgressError("");
+    void getProgress().then((result) => {
+      if (cancelled) return;
+      if (result.ok) setProgress(result.data as ProgressPayload);
+      else setProgressError(describeApiError(result.error));
+      setProgressLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [authLoading]);
 
   const studyProgress = useMemo(() => progressOf(HISTOLOGY_PROGRAM, done), [done]);
-  const openAssignments = useMemo(() => assignments.filter((item) => item.status !== "passed"), [assignments]);
   const academicDebts = academic?.debts?.length ?? 0;
-  const totalDebts = openAssignments.length + academicDebts;
+  const totalDebts = assignments.filter((item) => item.status !== "passed").length + academicDebts;
   const overall = progress?.overall_pct ?? null;
   const homework = progress?.homework;
   const tests = progress?.tests;
   const daysLeft = krDate && today ? daysBetween(krDate, today) : 0;
-
-  // Один список дел из трёх источников: отработки, занятия и план подготовки.
-  const actions = useMemo<Action[]>(() => {
-    const list: Action[] = [];
-    for (const item of openAssignments) {
-      list.push({
-        id: `assignment-${item.id}`,
-        title: item.topic,
-        meta: `${item.subject} · ${ASSIGNMENT_LABEL[item.status] ?? item.status}`,
-        date: item.due_date,
-        source: "Отработка",
-      });
-    }
-    for (const event of academic?.upcoming ?? []) {
-      list.push({
-        id: `event-${event.id ?? `${event.date}-${event.start_time}`}`,
-        title: `${event.subject_name || "Предмет"} — ${EVENT_LABEL[event.event_kind || ""] || event.event_kind || "занятие"}`,
-        meta: [event.start_time ? String(event.start_time).slice(0, 5) : null, event.room ? `ауд. ${event.room}` : null].filter(Boolean).join(" · ") || "по расписанию",
-        date: event.date ?? null,
-        source: "Занятие",
-      });
-    }
-    for (const block of HISTOLOGY_PROGRAM.blocks) {
-      const left = block.tasks.filter((task) => !done[task.id]);
-      if (!left.length) continue;
-      list.push({
-        id: `block-${block.id}`,
-        title: block.short,
-        meta: `${block.theme} · осталось ${left.length} из ${block.tasks.length}`,
-        date: block.due ?? null,
-        source: "Подготовка",
-      });
-    }
-    return list.sort((a, b) => {
-      if (a.date && b.date) return a.date.localeCompare(b.date);
-      if (a.date) return -1;
-      if (b.date) return 1;
-      return a.title.localeCompare(b.title);
-    });
-  }, [openAssignments, academic, done]);
+  const loading = agendaLoading || progressLoading;
 
   return (
     <div className="space-y-5">
@@ -207,7 +115,7 @@ export default function StudyPage() {
         </p>
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight">План, отработки и прогресс в одном месте</h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
-          Сводка считается по расписанию, официальному плану, тестам и вашим отметкам. Ниже — что делать сейчас и где это отметить.
+          Сводка считается по расписанию, официальному плану, тестам и вашим отметкам. ИИ-ассистент помогает собрать план дня и подготовиться к контрольным.
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -225,46 +133,28 @@ export default function StudyPage() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
-          <span>Подготовка к КР: {fmt(krDate)}{daysLeft > 0 ? ` · осталось ${daysLeft} дн.` : ""}</span>
+          <span>Подготовка к КР: {fmtDate(krDate)}{daysLeft > 0 ? ` · осталось ${daysLeft} дн.` : ""}</span>
           <span>Задачи подготовки: {studyProgress.done} из {studyProgress.total}</span>
           {authLoading || loading ? <span className="inline-flex items-center gap-1"><Loader2 className="h-3.5 w-3.5 animate-spin" /> обновляем</span> : null}
           {!loggedIn && !authLoading ? <Link href="/login" className="font-semibold text-indigo-600">Войти, чтобы вести отработки</Link> : null}
         </div>
-        {error ? (
+        {progressError ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-[var(--status-critical-fg)]">
-            <TriangleAlert className="h-4 w-4" /> {error}
+            <TriangleAlert className="h-4 w-4" /> {progressError}
           </p>
         ) : null}
       </header>
 
-      <section className="card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
-            <Target className="h-4 w-4" /> Что делать сейчас
-          </h2>
-          <span className="text-xs text-[var(--muted)]">отработки, занятия и подготовка — одним списком</span>
-        </div>
-        {loading && !actions.length ? (
-          <p className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin" /> Собираем список…</p>
-        ) : actions.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--status-ok-fg)]">Открытых дел нет: отработки закрыты, события не назначены.</p>
-        ) : (
-          <ol className="mt-3 space-y-2">
-            {actions.slice(0, 8).map((action) => (
-              <li key={action.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-3 py-2">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{action.title}</div>
-                  <div className="text-xs text-[var(--muted)]">{action.meta}</div>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700">{action.source}</span>
-                  <span className="inline-flex items-center gap-1 text-[var(--muted)]"><CalendarDays className="h-3.5 w-3.5" /> {fmt(action.date)}</span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+      <TodayPlan agenda={agenda} />
+
+      <AgendaTimeline agenda={agenda} loading={agendaLoading} onPrep={setPrepTarget} />
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <WeakTopics academic={academic} />
+        <SrsDueCard />
+      </div>
+
+      <StudyAssistant />
 
       <section id="plan" className="scroll-mt-24">
         <AcademicSection />
@@ -281,6 +171,8 @@ export default function StudyPage() {
       <section id="prep" className="scroll-mt-24">
         <StudySection />
       </section>
+
+      {prepTarget ? <PrepChecklist item={prepTarget} onClose={() => setPrepTarget(null)} /> : null}
     </div>
   );
 }

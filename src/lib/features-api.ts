@@ -198,7 +198,50 @@ export async function aiGetConversation(id:string){ return api<{conversation:AiC
 export async function aiDeleteConversation(id:string){ return api<{deleted:boolean}>(`/ai/conversations/${encodeURIComponent(id)}`,{method:"DELETE"}); }
 export async function aiSendMessage(id:string,content:string,provider?:AiProvider,subject_slug?:string){ return api<{conversation:AiConversation;user_message:AiMessage;assistant_message:AiMessage}>(`/ai/conversations/${encodeURIComponent(id)}/messages`,{method:"POST",body:JSON.stringify({content,provider,subject_slug}),timeoutMs:60000}); }
 /** One-shot completion without chat history/RAG — для генерации плана подготовки. */
-export async function aiChat(messages:Array<{role:"system"|"user"|"assistant";content:string}>,provider?:AiProvider){ return api<{message:{role:string;content:string};provider:string;model:string}>("/ai/chat",{method:"POST",body:JSON.stringify({messages,provider}),timeoutMs:60000}); }
+export async function aiChat(messages:Array<{role:"system"|"user"|"assistant";content:string}>,provider?:AiProvider,options?:{contextScope?:string}){ return api<{message:{role:string;content:string};provider:string;model:string}>("/ai/chat",{method:"POST",body:JSON.stringify({messages,provider,context_scope:options?.contextScope}),timeoutMs:60000}); }
+
+/* —— Карточки-паки (Quizlet-стиль): свои колоды, мастерская, ИИ-генерация —— */
+export type CardPack = {
+  id: string;
+  title: string;
+  description: string;
+  subject_slug: string | null;
+  source: "user" | "ai";
+  is_published: boolean;
+  mine: boolean;
+  owner_name: string | null;
+  card_count: number;
+  updated_at?: string;
+};
+export type CardPackItem = { id: string; front: string; back: string; order_index: number };
+export type CardPackAiDraft = { topic: string; subject_slug: string; cards: Array<{ front: string; back: string; source: string }>; provider: string; model: string };
+
+export async function cardPacksMine(subject_slug?: string) {
+  const q = subject_slug ? `?subject_slug=${encodeURIComponent(subject_slug)}` : "";
+  return api<{ items: CardPack[] }>(`/card-packs${q}`, { timeoutMs: 30000 });
+}
+export async function cardPacksShared(subject_slug?: string) {
+  const q = subject_slug ? `?subject_slug=${encodeURIComponent(subject_slug)}&` : "?";
+  return api<{ items: CardPack[] }>(`/card-packs${q}scope=shared`, { timeoutMs: 30000 });
+}
+export async function cardPack(id: string) {
+  return api<{ pack: CardPack & { created_at: string }; items: CardPackItem[] }>(`/card-packs/${encodeURIComponent(id)}`, { timeoutMs: 30000 });
+}
+export async function cardPackCreate(payload: { title: string; description?: string; subject_slug?: string | null; source?: "user" | "ai"; is_published?: boolean; items: Array<{ front: string; back: string }> }) {
+  return api<{ pack: { id: string }; card_count: number }>("/card-packs", { method: "POST", body: JSON.stringify(payload), timeoutMs: 60000 });
+}
+export async function cardPackPatch(id: string, patch: { title?: string; description?: string; is_published?: boolean }) {
+  return api<{ pack: { id: string; is_published: boolean } }>(`/card-packs/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch), timeoutMs: 30000 });
+}
+export async function cardPackDelete(id: string) {
+  return api<{ deleted: boolean }>(`/card-packs/${encodeURIComponent(id)}`, { method: "DELETE", timeoutMs: 30000 });
+}
+export async function cardPackImport(id: string) {
+  return api<{ pack: { id: string; title: string }; card_count: number }>(`/card-packs/${encodeURIComponent(id)}/import`, { method: "POST", body: "{}", timeoutMs: 60000 });
+}
+export async function cardPackAiGenerate(payload: { topic: string; subject_slug: string }) {
+  return api<CardPackAiDraft>("/card-packs/ai-generate", { method: "POST", body: JSON.stringify(payload), timeoutMs: 90000 });
+}
 
 /* —— SA6: экспорт данных аккаунта и удаление с grace-периодом —— */
 /** Раздел выгрузки: строки + честный признак обрезки по лимиту. */

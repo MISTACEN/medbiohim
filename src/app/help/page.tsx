@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { HelpTabs } from "@/components/help/HelpTabs";
+import { CHANGELOG } from "@/data/changelog";
 
 /**
  * FA7: /help — настоящий FAQ для студента.
@@ -122,17 +124,12 @@ const FAQ: Array<{ title: string; body: React.ReactNode }> = [
   },
 ];
 
-export default function HelpPage() {
-  return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header>
-        <h1 className="page-title">Помощь</h1>
-        <p className="page-subtitle">
-          Короткие ответы на частые вопросы: вход, задания, Telegram-бот,
-          карточки и тренажёры.
-        </p>
-      </header>
+export default async function HelpPage({ searchParams }: { searchParams?: Promise<{ tab?: string }> }) {
+  const params = (await searchParams) || {};
+  const initialTab = params.tab === "news" ? "news" : "faq";
 
+  const faqSection = (
+    <>
       <div className="space-y-4">
         {FAQ.map((item) => (
           <section key={item.title} className="card p-5">
@@ -149,10 +146,47 @@ export default function HelpPage() {
         <p className="mt-2 text-sm leading-relaxed text-slate-600">
           Напишите администратору или старосте группы — они помогут с доступом,
           группой и техническими проблемами. Если сломался сам сайт (что-то не
-          открывается или выдаёт ошибку), опишите, какую страницу вы открыли и
-          что произошло, — так проблему получится найти быстрее.
+          открывается или выдаёт ошибку), нажмите «Жалоба на ошибку на сайте»
+          в меню — обращение уйдёт администрации с адресом страницы.
         </p>
       </section>
+    </>
+  );
+
+  const newsSection = (
+    <div className="space-y-4">
+      {CHANGELOG.length === 0 ? (
+        <p className="text-sm text-slate-500">Пока ничего не менялось.</p>
+      ) : (
+        CHANGELOG.map((entry) => (
+          <article key={entry.date} className="card p-5">
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <h2 className="text-lg font-bold text-slate-900">{entry.title}</h2>
+              <time className="text-xs tabular-nums text-slate-400" dateTime={entry.date}>
+                {entry.date.split("-").reverse().join(".")}
+              </time>
+            </div>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+              {entry.items.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </article>
+        ))
+      )}
+    </div>
+  );
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <header>
+        <h1 className="page-title">Помощь</h1>
+        <p className="page-subtitle">
+          Короткие ответы на частые вопросы и лента изменений платформы — в одном месте.
+        </p>
+      </header>
+
+      <HelpTabs initialTab={initialTab} faqSection={faqSection} newsSection={newsSection} />
     </div>
   );
 }

@@ -2,6 +2,10 @@
 // questions (subject histology) по совпадению темы/модуля с заголовком лекции
 // и вставляет «Итоговый тест по теме» перед ## Контрольные вопросы.
 //
+// Мини-тест ≠ полный тест: вопросы полного теста занятия (test_id из плана
+// семестра → test_questions) исключаются из пула; если после исключения
+// вопросов меньше MIN, берётся весь тематический пул.
+//
 // Идемпотентно: лекции, где ```quiz уже есть, пропускаются.
 //
 // Запуск: node tools/histology/add_quiz_blocks.mjs [--dry] [--min=8] [--max=12]
@@ -118,6 +122,25 @@ function shuffle(items) {
   );
   console.log(`mcq в БД: ${questions.rows.length}`);
 
+  // Мини-тест не должен повторять полный тест занятия: вопросы полного теста
+  // (test_id из плана → test_questions) исключаются из пула. Если после
+  // исключения пула не хватает, откатываемся к полному пулу — лучше
+  // пересечение, чем отсутствие мини-теста.
+  const planTestIds = [...new Set([...lessonByLectureId.values()].map((l) => l.testId).filter(Boolean))];
+  const questionsByTestId = new Map();
+  if (planTestIds.length) {
+    const linked = await client.query(
+      `select test_id, question_id from test_questions where test_id = any($1::uuid[])`,
+      [planTestIds],
+    );
+    for (const row of linked.rows) {
+      const list = questionsByTestId.get(row.test_id) || [];
+      list.push(row.question_id);
+      questionsByTestId.set(row.test_id, list);
+    }
+    console.log(`вопросов в полных тестах занятия: ${linked.rows.length} (тестов: ${planTestIds.length})`);
+  }
+
   const files = fs.readdirSync(DIR).filter((f) => f.endsWith(".md")).sort();
   let touched = 0;
   for (const file of files) {
@@ -147,7 +170,21 @@ function shuffle(items) {
       continue;
     }
     // приоритет: вопросы, у которых topic совпал точнее (первый паттерн — самый специфичный)
-    const chosen = shuffle(pool).slice(0, MAX);
+    let poolForMini = pool;
+    const lessonTestQuestions = lessonByLectureId.get(String(meta.id || ""))?.testId
+      ? questionsByTestId.get(lessonByLectureId.get(String(meta.id || "")).testId)
+      : null;
+    if (lessonTestQuestions?.length) {
+      const excluded = new Set(lessonTestQuestions);
+      const filtered = pool.filter((q) => !excluded.has(q.id));
+      if (filtered.length >= MIN) {
+        poolForMini = filtered;
+        console.log(`${file}: из пула исключено ${pool.length - filtered.length} вопросов полного теста занятия`);
+      } else {
+        console.log(`${file}: после исключения полного теста осталось ${filtered.length} < ${MIN}, берём весь пул`);
+      }
+    }
+    const chosen = shuffle(poolForMini).slice(0, MAX);
     if (chosen.length < MIN) {
       console.log(`${file}: мало вопросов (${chosen.length} < ${MIN}), пропуск`);
       continue;
@@ -187,7 +224,7 @@ function shuffle(items) {
     const updated = raw.slice(0, idx) + block.join("\n") + "\n" + raw.slice(idx);
     if (!DRY) fs.writeFileSync(path.join(DIR, file), updated, "utf8");
     touched += 1;
-    console.log(`${file}: вставлен тест из ${chosen.length} вопросов (${pool.length} в пуле)`);
+    console.log(`${file}: вставлен тест из ${chosen.length} вопросов (${poolForMini.length} в пуле)`);
   }
   console.log(`итого: ${touched}/${files.length}${DRY ? " (dry)" : ""}`);
   await client.end();
