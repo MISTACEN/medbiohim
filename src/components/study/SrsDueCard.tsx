@@ -43,13 +43,13 @@ export function SrsDueCard() {
       ) : (
         <div className="mt-3 grid grid-cols-3 gap-2">
           {[
-            { label: "К повторению сегодня", value: due, tone: due ? "text-[var(--status-warn-fg)]" : "text-[var(--status-ok-fg)]" },
+            { label: "К повторению", value: due, tone: due ? "text-[var(--status-warn-fg)]" : "text-[var(--status-ok-fg)]" },
             { label: "В колоде", value: total, tone: "" },
-            { label: "Новых из банка", value: fresh, tone: "" },
+            { label: "Новых", value: fresh, tone: "" },
           ].map((card) => (
-            <div key={card.label} className="rounded-xl border border-[var(--border)] px-3 py-2">
-              <div className={"text-xl font-extrabold tabular-nums " + card.tone}>{card.value}</div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{card.label}</div>
+            <div key={card.label} className="rounded-xl border border-[var(--border)] px-2.5 py-2">
+              <div className={"text-xl font-extrabold leading-none tabular-nums " + card.tone}>{card.value}</div>
+              <div className="mt-1 text-[10px] font-semibold uppercase leading-tight tracking-wide text-[var(--muted)]">{card.label}</div>
             </div>
           ))}
         </div>

@@ -7,7 +7,7 @@
  * недоступен. Результат кэшируется на день в localStorage, обновление — вручную.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Sparkles, Loader2, ListChecks } from "lucide-react";
+import { RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { aiChat } from "@/lib/features-api";
 import { describeApiError } from "@/lib/errors";
 import type { AgendaItem } from "@/lib/study/agenda";
@@ -117,9 +117,14 @@ export function TodayPlan({ agenda }: { agenda: AgendaItem[] }) {
   return (
     <section className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
-          <Sparkles className="h-4 w-4 text-[var(--primary)]" /> План на сегодня
-        </h2>
+        <div>
+          <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+            <Sparkles className="h-4 w-4 text-[var(--primary)]" /> План на сегодня
+          </h2>
+          {items.length ? (
+            <p className="mt-0.5 text-xs text-[var(--muted)]">~{Math.max(1, items.length * 15)} минут на всё · {items.length} шагов</p>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
           {source === "ai" ? <span>ИИ · {today.split("-").reverse().join(".")}</span> : source === "fallback" ? <span>по срокам</span> : null}
           <button
@@ -139,11 +144,16 @@ export function TodayPlan({ agenda }: { agenda: AgendaItem[] }) {
           Откройте ленту ниже: план появится из ближайших дел, либо составьте его ИИ-кнопкой.
         </p>
       ) : (
-        <ol className="mt-3 space-y-1.5">
+        <ol className="mt-3 grid gap-2 sm:grid-cols-2">
           {items.map((item, index) => (
-            <li key={index} className="flex items-start gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
-              <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-[var(--primary)]" />
-              <span>{item}</span>
+            <li
+              key={index}
+              className="flex items-start gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm transition hover:border-[var(--primary)]/40"
+            >
+              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[var(--primary-soft)] text-[11px] font-bold tabular-nums text-[var(--primary)]">
+                {index + 1}
+              </span>
+              <span className="min-w-0">{item}</span>
             </li>
           ))}
         </ol>

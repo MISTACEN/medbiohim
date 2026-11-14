@@ -8,7 +8,7 @@ import { describeApiError } from "@/lib/errors";
 import GlobalNextSession from "@/components/subjects/GlobalNextSession";
 
 const label: Record<string,string> = {
-  retake:"пересдача", makeup:"досдача", exam:"экзамен", credit:"зачёт",
+  class:"занятие", lesson:"занятие", retake:"пересдача", makeup:"досдача", exam:"экзамен", credit:"зачёт",
   colloquium:"коллоквиум", control_work:"контрольная", assessment:"аттестация"
 };
 
