@@ -67,7 +67,7 @@ test("provider caller accepts temperature but keeps 0.25 by default", async () =
   assert.match(provider, /: 0\.25;/);
   assert.match(provider, /Math\.min\(1, Math\.max\(0, requestedTemperature\)\)/);
   // Дефолт остаётся прежним для всех остальных вызовов.
-  assert.match(provider, /function callAiCompletion\(cfg, messages, fetcher, temperature = 0\.25\)/);
+  assert.match(provider, /function callAiCompletion\(cfg, messages, fetcher, temperature = 0\.25, report = \(\) => \{\}\)/);
 });
 
 test("frontend renders sources and the explain-after-error button", async () => {

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
-import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { requireAdmin, requireAuth, type AuthVariables } from "../middleware/auth";
 import { logActivity } from "../lib/activity";
 import { rateLimit } from "../lib/redis";
 import { shouldUseLectureRag } from "../lib/ai-scope";
@@ -194,6 +194,42 @@ export async function buildLectureContext(
 
 ai.get("/providers", requireAuth, async (c) => {
   return c.json(ok(getAiProviderStatus(c.env), requestId()));
+});
+
+/**
+ * GET /ai/diagnostics — живая проверка внешних провайдеров.
+ *
+ * Нужна, когда «все провайдеры падают»: из ответа видно, ключ не приняли (HTTP 401/404),
+ * сеть недоступна (network) или ответ не успел за таймаут. Ключи и тела ответов
+ * провайдеров не возвращаются — только статус, этап и время.
+ */
+ai.get("/diagnostics", requireAdmin, async (c) => {
+  const rid = requestId();
+  const status = getAiProviderStatus(c.env) as any;
+  const attempts: Array<Record<string, unknown>> = [];
+  const providers: Array<Record<string, unknown>> = [];
+  const probe = { role: "user" as const, content: "Ответь одним словом: ок" };
+  for (const id of ["groq", "mistral", "gigachat", "openai", "openrouter", "gemini"]) {
+    const meta = status.providers?.[id];
+    if (!meta?.configured) {
+      providers.push({ id, configured: false, model: meta?.model ?? null });
+      continue;
+    }
+    const started = Date.now();
+    try {
+      const result = await generateAiCompletion(
+        c.env as any,
+        [probe],
+        id,
+        fetch,
+        { temperature: 0, onAttempt: (attempt: Record<string, unknown>) => attempts.push({ ...attempt, requested: id }) },
+      );
+      providers.push({ id, configured: true, ok: true, provider: result.provider, model: result.model, ms: Date.now() - started });
+    } catch (error: any) {
+      providers.push({ id, configured: true, ok: false, code: String(error?.code || "ERROR"), ms: Date.now() - started });
+    }
+  }
+  return c.json(ok({ region: status.region, default_provider: status.default, providers, attempts }, rid));
 });
 
 ai.get("/conversations", requireAuth, async (c) => {
