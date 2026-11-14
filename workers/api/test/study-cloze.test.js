@@ -24,6 +24,15 @@ test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
   assert.doesNotMatch(lectures, /function loadLectureForCloze[\s\S]{0,200}\/\^\[0-9a-f-\]\{36\}\$\//);
 });
 
+test("cloze falls back to Workers AI when external providers fail", async () => {
+  const lectures = await source("../src/routes/lectures.ts");
+  // Живой прод: все внешние провайдеры отказали, тьютор выжил на биндинге AI.
+  assert.match(lectures, /async function generateClozeDraft/);
+  assert.match(lectures, /if \(!workersAiConfigured\(env\)\) throw error;/);
+  assert.match(lectures, /workersAiComplete\(\s*env,\s*\[\{ role: "user", content: compactPrompt \}\],\s*\{ temperature: 0\.2, maxTokens: 1200 \}/);
+  assert.match(lectures, /buildPrompt\(6000, "6–10", 60\)/);
+});
+
 test("cloze generation is cached, rate-limited and honest about failure", async () => {
   const lectures = await source("../src/routes/lectures.ts");
   assert.match(lectures, /lectures\.get\("\/:id\/cloze", requireAuth/);

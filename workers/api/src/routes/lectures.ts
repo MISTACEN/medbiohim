@@ -4,6 +4,7 @@ import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
+import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 import { rateLimit } from "../lib/redis";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
@@ -70,6 +71,38 @@ export function validateClozeItems(raw: unknown, body: string): ClozeItem[] {
  * живой E2E на временном пользователе.
  */
 const LECTURE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+/**
+ * Внешние ИИ-провайдеры (groq/gigachat/mistral) в проде могут отказать все
+ * сразу — тогда конспект отдавал 502, хотя тьютор в этот момент отвечал через
+ * биндинг Workers AI. Тот же последний фолбэк, что у тьютора: промпт короче
+ * (модель поменьше), цитаты тоже короче.
+ */
+async function generateClozeDraft(
+  env: any,
+  prompt: string,
+  compactPrompt: string,
+): Promise<{ content: string; provider: string; model: string }> {
+  try {
+    const result = await generateAiCompletion(
+      env,
+      [{ role: "user", content: prompt.slice(0, 24000) }],
+      "auto",
+      fetch,
+      { temperature: 0.2 },
+    );
+    return { content: String(result.content || ""), provider: result.provider, model: result.model };
+  } catch (error) {
+    if (!workersAiConfigured(env)) throw error;
+    console.error("[lectures:cloze:workers-ai]", error instanceof Error ? error.message : String(error));
+    const result = await workersAiComplete(
+      env,
+      [{ role: "user", content: compactPrompt }],
+      { temperature: 0.2, maxTokens: 1200 },
+    );
+    return { content: String(result.content || ""), provider: result.provider, model: result.model };
+  }
+}
 
 async function loadLectureForCloze(supabase: any, id: string) {
   if (!LECTURE_ID.test(id)) return null;
@@ -148,24 +181,19 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
       return c.json(body, status as 422);
     }
 
-    const prompt = [
+    const buildPrompt = (excerpt: number, count: string, context: number) => [
       "Ты собираешь интерактивный конспект с пропусками по тексту лекции.",
-      "Выдели 8–15 ключевых терминов (не служебных слов) из приведённого текста.",
+      `Выдели ${count} ключевых терминов (не служебных слов) из приведённого текста.`,
       "ЖЁСТКОЕ ПРАВИЛО: для каждого пункта строк before + answer + after должна быть ДОСЛОВНОЙ цитатой из текста лекции — символ в символ, без переформулировок.",
-      "before — до 120 символов текста перед термином, after — до 120 символов после; answer — сам термин.",
+      `before — до ${context} символов текста перед термином, after — до ${context} символов после; answer — сам термин.`,
       "Формат ответа — строго JSON без markdown-обёртки:",
       '{"items":[{"before":"…","answer":"термин","after":"…","hint":"подсказка"}]}',
       "",
       "=== ТЕКСТ ЛЕКЦИИ ===",
-      text,
+      text.slice(0, excerpt),
     ].join("\n");
-    const result = await generateAiCompletion(
-      c.env,
-      [{ role: "user", content: prompt.slice(0, 24000) }],
-      "auto",
-      fetch,
-      { temperature: 0.2 },
-    );
+    const prompt = buildPrompt(14000, "8–15", 120);
+    const result = await generateClozeDraft(c.env, prompt, buildPrompt(6000, "6–10", 60));
     let draft: { items?: unknown } = {};
     const rawText = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
     try {
