@@ -224,7 +224,19 @@ ai.get("/diagnostics", requireAdmin, async (c) => {
         fetch,
         { temperature: 0, onAttempt: (attempt: Record<string, unknown>) => attempts.push({ ...attempt, requested: id }) },
       );
-      providers.push({ id, configured: true, ok: true, provider: result.provider, model: result.model, ms: Date.now() - started });
+      // «ok» — это ответил ИМЕННО запрошенный провайдер. Раньше фолбэк
+      // (например, Mistral ответил 429, а ответ дал Groq) отмечался как успех
+      // запрошенного провайдера, и диагностика врала.
+      const servedByRequested = String(result.provider || "") === id;
+      providers.push({
+        id,
+        configured: true,
+        ok: servedByRequested,
+        provider: result.provider,
+        model: result.model,
+        ms: Date.now() - started,
+        ...(servedByRequested ? {} : { fell_back_to: result.provider }),
+      });
     } catch (error: any) {
       providers.push({ id, configured: true, ok: false, code: String(error?.code || "ERROR"), ms: Date.now() - started });
     }
@@ -605,10 +617,15 @@ ai.post("/chat", requireAuth, async (c) => {
   ];
   try {
     const result = await generateWithFallback(c.env, messages, payload.provider, temperature);
+    // Явно запрошенный провайдер мог отказать: клиент должен видеть, что ответ
+    // пришёл от другого, а не считать, что Mistral/GigaChat работает.
+    const requested = String(payload.provider || "").trim().toLowerCase();
+    const fellBackFrom = requested && requested !== "auto" && result.provider !== requested ? requested : null;
     return c.json(ok({
       message: { role: "assistant", content: formatAnswer(result.text, citations) },
       provider: result.provider,
       model: result.model,
+      ...(fellBackFrom ? { fallback_from: fellBackFrom } : {}),
       mode,
       sources: citations,
     }, rid));

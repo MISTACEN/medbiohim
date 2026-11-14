@@ -43,6 +43,19 @@ test("ошибки провайдеров различают сеть, HTTP-ст
   assert.match(provider, /stage: "chat"/);
 });
 
+test("диагностика называет успехом только ответ запрошенного провайдера", () => {
+  // Mistral отвечал 429, ответ давал Groq — и диагностика показывала «mistral ok».
+  assert.match(route, /const servedByRequested = String\(result\.provider \|\| ""\) === id;/);
+  assert.match(route, /ok: servedByRequested,/);
+  assert.match(route, /servedByRequested \? \{\} : \{ fell_back_to: result\.provider \}/);
+  // Отказ провайдера виден в логах воркера, а не только в ответе диагностики.
+  assert.match(provider, /\[ai:provider-failed\]/);
+  assert.match(provider, /code: String\(error\?\.code \|\| error\?\.name \|\| "ERROR"\)/);
+  // Чат сообщает, что явно выбранный провайдер отказал.
+  assert.match(route, /const fellBackFrom = requested && requested !== "auto" && result\.provider !== requested/);
+  assert.match(route, /fallback_from: fellBackFrom/);
+});
+
 test("диагностика доступна только админу и не раскрывает ключи", () => {
   assert.match(route, /ai\.get\("\/diagnostics", requireAdmin/);
   // Бюджеты внешних и запасных попыток в сумме не должны превышать лимит прокси (45 с).

@@ -486,6 +486,14 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
       return await callAiCompletion({ ...candidate, deadline }, safeMessages, fetcher, temperature, report);
     } catch (error) {
       lastError = error;
+      // Без этой строки отказ провайдера исчезал молча: в /ai/providers ключ
+      // есть, значит «настроен», а ответ приходит от следующего кандидата или
+      // от Workers AI — и причину видно только по логам воркера.
+      console.warn("[ai:provider-failed]", JSON.stringify({
+        provider: candidate.id,
+        code: String(error?.code || error?.name || "ERROR"),
+        status: Number(error?.status || 0),
+      }));
     }
   }
   if (lastError instanceof AiChatApiError) throw lastError;
@@ -580,6 +588,11 @@ export async function sendAiMessage(request, env, userId, conversationId, input 
       break;
     } catch (error) {
       lastProviderError = error;
+      console.warn("[ai:provider-failed]", JSON.stringify({
+        provider: candidate.id,
+        code: String(error?.code || error?.name || "ERROR"),
+        status: Number(error?.status || 0),
+      }));
       // Fail over only to other configured providers; never expose upstream errors.
     }
   }
