@@ -64,7 +64,7 @@ async function generateWithFallback(env: Env, messages: ChatMessage[], requested
     const attempt = async (input: ChatMessage[], maxTokens: number, timeoutMs: number) =>
       workersAiComplete(env, input, { temperature, maxTokens, timeoutMs });
     try {
-      const result = await attempt(messages, 900, 14000);
+      const result = await attempt(messages, 900, 10000);
       return { text: result.content, provider: result.provider, model: result.model };
     } catch (retryError) {
       const code = retryError instanceof WorkersAiError ? retryError.code : "NOT_AVAILABLE";
@@ -74,12 +74,12 @@ async function generateWithFallback(env: Env, messages: ChatMessage[], requested
       try {
         // Модель поменьше отвечает за секунды — важно уложиться в бюджет прокси.
         const result = await workersAiComplete(env, compact, {
-          temperature, maxTokens: 400, timeoutMs: 12000, model: FAST_WORKERS_AI_MODEL,
+          temperature, maxTokens: 400, timeoutMs: 8000, model: FAST_WORKERS_AI_MODEL,
         });
         return { text: result.content, provider: result.provider, model: result.model };
       } catch (fastError) {
         console.error("[ai:workers-ai-retry2]", fastError instanceof Error ? fastError.message : String(fastError));
-        const result = await attempt(compact, 300, 10000);
+        const result = await attempt(compact, 300, 6000);
         return { text: result.content, provider: result.provider, model: result.model };
       }
     }

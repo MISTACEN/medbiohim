@@ -77,7 +77,7 @@ test("маршрут применяет сноски и на чате, и в и�
 test("второй проход идёт на быстрой модели и не выдаёт 502 сразу", async () => {
   const route = await readFile(new URL("../src/routes/ai.ts", import.meta.url), "utf8");
   assert.match(route, /const FAST_WORKERS_AI_MODEL = "@cf\/meta\/llama-3\.2-3b-instruct"/);
-  assert.match(route, /maxTokens: 400, timeoutMs: 12000, model: FAST_WORKERS_AI_MODEL/);
+  assert.match(route, /maxTokens: 400, timeoutMs: 8000, model: FAST_WORKERS_AI_MODEL/);
   const lib = await readFile(new URL("../src/lib/workers-ai.ts", import.meta.url), "utf8");
   assert.match(lib, /const model = String\(options\.model \|\| ""\)\.trim\(\) \|\| workersAiModel\(env\)/);
 });

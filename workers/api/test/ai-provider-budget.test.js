@@ -8,8 +8,8 @@ const route = await readFile(new URL("../src/routes/ai.ts", import.meta.url), "u
 test("внешнему провайдеру даётся больше семи секунд", () => {
   // 7 с не хватало 70B-модели на ответ в 500–800 токенов: запрос обрывался,
   // и тьютор молча уходил на 8B Workers AI.
-  assert.match(provider, /const EXTERNAL_CALL_TIMEOUT_MS = 15_000;/);
-  assert.match(provider, /const EXTERNAL_TOTAL_BUDGET_MS = 20_000;/);
+  assert.match(provider, /const EXTERNAL_CALL_TIMEOUT_MS = 12_000;/);
+  assert.match(provider, /const EXTERNAL_TOTAL_BUDGET_MS = 16_000;/);
   assert.match(provider, /Math\.min\(EXTERNAL_CALL_TIMEOUT_MS, remaining \|\| EXTERNAL_CALL_TIMEOUT_MS\)/);
   assert.match(provider, /const deadline = Date\.now\(\) \+ EXTERNAL_TOTAL_BUDGET_MS;/);
   // В жёстком виде 7 с и 16 с больше не зашиты.
@@ -45,6 +45,11 @@ test("ошибки провайдеров различают сеть, HTTP-ст
 
 test("диагностика доступна только админу и не раскрывает ключи", () => {
   assert.match(route, /ai\.get\("\/diagnostics", requireAdmin/);
+  // Бюджеты внешних и запасных попыток в сумме не должны превышать лимит прокси (45 с).
+  // 16 (внешние) + 10 + 8 + 6 (Workers AI) = 40 с.
+  assert.match(route, /attempt\(messages, 900, 10000\)/);
+  assert.match(route, /maxTokens: 400, timeoutMs: 8000, model: FAST_WORKERS_AI_MODEL/);
+  assert.match(route, /attempt\(compact, 300, 6000\)/);
   assert.match(route, /onAttempt: \(attempt: Record<string, unknown>\) => attempts\.push/);
   assert.match(route, /providers\.push\(\{ id, configured: false, model: meta\?\.model \?\? null \}\)/);
   // В ответе только статус/этап/время: ни ключей, ни тел ответов провайдера.
