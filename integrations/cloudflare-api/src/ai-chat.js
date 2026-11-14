@@ -10,11 +10,11 @@ const SUPPORTED_PROVIDERS = ["auto", "openai", "groq", "gigachat", "gemini", "mi
  *
  * Было 7 с на вызов при 16 с на всё: нормальный ответ на 500-800 токенов у 70B
  * модели на Groq не укладывается в 7 секунд, запрос обрывался, и тьютор уходил
- * на 8B-модель Workers AI. Теперь у провайдера 15 с — это ещё влезает в бюджет
- * прокси (45 с) вместе с запасным путём.
+ * на 8B-модель Workers AI. Теперь 12 с на провайдера и 16 с на всех вместе:
+ * вместе с запасным путём это укладывается в бюджет прокси (45 с).
  */
-const EXTERNAL_CALL_TIMEOUT_MS = 15_000;
-const EXTERNAL_TOTAL_BUDGET_MS = 20_000;
+const EXTERNAL_CALL_TIMEOUT_MS = 12_000;
+const EXTERNAL_TOTAL_BUDGET_MS = 16_000;
 
 export class AiChatApiError extends Error {
   constructor(status, code, message) {
