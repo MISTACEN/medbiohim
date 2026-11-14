@@ -27,6 +27,13 @@ test("глобальный fetch вызывается через globalThis, а 
   assert.equal((provider.match(/await callFetch\(fetcher,/g) || []).length, 5);
 });
 
+test("редирект не задаётся как error — workerd его не поддерживает", () => {
+  // `redirect: "error"` в workerd даёт мгновенный TypeError, поэтому запрос к
+  // провайдеру не уходил в сеть вообще. 3xx при `manual` не пройдёт `!response.ok`.
+  assert.doesNotMatch(provider, /redirect: "error"/);
+  assert.ok((provider.match(/redirect: "manual"/g) || []).length >= 5);
+});
+
 test("ошибки провайдеров различают сеть, HTTP-статус и успех", () => {
   assert.match(provider, /outcome: "network", status: 0/);
   assert.match(provider, /outcome: "http", status: response\.status/);

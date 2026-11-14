@@ -320,7 +320,7 @@ async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25, 
         contents,
         generationConfig: { temperature, maxOutputTokens: 2500 },
       }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch {
@@ -357,7 +357,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
           accept: "application/json",
         },
         body: new URLSearchParams({ scope: cfg.scope || "GIGACHAT_API_PERS" }),
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
       });
     } catch (error) {
@@ -379,7 +379,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
       method: "POST",
       headers: { authorization: "Bearer " + accessToken, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch (error) {
@@ -415,7 +415,7 @@ async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25, repo
         ...(cfg.id === "openrouter" ? { "HTTP-Referer": "https://medbiohim.vercel.app", "X-Title": "Medbiohim" } : {}),
       },
       body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch (error) {
