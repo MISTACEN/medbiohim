@@ -350,7 +350,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
         signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
       });
     } catch (error) {
-      report({ id: "gigachat", outcome: "network", status: 0, stage: "oauth", ms: Date.now() - started, error: String(error?.name || error?.message || "error") });
+      report({ id: "gigachat", outcome: "network", status: 0, stage: "oauth", ms: Date.now() - started, error: String(error?.name || "error"), detail: String(error?.message || "").slice(0, 160) });
       throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
     }
     let tokenPayload = null;
@@ -372,7 +372,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch (error) {
-    report({ id: "gigachat", outcome: "network", status: 0, stage: "chat", ms: Date.now() - started, error: String(error?.name || error?.message || "error") });
+    report({ id: "gigachat", outcome: "network", status: 0, stage: "chat", ms: Date.now() - started, error: String(error?.name || "error"), detail: String(error?.message || "").slice(0, 160) });
     throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
   }
   let payload = null;
@@ -408,7 +408,7 @@ async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25, repo
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
   } catch (error) {
-    report({ id: cfg.id, outcome: "network", status: 0, ms: Date.now() - started, error: String(error?.name || error?.message || "error") });
+    report({ id: cfg.id, outcome: "network", status: 0, ms: Date.now() - started, error: String(error?.name || "error"), detail: String(error?.message || "").slice(0, 160) });
     throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
   }
   let payload = null;
