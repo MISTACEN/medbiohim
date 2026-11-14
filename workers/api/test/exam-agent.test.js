@@ -44,6 +44,18 @@ test("agent respects the per-day quota", () => {
   assert.equal(pickAgentQuestions(many, [], 0).length, 0);
 });
 
+test("agent prefers questions that have a reference answer", () => {
+  const mixed = [
+    { id: "a", text: "Без ответа 1", answer: null, topic: "T" },
+    { id: "b", text: "С ответом", answer: "Эталон", topic: "T" },
+    { id: "c", text: "Без ответа 2", answer: "  ", topic: "T" },
+  ];
+  const picked = pickAgentQuestions(mixed, [], 2);
+  assert.equal(picked[0].answer, "Эталон");
+  // Добираем неотвеченные только после отвеченных.
+  assert.equal(picked[1].text, "Без ответа 1");
+});
+
 test("agent day is the UTC date, tomorrow is one day later", () => {
   const now = new Date("2026-11-14T23:30:00Z");
   assert.equal(agentDay(now), "2026-11-14");
@@ -71,6 +83,8 @@ test("agent routes are owner-scoped and write only through the service client", 
   assert.match(route, /const done = body\?\.done !== false;/);
   // Создание разборов — служебным клиентом, не пользовательским.
   assert.match(route, /createServiceClient\(c\.env\)/);
+  // Повторный запуск на тот же день не удваивает разборы.
+  assert.match(route, /if \(!count\) added = await buildAgentItems/);
   // Вид плана объявлен в lib и используется маршрутом, а не дублируется строкой.
   assert.match(route, /AGENT_PLAN_KIND/);
   const lib = await source("../src/lib/exam-agent.ts");

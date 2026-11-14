@@ -38,7 +38,13 @@ export function isValidEventDate(value: string, now: Date = new Date()): boolean
   return parsed >= today && parsed <= limit;
 }
 
-/** Сколько ещё не разобранных вопросов нужно на день. */
+/**
+ * Сколько ещё не разобранных вопросов нужно на день.
+ *
+ * Сначала берём вопросы, у которых в банке есть эталонный ответ: разбор без
+ * ответа бесполезен («ответ готовится»). Если отвеченных не хватает на день,
+ * добираем остальные — но только после них, и порядок банка сохраняем.
+ */
 export function pickAgentQuestions(
   bank: AgentBankQuestion[],
   takenTexts: string[],
@@ -47,10 +53,10 @@ export function pickAgentQuestions(
   const taken = new Set(takenTexts.map((text) => String(text ?? "").trim()));
   const seen = new Set<string>();
   const picked: AgentBankQuestion[] = [];
-  for (const question of bank) {
-    if (picked.length >= perDay) break;
+  const push = (question: AgentBankQuestion): boolean => {
+    if (picked.length >= perDay) return false;
     const text = String(question?.text ?? "").trim();
-    if (!text || taken.has(text) || seen.has(text)) continue;
+    if (!text || taken.has(text) || seen.has(text)) return true;
     seen.add(text);
     picked.push({
       id: question.id ? String(question.id) : null,
@@ -58,6 +64,13 @@ export function pickAgentQuestions(
       answer: question.answer && String(question.answer).trim() ? String(question.answer) : null,
       topic: question.topic && String(question.topic).trim() ? String(question.topic).trim() : null,
     });
+    return true;
+  };
+  for (const question of bank) {
+    if (String(question?.answer ?? "").trim()) push(question);
+  }
+  for (const question of bank) {
+    if (!String(question?.answer ?? "").trim()) push(question);
   }
   return picked;
 }

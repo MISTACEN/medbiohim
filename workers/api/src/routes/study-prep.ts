@@ -775,7 +775,14 @@ studyPrep.post("/agent", requireAuth, async (c) => {
     const day = agentDay();
     let added = 0;
     try {
-      added = await buildAgentItems(service, { ...plan, user_id: user.id }, day);
+      // Идемпотентность на день: повторный «Запустить» не добавляет вторую
+      // порцию разборов (иначе один день превращается в 16 вопросов).
+      const { count } = await service
+        .from("study_agent_items")
+        .select("id", { count: "exact", head: true })
+        .eq("plan_id", plan.id)
+        .eq("day", day);
+      if (!count) added = await buildAgentItems(service, { ...plan, user_id: user.id }, day);
     } catch (buildError) {
       console.warn("[study-prep:agent:build]", buildError instanceof Error ? buildError.message : "unavailable");
     }
