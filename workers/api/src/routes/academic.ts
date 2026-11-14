@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
-import { prepReadinessForEvents } from "./study-prep";
+import { prepReadinessForEvents, PREP_KINDS } from "./study-prep";
+import { mergeUpcomingEventRows } from "../lib/upcoming-events";
 
 const academic = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -72,13 +73,21 @@ academic.get("/state", requireAuth, async (c) => {
     const notStarted = states.filter((s: any) => s.learning_status === "not_started").length;
     const closed = states.filter((s: any) => s.learning_status === "completed" || s.academic_status === "passed").length;
     const weak = topicProgress.filter((p: any) => Number(p.percent ?? 0) < 70).slice(0, 20);
-    const { data: upcomingRows, error: upcomingError } = await db.from("schedule_entries")
-      .select("id,date,start_time,event_kind,subject_id,subject_name,schedule_id,schedules!inner(group_id,is_active)")
-      .gte("date", new Date().toISOString().slice(0, 10)).order("date", { ascending: true }).limit(100);
-    const upcoming = upcomingError ? [] : (upcomingRows || []).filter((e: any) => {
-      const sch = Array.isArray(e.schedules) ? e.schedules[0] : e.schedules;
-      return sch?.is_active !== false;
-    }).slice(0, 30);
+    // Аттестации и занятия читаются раздельно: обычных пар на две недели больше,
+    // чем лимит окна, и коллоквиум/КР через 16 дней вытеснялись занятиями и не
+    // попадали ни в сводку, ни в план подготовки на /study.
+    const today = new Date().toISOString().slice(0, 10);
+    const eventSelect = "id,date,start_time,event_kind,subject_id,subject_name,schedule_id,schedules!inner(group_id,is_active)";
+    const [assessmentResult, classResult] = await Promise.all([
+      db.from("schedule_entries").select(eventSelect)
+        .gte("date", today).in("event_kind", [...PREP_KINDS])
+        .order("date", { ascending: true }).limit(60),
+      db.from("schedule_entries").select(eventSelect)
+        .gte("date", today).order("date", { ascending: true }).limit(120),
+    ]);
+    if (assessmentResult.error) console.warn("[academic:state:assessments]", assessmentResult.error.message);
+    if (classResult.error) console.warn("[academic:state:upcoming]", classResult.error.message);
+    const upcoming = mergeUpcomingEventRows(assessmentResult.data || [], classResult.data || []);
     // Фаза 1: готовность к аттестации — темы плана предмета и их освоенность.
     // Отдельный отказ (нет таблицы, пустой план) не должен ломать /academic/state.
     try {
