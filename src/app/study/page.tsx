@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { GraduationCap, Loader2, TriangleAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { getProgress, hasToken } from "@/lib/api";
+import { getProgress } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { HISTOLOGY_PROGRAM, KR_DATE_DEFAULT, progressOf } from "@/lib/study/program";
 import { useStudentAgenda } from "@/lib/study/agenda";
@@ -115,14 +115,16 @@ const ANCHORS = [
 ];
 
 export default function StudyPage() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, user } = useAuth();
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [krDate, setKrDate] = useState(KR_DATE_DEFAULT);
   const [today, setToday] = useState("");
   const [progressLoading, setProgressLoading] = useState(true);
   const [progressError, setProgressError] = useState("");
-  const [loggedIn, setLoggedIn] = useState(false);
+  // Сессия живёт в HttpOnly-куке, поэтому hasToken() (legacy localStorage)
+  // всегда false и уже вошедшему студенту показывалось «Войти».
+  const loggedIn = Boolean(user);
   const [prepTarget, setPrepTarget] = useState<AgendaItem | null>(null);
   const [planTarget, setPlanTarget] = useState<AgendaItem | null>(null);
 
@@ -133,7 +135,6 @@ export default function StudyPage() {
     const saved = readJson<string>(KR_KEY, KR_DATE_DEFAULT);
     setKrDate(/^\d{4}-\d{2}-\d{2}$/.test(saved) ? saved : KR_DATE_DEFAULT);
     setToday(isoTodayLocal());
-    setLoggedIn(hasToken());
   }, []);
 
   useEffect(() => {
