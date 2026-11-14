@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { getLecture, type Lecture } from "@/lib/api";
 import { LectureView } from "@/components/lectures/LectureView";
+import LectureAiActions from "@/components/lectures/LectureAiActions";
 import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { fetchStaticPlan, SUBJECT_STATIC_PLANS } from "@/lib/subject-plan-static";
@@ -80,6 +81,12 @@ export default function LectureViewPage() {
         lessonNumber={lessonNumber}
         backHref="/lectures"
         backLabel="Все модули"
+      />
+
+      <LectureAiActions
+        title={String(lec?.title || "")}
+        subjectSlug={lec?.subject_slug ?? null}
+        excerpt={String(lec?.body_markdown || "")}
       />
     </div>
   );
