@@ -5,6 +5,7 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { logActivity } from "../lib/activity";
 import { rateLimit } from "../lib/redis";
 import { shouldUseLectureRag } from "../lib/ai-scope";
+import { ensureCitationFootnotes } from "../lib/ai-citations";
 import { WorkersAiError, workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
@@ -17,6 +18,8 @@ type ProviderResult = { text: string; provider: string; model: string };
 /** Режимы ответа тьютора: «точный» держится на лекциях, «быстрый» — без RAG. */
 export type ChatMode = "precise" | "fast";
 const MODE_TEMPERATURE: Record<ChatMode, number> = { precise: 0.2, fast: 0.5 };
+/** Быстрая модель второго прохода: отвечает за секунды, а не за полминуты. */
+const FAST_WORKERS_AI_MODEL = "@cf/meta/llama-3.2-3b-instruct";
 
 export function normalizeChatMode(value: unknown): ChatMode {
   return value === "fast" ? "fast" : "precise";
@@ -67,8 +70,18 @@ async function generateWithFallback(env: Env, messages: ChatMessage[], requested
       const code = retryError instanceof WorkersAiError ? retryError.code : "NOT_AVAILABLE";
       if (code !== "TIMEOUT" && code !== "NOT_AVAILABLE") throw retryError;
       console.error("[ai:workers-ai-retry]", code);
-      const result = await attempt(compactForWorkersAi(messages), 500, 12000);
-      return { text: result.content, provider: result.provider, model: result.model };
+      const compact = compactForWorkersAi(messages);
+      try {
+        // Модель поменьше отвечает за секунды — важно уложиться в бюджет прокси.
+        const result = await workersAiComplete(env, compact, {
+          temperature, maxTokens: 400, timeoutMs: 12000, model: FAST_WORKERS_AI_MODEL,
+        });
+        return { text: result.content, provider: result.provider, model: result.model };
+      } catch (fastError) {
+        console.error("[ai:workers-ai-retry2]", fastError instanceof Error ? fastError.message : String(fastError));
+        const result = await attempt(compact, 300, 10000);
+        return { text: result.content, provider: result.provider, model: result.model };
+      }
     }
   }
 }
@@ -166,7 +179,10 @@ export async function buildLectureContext(
       "после каждого утверждения из фрагмента ставь его номер в квадратных скобках — [1], [2] и т.д. " +
       "Не ссылайся на номера, которых нет в списке. " +
       "если фрагментов недостаточно для ответа — честно скажи, чего не хватает, и не выдумывай:\n\n" +
-      parts.join("\n\n");
+      parts.join("\n\n") +
+      // Инструкция повторена после фрагментов: маленькая модель лучше слушает последнее правило.
+      "\n\nНАПОМИНАНИЕ: в тексте ответа после каждого утверждения из фрагмента обязателен его номер — [1], [2]. " +
+      "Ответ без сносок не принимается.";
     return { block, sources, citations };
   } catch (error) {
     // RAG — украшение: чат работает и без фрагментов.
@@ -323,6 +339,8 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
   let generated: ProviderResult;
   try {
     generated = await generateWithFallback(c.env, messages, payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider), temperature);
+    // Модель не поставила сносок — гарантируем их сами (см. lib/ai-citations.ts).
+    generated = { ...generated, text: ensureCitationFootnotes(generated.text, rag.citations) };
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
     console.error("[ai:message-generation]", { reason });
@@ -551,7 +569,7 @@ ai.post("/chat", requireAuth, async (c) => {
   try {
     const result = await generateWithFallback(c.env, messages, payload.provider, temperature);
     return c.json(ok({
-      message: { role: "assistant", content: result.text },
+      message: { role: "assistant", content: ensureCitationFootnotes(result.text, citations) },
       provider: result.provider,
       model: result.model,
       mode,

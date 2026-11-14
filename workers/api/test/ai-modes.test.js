@@ -15,9 +15,9 @@ test("tutor has two answer modes with fixed temperatures", async () => {
 
 test("workers ai fallback retries with a smaller budget instead of failing", async () => {
   const route = await source("../src/routes/ai.ts");
-  // Первый проход — 14 с, второй — 12 с на урезанном контексте.
+  // Первый проход — 14 с, второй — быстрая модель на урезанном контексте, третий — 10 с.
   assert.match(route, /attempt\(messages, 900, 14000\)/);
-  assert.match(route, /attempt\(compactForWorkersAi\(messages\), 500, 12000\)/);
+  assert.match(route, /attempt\(compact, 300, 10000\)/);
   // Повтор только на таймаут/недоступность, ошибки содержания пробрасываются.
   assert.match(route, /code !== "TIMEOUT" && code !== "NOT_AVAILABLE"/);
   const lib = await source("../src/lib/workers-ai.ts");

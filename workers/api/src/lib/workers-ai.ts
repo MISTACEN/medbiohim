@@ -54,7 +54,7 @@ function normalize(messages: WorkersAiMessage[]): WorkersAiMessage[] {
 export async function workersAiComplete(
   env: Env,
   messages: WorkersAiMessage[],
-  options: { temperature?: number; maxTokens?: number; timeoutMs?: number } = {},
+  options: { temperature?: number; maxTokens?: number; timeoutMs?: number; model?: string } = {},
 ): Promise<WorkersAiResult> {
   if (!workersAiConfigured(env)) {
     throw new WorkersAiError("NOT_CONFIGURED", "Workers AI binding is not configured");
@@ -62,7 +62,7 @@ export async function workersAiComplete(
   const safe = normalize(messages);
   if (!safe.length) throw new WorkersAiError("NOT_CONFIGURED", "Empty Workers AI context");
 
-  const model = workersAiModel(env);
+  const model = String(options.model || "").trim() || workersAiModel(env);
   const temperature = Number.isFinite(options.temperature)
     ? Math.max(0, Math.min(1, Number(options.temperature)))
     : 0.1;
