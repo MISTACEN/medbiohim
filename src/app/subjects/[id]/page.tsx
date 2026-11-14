@@ -789,7 +789,8 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           </section>
         )}
 
-        {tab === "exam" && <ExamQuestionsPanel subjectSlug={slug} />}
+        {/* Список вопросов к экзамену уже отрисован в объединённой вкладке
+            «Экзамен / Билеты» выше — второй экземпляр дублировал его на странице. */}
 
         {tab === "progress" && (
           <section className="card p-5">
