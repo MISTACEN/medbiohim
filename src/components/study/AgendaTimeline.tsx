@@ -9,6 +9,7 @@ import Link from "next/link";
 import { CalendarDays, ListChecks, Sparkles } from "lucide-react";
 import { fmtDate } from "@/lib/study/agenda-fmt";
 import { isPrepTarget, type AgendaItem } from "@/lib/study/agenda";
+import { limitAgendaItems } from "@/lib/study/agenda-window.mjs";
 
 const KIND_TONE: Record<string, string> = {
   exam: "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]",
@@ -111,7 +112,9 @@ export function AgendaTimeline({ agenda, loading, onPrep, onPlan }: {
           {upcoming.length ? (
             <>
               {today.length ? <p className="mt-4 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Дальше</p> : null}
-              <ol className="mt-1.5 space-y-2">{upcoming.slice(0, 14).map(renderItem)}</ol>
+              {/* Аттестации в окне ленты не прячутся за парами: коллоквиум
+                  через две недели обязан попасть в «Ближайшее». */}
+              <ol className="mt-1.5 space-y-2">{limitAgendaItems(upcoming).map(renderItem)}</ol>
             </>
           ) : null}
         </>
