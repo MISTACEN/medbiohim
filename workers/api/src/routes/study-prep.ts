@@ -17,6 +17,8 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { createServiceClient } from "../lib/supabase";
+import { AGENT_PLAN_KIND, agentDay, buildAgentItems, isValidEventDate } from "../lib/exam-agent";
 
 const studyPrep = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -684,6 +686,198 @@ studyPrep.post("/plan/:id/compress", requireAuth, async (c) => {
     console.error("[study-prep:compress]", error);
     const { body, status } = fail("STUDY_PLAN_ERROR", "Не удалось сжать повторения", 503, rid);
     return c.json(body, status as 503);
+  }
+});
+
+// ─── Фаза 2.6: ночной агент к экзамену ──────────────────────────────────────
+
+/**
+ * План агента на дату экзамена: один активный на (пользователь, предмет, дата).
+ * Повторный запрос не плодит планы — он догружает недостающие разборы.
+ */
+async function ensureAgentPlan(
+  db: any,
+  userId: string,
+  subjectSlug: string,
+  eventDate: string,
+): Promise<{ id: string; user_id: string; subject_slug: string | null; event_date: string } | null> {
+  const { data: existing, error } = await db
+    .from("study_plans")
+    .select("id,user_id,subject_slug,event_date,status")
+    .eq("user_id", userId)
+    .eq("subject_slug", subjectSlug)
+    .eq("event_kind", AGENT_PLAN_KIND)
+    .eq("event_date", eventDate)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  if (existing) return existing;
+  const { data, error: insertError } = await db
+    .from("study_plans")
+    .insert({
+      user_id: userId,
+      subject_slug: subjectSlug,
+      event_kind: AGENT_PLAN_KIND,
+      event_date: eventDate,
+      days: [],
+      topics: [],
+      generated_by: "rules",
+    })
+    .select("id,user_id,subject_slug,event_date")
+    .maybeSingle();
+  if (insertError) throw insertError;
+  return data;
+}
+
+// POST /agent — создать план агента и сразу собрать разборы на сегодня.
+studyPrep.post("/agent", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  let body: any = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    const { body: errBody, status } = fail("VALIDATION_ERROR", "Некорректный JSON", 400, rid);
+    return c.json(errBody, status as 400);
+  }
+  const subjectSlug = String(body?.subject_slug || "").trim();
+  const eventDate = String(body?.event_date || "").trim();
+  if (!/^[a-z0-9_-]{2,60}$/i.test(subjectSlug)) {
+    const { body: errBody, status } = fail("VALIDATION_ERROR", "Некорректный предмет", 422, rid);
+    return c.json(errBody, status as 422);
+  }
+  if (!isValidEventDate(eventDate)) {
+    const { body: errBody, status } = fail("VALIDATION_ERROR", "Дата экзамена должна быть в пределах 180 дней от сегодня", 422, rid);
+    return c.json(errBody, status as 422);
+  }
+  try {
+    const { data: subject } = await db
+      .from("subjects")
+      .select("slug")
+      .eq("slug", subjectSlug)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!subject) {
+      const { body: errBody, status } = fail("SUBJECT_NOT_FOUND", "Предмет не найден", 404, rid);
+      return c.json(errBody, status as 404);
+    }
+    const plan = await ensureAgentPlan(db, user.id, subjectSlug, eventDate);
+    if (!plan) {
+      const { body: errBody, status } = fail("PLAN_NOT_CREATED", "Не удалось создать план агента", 503, rid);
+      return c.json(errBody, status as 503);
+    }
+    const service = createServiceClient(c.env);
+    if (!service) {
+      const { body: errBody, status } = fail("SERVICE_UNAVAILABLE", "Агент временно недоступен", 503, rid);
+      return c.json(errBody, status as 503);
+    }
+    const day = agentDay();
+    let added = 0;
+    try {
+      added = await buildAgentItems(service, { ...plan, user_id: user.id }, day);
+    } catch (buildError) {
+      console.warn("[study-prep:agent:build]", buildError instanceof Error ? buildError.message : "unavailable");
+    }
+    return c.json(ok({ plan, day, added }, rid));
+  } catch (error) {
+    console.error("[study-prep:agent:create]", error);
+    const { body: errBody, status } = fail("STUDY_AGENT_ERROR", "Не удалось запустить агента", 503, rid);
+    return c.json(errBody, status as 503);
+  }
+});
+
+// GET /agent — планы агента с разборами на сегодня и на завтра.
+studyPrep.get("/agent", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const today = agentDay();
+  const tomorrow = agentDay(new Date(), 1);
+  try {
+    const { data: plans, error } = await db
+      .from("study_plans")
+      .select("id,subject_slug,event_date,status,created_at")
+      .eq("user_id", user.id)
+      .eq("event_kind", AGENT_PLAN_KIND)
+      .eq("status", "active")
+      .gte("event_date", today)
+      .order("event_date", { ascending: true })
+      .limit(20);
+    if (error) throw error;
+    if (!plans?.length) return c.json(ok({ plans: [], today, tomorrow, questions_per_day: 8 }, rid));
+
+    const ids = plans.map((plan: any) => String(plan.id));
+    const { data: items, error: itemsError } = await db
+      .from("study_agent_items")
+      .select("id,plan_id,day,question_text,answer,topic,done,position")
+      .eq("user_id", user.id)
+      .in("plan_id", ids)
+      .in("day", [today, tomorrow])
+      .order("day", { ascending: true })
+      .order("position", { ascending: true })
+      .limit(400);
+    if (itemsError) throw itemsError;
+
+    const shaped = plans.map((plan: any) => {
+      const ofPlan = (items || []).filter((item: any) => String(item.plan_id) === String(plan.id));
+      const bucket = (day: string) => {
+        const list = ofPlan.filter((item: any) => String(item.day) === day);
+        return { day, items: list, done: list.filter((item: any) => item.done).length, total: list.length };
+      };
+      const daysLeft = Math.max(
+        0,
+        Math.round((Date.parse(`${plan.event_date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000),
+      );
+      return { ...plan, days_left: daysLeft, today: bucket(today), tomorrow: bucket(tomorrow) };
+    });
+    return c.json(ok({ plans: shaped, today, tomorrow, questions_per_day: 8 }, rid));
+  } catch (error) {
+    console.error("[study-prep:agent:list]", error);
+    const missing = String((error as any)?.code || "") === "42P01" || String((error as any)?.code || "") === "PGRST205";
+    const { body: errBody, status } = fail(
+      missing ? "AGENT_NOT_MIGRATED" : "STUDY_AGENT_ERROR",
+      missing ? "Агент появится после применения миграции study_agent_items" : "Не удалось загрузить агента",
+      503,
+      rid,
+    );
+    return c.json(errBody, status as 503);
+  }
+});
+
+// PATCH /agent/items/:id — отметить пункт разобранным (только свои, только done).
+studyPrep.patch("/agent/items/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const id = String(c.req.param("id") || "");
+  if (!UUID.test(id)) {
+    const { body: errBody, status } = fail("VALIDATION_ERROR", "Некорректный ID пункта", 422, rid);
+    return c.json(errBody, status as 422);
+  }
+  let body: any = {};
+  try {
+    body = await c.req.json();
+  } catch {}
+  const done = body?.done !== false;
+  try {
+    const { data, error } = await db
+      .from("study_agent_items")
+      .update({ done })
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select("id,day,done")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      const { body: errBody, status } = fail("NOT_FOUND", "Пункт агента не найден", 404, rid);
+      return c.json(errBody, status as 404);
+    }
+    return c.json(ok({ item: data }, rid));
+  } catch (error) {
+    console.error("[study-prep:agent:item]", error);
+    const { body: errBody, status } = fail("STUDY_AGENT_ERROR", "Не удалось обновить пункт", 503, rid);
+    return c.json(errBody, status as 503);
   }
 });
 

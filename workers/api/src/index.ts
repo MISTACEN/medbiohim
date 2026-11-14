@@ -335,6 +335,14 @@ const appWithCron = Object.assign(app, {
         console.log("[activity-prune] результат", JSON.stringify(result));
       })()
     );
+    ctx.waitUntil(
+      (async () => {
+        // Фаза 2.6: ночной агент раскладывает разборы билетов на завтра.
+        const { runExamAgentNightly } = await import("./jobs/exam-agent");
+        const result = await runExamAgentNightly(env);
+        console.log("[exam-agent] результат", JSON.stringify(result));
+      })()
+    );
   },
 });
 

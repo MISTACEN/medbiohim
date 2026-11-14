@@ -45,6 +45,52 @@ export type ActivityEvent = {
 export async function getRecentActivity(limit = 10, options: RequestInit = {}) {
   return api<{ items: ActivityEvent[]; count: number }>(endpoints.misc.activity(`limit=${limit}`), options);
 }
+
+/** Пункт ночного агента: вопрос банка + эталонный ответ на конкретный день. */
+export type ExamAgentItem = {
+  id: string;
+  plan_id: string;
+  day: string;
+  question_text: string;
+  answer: string | null;
+  topic: string | null;
+  done: boolean;
+  position: number;
+};
+export type ExamAgentBucket = { day: string; items: ExamAgentItem[]; done: number; total: number };
+export type ExamAgentPlan = {
+  id: string;
+  subject_slug: string | null;
+  event_date: string;
+  status: string;
+  days_left: number;
+  today: ExamAgentBucket;
+  tomorrow: ExamAgentBucket;
+};
+
+/** Планы агента с разборами на сегодня и завтра. */
+export async function getExamAgent(options: RequestInit = {}) {
+  return api<{ plans: ExamAgentPlan[]; today: string; tomorrow: string; questions_per_day: number }>(
+    endpoints.misc.studyPrepAgent(),
+    options,
+  );
+}
+
+/** Запуск агента: план на дату экзамена + разборы на сегодня. */
+export async function createExamAgent(subjectSlug: string, eventDate: string) {
+  return api<{ plan: { id: string }; day: string; added: number }>(endpoints.misc.studyPrepAgent(), {
+    method: "POST",
+    body: JSON.stringify({ subject_slug: subjectSlug, event_date: eventDate }),
+  });
+}
+
+/** Отметка «разобрал» у своего пункта агента. */
+export async function setExamAgentItemDone(id: string, done = true) {
+  return api<{ item: { id: string; done: boolean } }>(endpoints.misc.studyPrepAgentItem(id), {
+    method: "PATCH",
+    body: JSON.stringify({ done }),
+  });
+}
 export async function syncAcademicState() { return api<any>(endpoints.misc.academicSync(), { method: "POST", body: "{}" }); }
 export async function getAcademicState(options: RequestInit = {}) { return api<AcademicState>(endpoints.misc.academicState(), options); }
 export async function saveAcademicState(payload: Record<string, unknown>) { return api<any>(endpoints.misc.academicState(), { method: "PUT", body: JSON.stringify(payload) }); }

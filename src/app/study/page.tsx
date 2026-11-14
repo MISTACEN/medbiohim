@@ -30,6 +30,7 @@ import { AgendaTimeline } from "@/components/study/AgendaTimeline";
 import { PrepChecklist } from "@/components/study/PrepChecklist";
 import { PrepPlan } from "@/components/study/PrepPlan";
 import { RecentActivity } from "@/components/study/RecentActivity";
+import ExamAgent from "@/components/study/ExamAgent";
 import { SrsDueCard } from "@/components/study/SrsDueCard";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
 import { TodayPlan } from "@/components/study/TodayPlan";
@@ -158,6 +159,8 @@ export default function StudyPage() {
       </div>
 
       <RecentActivity />
+
+      <ExamAgent />
 
       <StudyAssistant />
 

@@ -344,6 +344,9 @@ export const endpoints = {
       withQuery("/study-prep/plan", eventId ? `event=${enc(eventId)}` : undefined),
     studyPrepPlanItem: (id: string): string => `/study-prep/plan/${enc(id)}`,
     studyPrepCompress: (id: string): string => `/study-prep/plan/${enc(id)}/compress`,
+    /** Фаза 2.6: ночной агент к экзамену. */
+    studyPrepAgent: (): string => "/study-prep/agent",
+    studyPrepAgentItem: (id: string): string => `/study-prep/agent/items/${enc(id)}`,
     notes: (): string => "/notes",
     note: (id: string): string => `/notes/${enc(id)}`,
     favorites: (): string => "/favorites",
