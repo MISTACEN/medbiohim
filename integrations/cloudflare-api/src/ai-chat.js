@@ -129,7 +129,7 @@ async function rest(request, env, userId, table, params, options = {}, fetcher =
   if (options.prefer) headers.set("prefer", options.prefer);
   let response;
   try {
-    response = await fetcher(url, {
+    response = await callFetch(fetcher, url, {
       method: options.method || "GET",
       headers,
       ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
@@ -288,6 +288,17 @@ function getAiCompletionCandidates(env, preferredProvider) {
   if (preferred !== "auto" && index < 0) return [];
   return candidates;
 }
+/**
+ * Глобальный fetch нельзя отрывать от его receiver: в workerd c nodejs_compat
+ * вызов `const f = fetch; f(url)` мгновенно падает с TypeError (Illegal
+ * invocation). Именно из-за этого внешние провайдеры «не отвечали»: ошибка
+ * выглядела как сетевая и молча уводила запрос на Workers AI.
+ */
+function callFetch(fetcher, url, init) {
+  if (typeof fetcher !== "function") throw new TypeError("fetch is not available");
+  if (fetcher === fetch) return globalThis.fetch(url, init);
+  return fetcher(url, init);
+}
 function aiTimeoutMs(cfg) {
   const remaining = Number(cfg?.deadline || 0) - Date.now();
   return Math.max(1, Math.min(EXTERNAL_CALL_TIMEOUT_MS, remaining || EXTERNAL_CALL_TIMEOUT_MS));
@@ -301,7 +312,7 @@ async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25, 
   const endpoint = cfg.base.replace(/\/$/, "") + "/models/" + encodeURIComponent(cfg.model) + ":generateContent";
   let response;
   try {
-    response = await fetcher(endpoint, {
+    response = await callFetch(fetcher, endpoint, {
       method: "POST",
       headers: { "x-goog-api-key": cfg.key, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({
@@ -337,7 +348,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
   } else {
     let tokenResponse;
     try {
-      tokenResponse = await fetcher("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
+      tokenResponse = await callFetch(fetcher, "https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
         method: "POST",
         headers: {
           authorization: "Basic " + String(cfg.credentials).trim(),
@@ -364,7 +375,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
   }
   let response;
   try {
-    response = await fetcher(cfg.base.replace(/\/$/, "") + "/chat/completions", {
+    response = await callFetch(fetcher, cfg.base.replace(/\/$/, "") + "/chat/completions", {
       method: "POST",
       headers: { authorization: "Bearer " + accessToken, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
@@ -395,7 +406,7 @@ async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25, repo
   const started = Date.now();
   let response;
   try {
-    response = await fetcher(endpoint, {
+    response = await callFetch(fetcher, endpoint, {
       method: "POST",
       headers: {
         authorization: "Bearer " + cfg.key,

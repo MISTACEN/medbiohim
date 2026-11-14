@@ -17,6 +17,16 @@ test("внешнему провайдеру даётся больше семи �
   assert.doesNotMatch(provider, /Date\.now\(\) \+ 16_000/);
 });
 
+test("глобальный fetch вызывается через globalThis, а не оторванной ссылкой", () => {
+  // Отрыв fetch от receiver в workerd даёт мгновенный TypeError, который
+  // выглядел как сетевая ошибка и уводил все запросы на Workers AI.
+  assert.match(provider, /function callFetch\(fetcher, url, init\)/);
+  assert.match(provider, /return globalThis\.fetch\(url, init\)/);
+  const detached = provider.match(/await fetcher\(/g) || [];
+  assert.equal(detached.length, 0, `осталось прямых вызовов fetcher: ${detached.length}`);
+  assert.equal((provider.match(/await callFetch\(fetcher,/g) || []).length, 5);
+});
+
 test("ошибки провайдеров различают сеть, HTTP-статус и успех", () => {
   assert.match(provider, /outcome: "network", status: 0/);
   assert.match(provider, /outcome: "http", status: response\.status/);
