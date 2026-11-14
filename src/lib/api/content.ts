@@ -22,6 +22,25 @@ export async function listLectures(subject?: string, options: RequestInit = {}):
   return apiCached(endpoints.content.lectures(q || undefined), options) as any;
 }
 export async function getLecture(id: string): Promise<any> { return api(endpoints.content.lecture(id)) as any; }
+
+/** Пропуск в конспекте: before + answer + after — дословная цитата из лекции. */
+export type LectureClozeItem = { before: string; answer: string; after: string; hint: string };
+export type LectureCloze = {
+  lecture_id: string;
+  items: LectureClozeItem[];
+  cached: boolean;
+  available: boolean;
+  provider?: string;
+  model?: string;
+};
+/** Кэш пропусков: мгновенно, без ИИ (пустой список — конспект ещё не собран). */
+export async function getLectureCloze(id: string) {
+  return api<LectureCloze>(endpoints.content.lectureCloze(id));
+}
+/** Сборка пропусков ИИ (кэшируется на сервере; лимит 12 генераций / 10 минут). */
+export async function generateLectureCloze(id: string) {
+  return api<LectureCloze>(endpoints.content.lectureCloze(id), { method: "POST", body: "{}", timeoutMs: 60000 });
+}
 export async function getLessonPlan(params: Record<string, unknown> = {}): Promise<any> {
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => { if (v != null && v !== "") q.set(k, String(v)); });

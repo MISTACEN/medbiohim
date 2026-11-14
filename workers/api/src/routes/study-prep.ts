@@ -631,4 +631,60 @@ studyPrep.patch("/plan/:id", requireAuth, async (c) => {
   }
 });
 
+// POST /study-prep/plan/:id/compress — сжать повторения под дату события (Фаза 6).
+// Карточки предмета с due_at позже дня накануне события становятся доступны раньше.
+// Только сдвиг вперёд по времени (раньше), никогда не отложить: SRS-расписание
+// не должно ухудшаться.
+studyPrep.post("/plan/:id/compress", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const planId = String(c.req.param("id") || "").trim();
+  if (!UUID.test(planId)) {
+    const { body, status } = fail("VALIDATION_ERROR", "Некорректный id плана", 422, rid);
+    return c.json(body, status as 422);
+  }
+  try {
+    const { data: plan, error } = await db
+      .from("study_plans")
+      .select("id,subject_slug,event_date,topics")
+      .eq("id", planId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!plan) {
+      const { body, status } = fail("PLAN_NOT_FOUND", "План не найден", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const subjectSlug = plan.subject_slug ? String(plan.subject_slug) : "";
+    const topics = Array.isArray(plan.topics)
+      ? (plan.topics as any[]).map((topic) => String(topic?.title || "")).filter(Boolean).slice(0, 20)
+      : [];
+    if (!subjectSlug && !topics.length) {
+      const { body, status } = fail("VALIDATION_ERROR", "В плане нет предмета и тем — сжимать нечего", 422, rid);
+      return c.json(body, status as 422);
+    }
+    const target = new Date(Date.parse(String(plan.event_date) + "T00:00:00Z") - 86400000);
+    const targetIso = target.toISOString();
+    let query = db
+      .from("srs_cards")
+      .update({ due_at: targetIso, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .gt("due_at", targetIso);
+    query = subjectSlug ? query.eq("subject_slug", subjectSlug) : query.in("topic", topics);
+    const { data: moved, error: updateError } = await query.select("id");
+    if (updateError) throw updateError;
+    return c.json(ok({
+      moved: Array.isArray(moved) ? moved.length : 0,
+      target_due: targetIso,
+      event_date: plan.event_date,
+      scope: subjectSlug ? "subject" : "topics",
+    }, rid));
+  } catch (error) {
+    console.error("[study-prep:compress]", error);
+    const { body, status } = fail("STUDY_PLAN_ERROR", "Не удалось сжать повторения", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 export default studyPrep;

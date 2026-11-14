@@ -116,6 +116,8 @@ export const endpoints = {
     materialOpen: (id: string): string => `/materials/${enc(id)}/open`,
     lectures: (query?: string): string => withQuery("/lectures", query),
     lecture: (id: string): string => `/lectures/${enc(id)}`,
+    /** Фаза 4: конспект с пропусками (кэш — GET, генерация — POST). */
+    lectureCloze: (id: string): string => `/lectures/${enc(id)}/cloze`,
     myLectures: (): string => "/my-lectures",
     myToolsExtractPdf: (): string => "/my-tools/extract-pdf",
     myToolsOcr: (): string => "/my-tools/ocr",
@@ -336,6 +338,7 @@ export const endpoints = {
     studyPrepPlan: (eventId?: string): string =>
       withQuery("/study-prep/plan", eventId ? `event=${enc(eventId)}` : undefined),
     studyPrepPlanItem: (id: string): string => `/study-prep/plan/${enc(id)}`,
+    studyPrepCompress: (id: string): string => `/study-prep/plan/${enc(id)}/compress`,
     notes: (): string => "/notes",
     note: (id: string): string => `/notes/${enc(id)}`,
     favorites: (): string => "/favorites",

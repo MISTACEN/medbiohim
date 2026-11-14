@@ -12,8 +12,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarClock, Loader2, RefreshCw, Save, X } from "lucide-react";
-import { generateStudyPlan, getStudyPlan, toggleStudyPlanItem } from "@/lib/api/misc";
+import { ArrowRight, CalendarClock, Layers, Loader2, RefreshCw, Save, X } from "lucide-react";
+import { compressStudyPlan, generateStudyPlan, getStudyPlan, toggleStudyPlanItem } from "@/lib/api/misc";
 import { describeApiError } from "@/lib/errors";
 import type { StudyPlan } from "@/lib/api/types";
 import { EVENT_LABEL, type AgendaItem } from "@/lib/study/agenda";
@@ -31,6 +31,7 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [compressNote, setCompressNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!eventId) {
@@ -70,6 +71,21 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
     setPersisted(result.data.persisted);
     setNotice(result.data.service_notice ?? null);
   }, [eventId]);
+
+  // Фаза 6: повторения предмета подтягиваются к вечеру накануне события.
+  const compress = useCallback(async () => {
+    const current = plan;
+    if (!current?.id) return;
+    setBusy(true);
+    const result = await compressStudyPlan(current.id);
+    setBusy(false);
+    if (!result.ok) {
+      setError(describeApiError(result.error));
+      return;
+    }
+    const when = result.data.target_due.slice(0, 10).split("-").reverse().join(".");
+    setCompressNote(`Повторения сжаты: ${result.data.moved} карточек доступны с ${when}.`);
+  }, [plan]);
 
   const toggle = useCallback(
     (dayDate: string, index: number) => {
@@ -150,6 +166,8 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
               ) : null}
             </div>
 
+            {compressNote ? <p className="mt-2 text-xs text-[var(--status-ok-fg)]">{compressNote}</p> : null}
+
             <ol className="mt-4 space-y-3">
               {plan.days.map((day) => (
                 <li key={day.date} className="rounded-xl border border-[var(--border)] px-3 py-2">
@@ -194,6 +212,16 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
                   ? "План сохранён: отметки вернутся при следующем открытии."
                   : notice || "План не сохранён — сохраните, чтобы отметки не терялись."}
               </p>
+              {persisted && plan.id ? (
+                <button
+                  type="button"
+                  onClick={() => void compress()}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold transition hover:border-[var(--primary)]/50 disabled:opacity-50"
+                >
+                  <Layers className="h-3.5 w-3.5" /> Сжать повторения
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void save()}

@@ -64,6 +64,16 @@ export default function LectureViewPage() {
   // То же оформление, что при чтении лекции прямо в предмете.
   return (
     <div className="mx-auto max-w-6xl">
+      {/* Фаза 4: конспект с пропусками по этой лекции. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2">
+        <span className="text-xs text-[var(--muted)]">Проверить знание терминов по тексту лекции</span>
+        <Link
+          href={`/lectures/${encodeURIComponent(id)}/learn`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--primary)]/40 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+        >
+          Конспект с пропусками →
+        </Link>
+      </div>
       <LectureView
         lecture={lec}
         lectureId={id}

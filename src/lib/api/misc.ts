@@ -49,6 +49,13 @@ export async function generateStudyPlan(eventId: string) {
     { method: "POST", body: JSON.stringify({ schedule_entry_id: eventId }) },
   );
 }
+/** Фаза 6: сжать повторения предмета под дату события (только раньше, никогда позже). */
+export async function compressStudyPlan(planId: string) {
+  return api<{ moved: number; target_due: string; event_date: string; scope: string }>(
+    endpoints.misc.studyPrepCompress(planId),
+    { method: "POST", body: "{}" },
+  );
+}
 export async function toggleStudyPlanItem(planId: string, payload: { day: string; index: number; done: boolean }) {
   return api<{ plan: StudyPlan; persisted: boolean }>(endpoints.misc.studyPrepPlanItem(planId), {
     method: "PATCH",
