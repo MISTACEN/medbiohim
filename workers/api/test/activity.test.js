@@ -43,6 +43,15 @@ test("all six write points are wired", async () => {
   assert.match(homework, /kind: "homework_marked"/);
 });
 
+test("repeated lecture opens are debounced for half an hour", async () => {
+  const lib = await source("../src/lib/activity.ts");
+  assert.match(lib, /LECTURE_OPEN_DEBOUNCE_MINUTES = 30/);
+  assert.match(lib, /input\.kind === "lecture_opened" && \(await recentlyLogged\(/);
+  assert.match(lib, /\.eq\("ref_id", refId\)/);
+  // Сбой проверки не теряет событие: пишем как обычно.
+  assert.match(lib, /if \(error\) return false;\n    return Array\.isArray\(data\)/);
+});
+
 test("retention is 180 days and runs in the existing cron", async () => {
   const job = await source("../src/jobs/activity-prune.ts");
   assert.match(job, /ACTIVITY_RETENTION_DAYS = 180/);

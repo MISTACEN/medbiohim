@@ -5,8 +5,9 @@
 -- нет политик на insert/update/delete, поэтому подделать свою историю нельзя.
 -- Чтение — строго свои строки.
 --
--- Применение: файл НЕ применён к базе. Применить отдельным разрешённым
--- действием, затем сверить с live ledger.
+-- Применено в production 2026-11-14 (проверено по pg_class/pg_policy: RLS
+-- включён, политика owner-select одна, индексы на месте). Файл — копия
+-- применённой версии; повторный запуск идемпотентен (if not exists / drop policy).
 
 create table if not exists public.activity_events (
   id uuid primary key default gen_random_uuid(),
