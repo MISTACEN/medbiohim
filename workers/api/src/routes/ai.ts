@@ -4,6 +4,7 @@ import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { logActivity } from "../lib/activity";
 import { rateLimit } from "../lib/redis";
+import { shouldUseLectureRag } from "../lib/ai-scope";
 import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
@@ -73,6 +74,9 @@ export async function buildLectureContext(
   subjectSlug: string | null | undefined,
   query: string
 ): Promise<{ block: string; sources: string[]; citations: LectureCitation[] }> {
+  // Без явного предмета материалы курса не подмешиваем: иначе в ответ попадают
+  // случайные фрагменты из всех лекций (см. lib/ai-scope.ts).
+  if (!String(subjectSlug || "").trim()) return { block: "", sources: [], citations: [] };
   try {
     let lectureQuery = supabase
       .from("histology_lectures")
@@ -279,8 +283,9 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
   // «Быстрый» режим идёт без RAG и с более свободной температурой.
   const mode = normalizeChatMode(payload.mode);
   const temperature = MODE_TEMPERATURE[mode];
-  const rag = mode === "precise"
-    ? await buildLectureContext(supabase, payload.subject_slug || conversation.subject_slug, content)
+  const conversationSubject = payload.subject_slug || conversation.subject_slug;
+  const rag = shouldUseLectureRag({ mode, subjectSlug: conversationSubject })
+    ? await buildLectureContext(supabase, conversationSubject, content)
     : { block: "", sources: [] as string[], citations: [] as LectureCitation[] };
 
   const messages: ChatMessage[] = [
@@ -505,9 +510,10 @@ ai.post("/chat", requireAuth, async (c) => {
       console.error("[ai:study-context]", contextError instanceof Error ? contextError.message : String(contextError));
     }
   }
-  // «Точный» режим ищет ответ в лекциях предмета; «быстрый» — без RAG.
+  // RAG только для предметного вопроса в точном режиме: без subject_slug
+  // материалы не подмешиваются, а служебный срез /study идёт без них всегда.
   let citations: LectureCitation[] = [];
-  if (mode === "precise") {
+  if (shouldUseLectureRag({ mode, subjectSlug, contextScope: payload.context_scope })) {
     const lastQuestion = [...chatMessages].reverse().find((message) => message.role === "user")?.content || "";
     const rag = await buildLectureContext(c.get("supabase"), subjectSlug, lastQuestion);
     if (rag.block) systemSections.push(rag.block);

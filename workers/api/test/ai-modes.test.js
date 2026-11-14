@@ -15,8 +15,13 @@ test("tutor has two answer modes with fixed temperatures", async () => {
 
 test("fast mode skips the lecture corpus, precise mode requires it", async () => {
   const route = await source("../src/routes/ai.ts");
-  assert.match(route, /if \(mode === "precise"\) \{/);
-  assert.match(route, /mode === "precise"\n    \? await buildLectureContext/);
+  // Решение вынесено в общий предикат: он учитывает и режим, и предмет,
+  // и служебный срез /study (см. ai-rag-scope.test.js).
+  assert.match(
+    route,
+    /if \(shouldUseLectureRag\(\{ mode, subjectSlug, contextScope: payload\.context_scope \}\)\) \{/,
+  );
+  assert.match(route, /shouldUseLectureRag\(\{ mode, subjectSlug: conversationSubject \}\)/);
 });
 
 test("exactly one system message is built so RAG and study context are not dropped", async () => {
