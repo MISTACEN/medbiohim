@@ -3,7 +3,7 @@
  *
  * Что проверяет на реальном production-стеке, а не по коду:
  *  1) POST /lectures/:id/cloze создаёт пропуски на опубликованной лекции физиологии
- *     и пишет их в site_content (ключ cloze:<lecture_id>);
+ *     и пишет их в site_content (ключ cloze:v1:<lecture_id>);
  *  2) GET /lectures/:id/cloze отдаёт их из кэша;
  *  3) POST /srs/cards кладёт ошибку конспекта в srs_cards этого пользователя
  *     и карточка сразу видна в /srs/due;
@@ -111,7 +111,7 @@ try {
     `select id, title, length(body_markdown) as len
        from public.histology_lectures
       where is_published = true and subject_slug = 'physiology' and body_markdown is not null and length(body_markdown) > 1200
-      and not exists (select 1 from public.site_content sc where sc.key = 'cloze:' || histology_lectures.id)
+      and not exists (select 1 from public.site_content sc where sc.key = 'cloze:v1:' || histology_lectures.id)
       order by length(body_markdown) desc limit 1`,
   );
   assert.equal(lectureRow.rowCount, 1, "нет опубликованной лекции физиологии без кэша");
@@ -120,7 +120,7 @@ try {
 
   // --- 1. генерация пропусков на живом ИИ --------------------------------------
   await check("POST /lectures/:id/cloze генерирует пропуски на живой лекции", async () => {
-    const cachedBefore = await rest(`site_content?select=key&key=eq.cloze:${lectureId}`, { key: service });
+    const cachedBefore = await rest(`site_content?select=key&key=eq.cloze:v1:${lectureId}`, { key: service });
     const wasCached = cachedBefore.ok && cachedBefore.data.length > 0;
 
     const r = await callApi(api, `/lectures/${lectureId}/cloze`, { method: "POST", token: jwt, timeout: 150000 });
@@ -138,18 +138,19 @@ try {
   await check("каждый пропуск — дословная цитата из текста лекции", async () => {
     const row = await db.query("select body_markdown from public.histology_lectures where id = $1", [lectureId]);
     const text = String(row.rows[0].body_markdown || "");
-    const cached = await rest(`site_content?select=payload&key=eq.cloze:${lectureId}`, { key: service });
+    const cached = await rest(`site_content?select=payload&key=eq.cloze:v1:${lectureId}`, { key: service });
     assert.ok(cached.ok && cached.data.length === 1, "нет строки кэша");
     const items = cached.data[0].payload.items || [];
     assert.ok(items.length >= 4, `в кэше ${items.length}`);
-    // Сервер сравнивает без markdown-разметки и пунктуации — проверяем так же,
+    // Сервер сравнивает без markdown-разметки, пробелов и пунктуации — проверяем
+    // так же (цитата может быть разрезана посреди слова),
     // плюс требуем, чтобы ответ реально был выделенным термином лекции.
-    const norm = (value) => String(value).toLowerCase().replace(/ё/g, "е")
-      .replace(/[^a-zа-я0-9]+/gi, " ").replace(/\s+/g, " ").trim();
+    const squash = (value) => String(value).toLowerCase().replace(/ё/g, "е")
+      .replace(/[^a-zа-я0-9]+/g, "");
     const plain = text.replace(/\*\*/g, "");
-    const haystack = norm(plain);
+    const haystack = squash(plain);
     for (const item of items) {
-      const needle = norm(`${item.before} ${item.answer} ${item.after}`);
+      const needle = squash(`${item.before}${item.answer}${item.after}`);
       assert.ok(needle.length > 15, "слишком короткая цитата");
       assert.ok(haystack.includes(needle), `не найдено в тексте: ${needle.slice(0, 70)}…`);
       assert.ok(text.includes(`**${item.answer}**`), `ответ не выделен в лекции: ${item.answer}`);
@@ -170,12 +171,12 @@ try {
   });
 
   // --- 4. кэш лежит в site_content с провайдером ------------------------------
-  await check("site_content хранит cloze:<lecture_id> с payload и updated_at", async () => {
+  await check("site_content хранит cloze:v1:<lecture_id> с payload и updated_at", async () => {
     const row = await db.query(
       "select key, payload, updated_at from public.site_content where key = $1",
-      [`cloze:${lectureId}`],
+      [`cloze:v1:${lectureId}`],
     );
-    assert.equal(row.rowCount, 1, "нет строки cloze:<id>");
+    assert.equal(row.rowCount, 1, "нет строки cloze:v1:<id>");
     const payload = row.rows[0].payload;
     assert.ok(Array.isArray(payload.items) && payload.items.length >= 4);
     assert.ok(payload.generated_at && payload.provider, "нет generated_at/provider");
@@ -184,7 +185,7 @@ try {
 
   // --- 5. ошибка конспекта → карточка SRS ------------------------------------
   await check("POST /srs/cards кладёт ошибку конспекта в личные карточки", async () => {
-    const cached = await rest(`site_content?select=payload&key=eq.cloze:${lectureId}`, { key: service });
+    const cached = await rest(`site_content?select=payload&key=eq.cloze:v1:${lectureId}`, { key: service });
     const item = (cached.data[0].payload.items || [])[0];
     assert.ok(item, "нет пункта для карточки");
     const front = `${item.before}___${item.after}`.slice(0, 400);

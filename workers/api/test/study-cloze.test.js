@@ -5,15 +5,52 @@ import { readFile } from "node:fs/promises";
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("cloze candidates are filtered by literal quotes from the lecture", async () => {
+  const { validateClozeItems } = await import("../src/lib/cloze-text.ts");
+  const body = "Мембранный потенциал покоя зависит от концентрации ионов калия внутри клетки.";
+  const literal = {
+    before: "Мембранный потенциал покоя зависит от",
+    answer: "концентрации ионов калия",
+    after: "внутри клетки",
+  };
+  // Дословная цитата проходит, пересказ — нет, дубликат термина — тоже.
+  assert.equal(validateClozeItems([literal], body).length, 1);
+  assert.equal(
+    validateClozeItems([{ before: "Мембранный потенциал", answer: "зависит от солей", after: "внутри клетки" }], body).length,
+    0,
+  );
+  assert.equal(validateClozeItems([literal, literal], body).length, 1);
+  // Однобуквенные «термины» и пункты сверх лимита отбрасываются.
+  assert.equal(validateClozeItems([{ before: "зависит от", answer: "к", after: "внутри клетки" }], body).length, 0);
+  const terms = Array.from({ length: 17 }, (_, i) => `Терм${i}азот`);
+  const longBody = terms.map((term) => `${term} связан с мембраной клетки.`).join(" ");
+  const many = terms.map((term) => ({ before: "", answer: term, after: "связан с мембраной" }));
+  assert.equal(validateClozeItems(many, longBody).length, 15, "пунктов не больше пятнадцати");
+});
+
+test("cloze keeps a quote cut mid-word and still rejects invention", async () => {
+  const { validateClozeItems } = await import("../src/lib/cloze-text.ts");
+  const body = "При раздражении мембраны развивается гиперполяризация мембраны и снижается возбудимость.";
+  // Модель (и 160-символьная обрезка контекста) разрезает слово: before
+  // заканчивается на «гиперполяри», answer — его продолжение «зация».
+  const cut = { before: "При раздражении мембраны развивается гиперполяри", answer: "зация", after: "мембраны и снижается" };
+  const items = validateClozeItems([cut], body);
+  assert.equal(items.length, 1, "дословная цитата, разрезанная посреди слова, не должна выбрасываться");
+  assert.equal(items[0].answer, "зация");
+  // Пересказ на том же месте по-прежнему не проходит.
+  assert.equal(
+    validateClozeItems([{ before: "При раздражении мембраны развивается гиперполяри", answer: "деполяризация", after: "мембраны и снижается" }], body).length,
+    0,
+  );
+});
+
+test("cloze cache key carries a version", async () => {
+  const clozeText = await source("../src/lib/cloze-text.ts");
+  // Без версии после правки промпта/валидации отдавались бы старые пункты.
+  assert.match(clozeText, /export const CLOZE_CACHE_VERSION = "v1";/);
+  assert.match(clozeText, /export const CLOZE_CACHE_PREFIX = `cloze:\$\{CLOZE_CACHE_VERSION\}:`;/);
+  // Оба чтения кэша и запись идут через префикс с версией.
   const lectures = await source("../src/routes/lectures.ts");
-  assert.match(lectures, /export function validateClozeItems/);
-  // Пункт без дословной цитаты не публикуется.
-  assert.match(lectures, /const needle = normalizeLoose\(before \+ " " \+ answer \+ " " \+ after\)/);
-  assert.match(lectures, /haystack\.includes\(needle\)/);
-  // Дубликаты терминов и служебные однобуквенные «термины» отбрасываются.
-  assert.match(lectures, /if \(!key \|\| seen\.has\(key\)\) continue;/);
-  assert.match(lectures, /answer\.length < 2/);
-  assert.match(lectures, /items\.length >= 15/);
+  assert.equal((lectures.match(/CLOZE_CACHE_PREFIX \+ id/g) || []).length, 3);
 });
 
 test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
@@ -26,7 +63,9 @@ test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
 
 test("deterministic bold-term cloze runs before any AI call", async () => {
   const lectures = await source("../src/routes/lectures.ts");
-  assert.match(lectures, /export function extractBoldClozeItems/);
+  const clozeText = await source("../src/lib/cloze-text.ts");
+  assert.match(clozeText, /export function extractBoldClozeItems/);
+  assert.match(lectures, /import \{ CLOZE_CACHE_PREFIX, extractBoldClozeItems, validateClozeItems \} from "\.\.\/lib\/cloze-text"/);
   assert.match(lectures, /let items = validateClozeItems\(extractBoldClozeItems\(text\)/);
   assert.match(lectures, /let provider = "markdown";/);
   // ИИ — только если разметки не хватило на четыре пункта.

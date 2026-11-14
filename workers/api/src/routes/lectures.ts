@@ -6,6 +6,7 @@ import { createServiceClient } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 import { rateLimit } from "../lib/redis";
+import { CLOZE_CACHE_PREFIX, extractBoldClozeItems, validateClozeItems } from "../lib/cloze-text";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
 import { generateAiCompletion } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
@@ -18,90 +19,11 @@ const lectures = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
  * ИИ выделяет термины, но публикуется только то, что дословно есть в тексте
  * лекции: каждый пункт проверяется подстрокой `before+answer+after`. Так модель
  * не может выдумать формулировку или переврать термин — неверные пункты просто
- * выбрасываются. Готовый набор кэшируется в site_content (`cloze:<lecture_id>`),
- * чтобы не тратить квоты на повторные открытия.
+ * выбрасываются. Готовый набор кэшируется в site_content
+ * (`cloze:v1:<lecture_id>`), чтобы не тратить квоты на повторные открытия.
+ * Версия в ключе растёт вместе с промптом и валидацией: иначе после правки
+ * фильтра отдавались бы старые пункты.
  */
-const CLOZE_CACHE_PREFIX = "cloze:";
-
-type ClozeItem = { before: string; answer: string; after: string; hint: string };
-
-function normalizeLoose(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/[^a-zа-я0-9]+/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Пропуски из терминов, выделенных **жирным**: это авторская разметка ключевых
- * понятий лекции. Цитаты дословные по построению, генерация мгновенная и не тратит
- * квоту ИИ; маленькая модель нужна только там, где такой разметки нет.
- * Живой прод показал, что один только Llama-8b выдерживает дословные цитаты
- * примерно в четверти попыток — а выделенные термины есть в 52 из 60 лекций.
- */
-export function extractBoldClozeItems(
-  markdown: string,
-  limit = 12,
-): Array<{ before: string; answer: string; after: string }> {
-  const raw = String(markdown || "");
-  const plain = raw.replace(/\*\*/g, "");
-  const terms: string[] = [];
-  const seenTerms = new Set<string>();
-  const marker = /\*\*([^*\n]{2,80})\*\*/g;
-  let match: RegExpExecArray | null;
-  while ((match = marker.exec(raw))) {
-    const term = match[1].trim();
-    if (term.length < 3 || seenTerms.has(term)) continue;
-    seenTerms.add(term);
-    terms.push(term);
-  }
-  const items: Array<{ before: string; answer: string; after: string }> = [];
-  let cursor = 0;
-  for (const term of terms) {
-    if (items.length >= limit) break;
-    const at = plain.indexOf(term, cursor);
-    if (at < 0) continue;
-    const before = plain.slice(Math.max(0, at - 160), at).trim();
-    const after = plain.slice(at + term.length, at + term.length + 160).trim();
-    // Короткие обрезки нечитаемы и неоднозначны — пропускаем.
-    if (before.length < 10 || after.length < 10) continue;
-    items.push({ before, answer: term, after });
-    cursor = at + term.length;
-  }
-  return items;
-}
-
-/** Оставляем только пункты, которые дословно присутствуют в тексте лекции. */
-export function validateClozeItems(raw: unknown, body: string): ClozeItem[] {
-  const list = Array.isArray(raw) ? raw : [];
-  const haystack = normalizeLoose(body);
-  const seen = new Set<string>();
-  const items: ClozeItem[] = [];
-  for (const entry of list) {
-    if (!entry || typeof entry !== "object") continue;
-    const row = entry as Record<string, unknown>;
-    const before = String(row.before ?? "").trim();
-    const answer = String(row.answer ?? "").trim();
-    const after = String(row.after ?? "").trim();
-    if (!answer || answer.length < 2 || answer.length > 80) continue;
-    if (before.length > 240 || after.length > 240) continue;
-    const key = normalizeLoose(answer);
-    if (!key || seen.has(key)) continue;
-    const needle = normalizeLoose(before + " " + answer + " " + after);
-    if (!needle || !haystack.includes(needle)) continue;
-    seen.add(key);
-    items.push({
-      before,
-      answer,
-      after,
-      hint: String(row.hint ?? "").trim().slice(0, 60) || `${answer.slice(0, 1)}… (${answer.length} симв.)`,
-    });
-    if (items.length >= 15) break;
-  }
-  return items;
-}
 
 /**
  * id лекции — ТЕКСТОВЫЙ ключ (`lec-44db6ebee0344e24`, `hist-00-gistotekhnika`,
