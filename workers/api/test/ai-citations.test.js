@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { ensureCitationFootnotes } from "../src/lib/ai-citations.ts";
+import { cleanCitationNoise, ensureCitationFootnotes, formatAnswer } from "../src/lib/ai-citations.ts";
 
 const citations = [
   { n: 1, title: "Физиология форменных элементов крови" },
@@ -42,12 +42,36 @@ test("мусорные цитаты отбрасываются", () => {
   assert.equal(ensureCitationFootnotes("Ответ.", [{ n: 1, title: "" }]), "Ответ.");
 });
 
+test("словесные метки в скобках вырезаются, цифры и обычный текст остаются", () => {
+  assert.equal(
+    cleanCitationNoise("Кровь [Bl] — соединительная ткань [1]. Поддержка [Skel] тела."),
+    "Кровь — соединительная ткань [1]. Поддержка тела.",
+  );
+  // Скобки с пробелами/знаками — обычный текст, не трогаем.
+  assert.equal(cleanCitationNoise("Смотри [см. выше] и [1]."), "Смотри [см. выше] и [1].");
+  // Пустые метки не оставляют двойных пробелов и отрыва пунктуации.
+  assert.equal(cleanCitationNoise("Ответ [Soi] ."), "Ответ.");
+});
+
+test("formatAnswer чистит мусор и гарантирует сноски", () => {
+  const out = formatAnswer("Кровь [Bl] — соединительная ткань.", citations);
+  assert.equal(
+    out,
+    "Кровь — соединительная ткань.\n\nИсточники: [1] Физиология форменных элементов крови; [2] Гемостаз",
+  );
+  // Если модель оставила настоящие сноски — Добавка не нужна.
+  assert.equal(formatAnswer("Кровь — ткань [2].", citations), "Кровь — ткань [2].");
+});
+
 test("маршрут применяет сноски и на чате, и в истории сообщений", async () => {
   const route = await readFile(new URL("../src/routes/ai.ts", import.meta.url), "utf8");
-  assert.match(route, /content: ensureCitationFootnotes\(result\.text, citations\)/);
-  assert.match(route, /generated = \{ \.\.\.generated, text: ensureCitationFootnotes\(generated\.text, rag\.citations\) \}/);
+  assert.match(route, /content: formatAnswer\(result\.text, citations\)/);
+  assert.match(route, /generated = \{ \.\.\.generated, text: formatAnswer\(generated\.text, rag\.citations\) \}/);
   // Инструкция о сносках повторена после фрагментов — модель лучше слушает конец.
   assert.match(route, /НАПОМИНАНИЕ: в тексте ответа после каждого утверждения из фрагмента обязателен его номер/);
+  // И прямо запрещает слова в квадратных скобках.
+  assert.match(route, /В квадратных скобках — только цифра, без слов и пометок/);
+  assert.match(route, /В квадратных скобках пиши только номер цифрой/);
 });
 
 test("второй проход идёт на быстрой модели и не выдаёт 502 сразу", async () => {
