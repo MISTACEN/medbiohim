@@ -24,6 +24,15 @@ test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
   assert.doesNotMatch(lectures, /function loadLectureForCloze[\s\S]{0,200}\/\^\[0-9a-f-\]\{36\}\$\//);
 });
 
+test("deterministic bold-term cloze runs before any AI call", async () => {
+  const lectures = await source("../src/routes/lectures.ts");
+  assert.match(lectures, /export function extractBoldClozeItems/);
+  assert.match(lectures, /let items = validateClozeItems\(extractBoldClozeItems\(text\)/);
+  assert.match(lectures, /let provider = "markdown";/);
+  // ИИ — только если разметки не хватило на четыре пункта.
+  assert.match(lectures, /if \(items\.length < 4\) \{\s*const prompt = buildPrompt\(14000/);
+});
+
 test("cloze falls back to Workers AI when external providers fail", async () => {
   const lectures = await source("../src/routes/lectures.ts");
   // Живой прод: все внешние провайдеры отказали, тьютор выжил на биндинге AI.

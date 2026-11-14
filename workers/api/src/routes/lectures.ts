@@ -34,6 +34,45 @@ function normalizeLoose(value: string): string {
     .trim();
 }
 
+/**
+ * Пропуски из терминов, выделенных **жирным**: это авторская разметка ключевых
+ * понятий лекции. Цитаты дословные по построению, генерация мгновенная и не тратит
+ * квоту ИИ; маленькая модель нужна только там, где такой разметки нет.
+ * Живой прод показал, что один только Llama-8b выдерживает дословные цитаты
+ * примерно в четверти попыток — а выделенные термины есть в 52 из 60 лекций.
+ */
+export function extractBoldClozeItems(
+  markdown: string,
+  limit = 12,
+): Array<{ before: string; answer: string; after: string }> {
+  const raw = String(markdown || "");
+  const plain = raw.replace(/\*\*/g, "");
+  const terms: string[] = [];
+  const seenTerms = new Set<string>();
+  const marker = /\*\*([^*\n]{2,80})\*\*/g;
+  let match: RegExpExecArray | null;
+  while ((match = marker.exec(raw))) {
+    const term = match[1].trim();
+    if (term.length < 3 || seenTerms.has(term)) continue;
+    seenTerms.add(term);
+    terms.push(term);
+  }
+  const items: Array<{ before: string; answer: string; after: string }> = [];
+  let cursor = 0;
+  for (const term of terms) {
+    if (items.length >= limit) break;
+    const at = plain.indexOf(term, cursor);
+    if (at < 0) continue;
+    const before = plain.slice(Math.max(0, at - 160), at).trim();
+    const after = plain.slice(at + term.length, at + term.length + 160).trim();
+    // Короткие обрезки нечитаемы и неоднозначны — пропускаем.
+    if (before.length < 10 || after.length < 10) continue;
+    items.push({ before, answer: term, after });
+    cursor = at + term.length;
+  }
+  return items;
+}
+
 /** Оставляем только пункты, которые дословно присутствуют в тексте лекции. */
 export function validateClozeItems(raw: unknown, body: string): ClozeItem[] {
   const list = Array.isArray(raw) ? raw : [];
@@ -181,6 +220,12 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
       return c.json(body, status as 422);
     }
 
+    // 1) Детерминированный путь — мгновенный и без ИИ.
+    let items = validateClozeItems(extractBoldClozeItems(text), text.replace(/\*\*/g, ""));
+    let provider = "markdown";
+    let model = "bold-terms";
+
+    // 2) ИИ — только если разметки не хватило.
     const buildPrompt = (excerpt: number, count: string, context: number) => [
       "Ты собираешь интерактивный конспект с пропусками по тексту лекции.",
       `Выдели ${count} ключевых терминов (не служебных слов) из приведённого текста.`,
@@ -192,29 +237,33 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
       "=== ТЕКСТ ЛЕКЦИИ ===",
       text.slice(0, excerpt),
     ].join("\n");
-    const prompt = buildPrompt(14000, "8–15", 120);
-    const result = await generateClozeDraft(c.env, prompt, buildPrompt(6000, "6–10", 60));
-    let draft: { items?: unknown } = {};
-    const rawText = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-    try {
-      draft = JSON.parse(rawText);
-    } catch {
-      const match = /\{[\s\S]*"items"[\s\S]*\}/.exec(String(result.content || ""));
-      if (match) draft = JSON.parse(match[0]);
-      else {
-        const { body, status } = fail("AI_BAD_OUTPUT", "ИИ вернул неожиданный формат — попробуйте ещё раз", 502, rid);
+    if (items.length < 4) {
+      const prompt = buildPrompt(14000, "8–15", 120);
+      const result = await generateClozeDraft(c.env, prompt, buildPrompt(6000, "6–10", 60));
+      let draft: { items?: unknown } = {};
+      const rawText = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+      try {
+        draft = JSON.parse(rawText);
+      } catch {
+        const match = /\{[\s\S]*"items"[\s\S]*\}/.exec(String(result.content || ""));
+        if (match) draft = JSON.parse(match[0]);
+        else {
+          const { body, status } = fail("AI_BAD_OUTPUT", "ИИ вернул неожиданный формат — попробуйте ещё раз", 502, rid);
+          return c.json(body, status as 502);
+        }
+      }
+      items = validateClozeItems(draft.items, text);
+      provider = result.provider;
+      model = result.model;
+      if (items.length < 4) {
+        const { body, status } = fail(
+          "CLOZE_UNUSABLE",
+          "ИИ не выдержал дословные цитаты из лекции — попробуйте ещё раз",
+          502,
+          rid,
+        );
         return c.json(body, status as 502);
       }
-    }
-    const items = validateClozeItems(draft.items, text);
-    if (items.length < 4) {
-      const { body, status } = fail(
-        "CLOZE_UNUSABLE",
-        "ИИ не выдержал дословные цитаты из лекции — попробуйте ещё раз",
-        502,
-        rid,
-      );
-      return c.json(body, status as 502);
     }
 
     if (service) {
@@ -224,8 +273,8 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
           payload: {
             lecture_id: id,
             items,
-            provider: result.provider,
-            model: result.model,
+            provider,
+            model,
             generated_at: new Date().toISOString(),
           },
           updated_at: new Date().toISOString(),
@@ -235,7 +284,7 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
         console.warn("[lectures:cloze:write]", cacheError instanceof Error ? cacheError.message : "unavailable");
       }
     }
-    return c.json(ok({ lecture_id: id, items, cached: false, available: true, provider: result.provider, model: result.model }, rid));
+    return c.json(ok({ lecture_id: id, items, cached: false, available: true, provider, model }, rid));
   } catch (error) {
     console.error("[lectures:cloze]", error);
     const code = String((error as any)?.code || "");
