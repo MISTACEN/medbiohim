@@ -54,7 +54,7 @@ function normalize(messages: WorkersAiMessage[]): WorkersAiMessage[] {
 export async function workersAiComplete(
   env: Env,
   messages: WorkersAiMessage[],
-  options: { temperature?: number; maxTokens?: number } = {},
+  options: { temperature?: number; maxTokens?: number; timeoutMs?: number } = {},
 ): Promise<WorkersAiResult> {
   if (!workersAiConfigured(env)) {
     throw new WorkersAiError("NOT_CONFIGURED", "Workers AI binding is not configured");
@@ -70,9 +70,14 @@ export async function workersAiComplete(
     ? Math.max(64, Math.min(1200, Number(options.maxTokens)))
     : 900;
 
+  // Таймаут можно ограничить сверху: вызывающий код укладывается в бюджет
+  // прокси и успевает сделать второй проход вместо честного 502.
+  const timeoutMs = Number.isFinite(options.timeoutMs)
+    ? Math.max(3000, Math.min(TIMEOUT_MS, Number(options.timeoutMs)))
+    : TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new WorkersAiError("TIMEOUT", "Workers AI timed out")), TIMEOUT_MS);
+    timer = setTimeout(() => reject(new WorkersAiError("TIMEOUT", "Workers AI timed out")), timeoutMs);
   });
 
   let response: any;

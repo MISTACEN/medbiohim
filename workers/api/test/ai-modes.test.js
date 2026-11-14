@@ -10,7 +10,19 @@ test("tutor has two answer modes with fixed temperatures", async () => {
   assert.match(route, /value === "fast" \? "fast" : "precise"/);
   // Температура доезжает до провайдера, а не остаётся жёстко 0.25.
   assert.match(route, /fetch, \{ temperature \}\)/);
-  assert.match(route, /workersAiComplete\(env, messages, \{ temperature, maxTokens: 900 \}\)/);
+  assert.match(route, /workersAiComplete\(env, input, \{ temperature, maxTokens, timeoutMs \}\)/);
+});
+
+test("workers ai fallback retries with a smaller budget instead of failing", async () => {
+  const route = await source("../src/routes/ai.ts");
+  // Первый проход — 14 с, второй — 12 с на урезанном контексте.
+  assert.match(route, /attempt\(messages, 900, 14000\)/);
+  assert.match(route, /attempt\(compactForWorkersAi\(messages\), 500, 12000\)/);
+  // Повтор только на таймаут/недоступность, ошибки содержания пробрасываются.
+  assert.match(route, /code !== "TIMEOUT" && code !== "NOT_AVAILABLE"/);
+  const lib = await source("../src/lib/workers-ai.ts");
+  assert.match(lib, /const timeoutMs = Number\.isFinite\(options\.timeoutMs\)/);
+  assert.match(lib, /Math\.max\(3000, Math\.min\(TIMEOUT_MS, Number\(options\.timeoutMs\)\)\)/);
 });
 
 test("fast mode skips the lecture corpus, precise mode requires it", async () => {

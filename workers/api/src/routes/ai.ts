@@ -5,7 +5,7 @@ import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { logActivity } from "../lib/activity";
 import { rateLimit } from "../lib/redis";
 import { shouldUseLectureRag } from "../lib/ai-scope";
-import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
+import { WorkersAiError, workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
 import { generateAiCompletion, getAiProviderStatus } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
@@ -37,14 +37,39 @@ async function generate(env: Env, messages: ChatMessage[], requested?: string, t
  * например, из-за сертификатов или исчерпанных ключей. Workers AI работает
  * внутри Cloudflare без ключей, поэтому он последний фолбэк тьютора.
  */
+/**
+ * Второй проход по уменьшенному запросу. Биндинг Workers AI отвечает ровно и
+ * быстро на короткий промпт (3-7 с), но иногда зависает сверх 25 с — тогда
+ * ответ не успевал и студент получал 502. Повтор с урезанным контекстом и
+ * меньшим лимитом токенов укладывается в бюджет прокси и обычно проходит.
+ */
+function compactForWorkersAi(messages: ChatMessage[]): ChatMessage[] {
+  const system = messages.find((message) => message.role === "system");
+  const rest = messages.filter((message) => message.role !== "system").slice(-4);
+  return [
+    ...(system ? [{ role: "system" as const, content: system.content.slice(0, 4000) }] : []),
+    ...rest.map((message) => ({ role: message.role, content: message.content.slice(0, 4000) })),
+  ];
+}
+
 async function generateWithFallback(env: Env, messages: ChatMessage[], requested?: string, temperature = 0.25): Promise<ProviderResult> {
   try {
     return await generate(env, messages, requested, temperature);
   } catch (error) {
     if (!workersAiConfigured(env)) throw error;
     console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
-    const result = await workersAiComplete(env, messages, { temperature, maxTokens: 900 });
-    return { text: result.content, provider: result.provider, model: result.model };
+    const attempt = async (input: ChatMessage[], maxTokens: number, timeoutMs: number) =>
+      workersAiComplete(env, input, { temperature, maxTokens, timeoutMs });
+    try {
+      const result = await attempt(messages, 900, 14000);
+      return { text: result.content, provider: result.provider, model: result.model };
+    } catch (retryError) {
+      const code = retryError instanceof WorkersAiError ? retryError.code : "NOT_AVAILABLE";
+      if (code !== "TIMEOUT" && code !== "NOT_AVAILABLE") throw retryError;
+      console.error("[ai:workers-ai-retry]", code);
+      const result = await attempt(compactForWorkersAi(messages), 500, 12000);
+      return { text: result.content, provider: result.provider, model: result.model };
+    }
   }
 }
 
