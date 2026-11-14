@@ -28,6 +28,7 @@ import { ProgressSection } from "@/components/learning/ProgressSection";
 import { StudySection } from "@/components/learning/StudySection";
 import { AgendaTimeline } from "@/components/study/AgendaTimeline";
 import { PrepChecklist } from "@/components/study/PrepChecklist";
+import { PrepPlan } from "@/components/study/PrepPlan";
 import { SrsDueCard } from "@/components/study/SrsDueCard";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
 import { TodayPlan } from "@/components/study/TodayPlan";
@@ -73,6 +74,7 @@ export default function StudyPage() {
   const [progressError, setProgressError] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
   const [prepTarget, setPrepTarget] = useState<AgendaItem | null>(null);
+  const [planTarget, setPlanTarget] = useState<AgendaItem | null>(null);
 
   const { agenda, academic, assignments, loading: agendaLoading } = useStudentAgenda();
 
@@ -147,7 +149,7 @@ export default function StudyPage() {
 
       <TodayPlan agenda={agenda} />
 
-      <AgendaTimeline agenda={agenda} loading={agendaLoading} onPrep={setPrepTarget} />
+      <AgendaTimeline agenda={agenda} loading={agendaLoading} onPrep={setPrepTarget} onPlan={setPlanTarget} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <WeakTopics academic={academic} />
@@ -173,6 +175,7 @@ export default function StudyPage() {
       </section>
 
       {prepTarget ? <PrepChecklist item={prepTarget} onClose={() => setPrepTarget(null)} /> : null}
+      {planTarget ? <PrepPlan item={planTarget} onClose={() => setPlanTarget(null)} /> : null}
     </div>
   );
 }

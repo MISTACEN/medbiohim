@@ -47,6 +47,10 @@ export type AgendaItem = {
   /** Идентификатор события расписания — для ИИ-подготовки. */
   scheduleEntryId?: string | null;
   subjectSlug?: string | null;
+  /** Готовность к событию, % (темы плана предмета × user_topic_progress). */
+  masteryPct?: number | null;
+  /** Дней до события — для карточки «Готовность 62% · через 9 дней». */
+  daysLeft?: number | null;
 };
 
 export type PlannerHomework = {
@@ -102,6 +106,9 @@ export function buildAgenda(
       urgent: ["exam", "credit", "colloquium", "control_work"].includes(kindRaw),
       href: "/schedule",
       scheduleEntryId: event.id ?? null,
+      subjectSlug: event.subject_slug ? String(event.subject_slug) : null,
+      masteryPct: typeof event.mastery_pct === "number" ? event.mastery_pct : null,
+      daysLeft: typeof event.days_left === "number" ? event.days_left : null,
     });
   }
 

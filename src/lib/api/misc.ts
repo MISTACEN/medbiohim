@@ -14,6 +14,7 @@ import type {
   IntegrationImportInput,
   IntegrationImportResult,
   IntegrationImportsData,
+  StudyPlan,
 } from "./types";
 
 export async function health() { return api<any>(endpoints.misc.health()); }
@@ -35,6 +36,25 @@ export async function syncAcademicState() { return api<any>(endpoints.misc.acade
 export async function getAcademicState(options: RequestInit = {}) { return api<AcademicState>(endpoints.misc.academicState(), options); }
 export async function saveAcademicState(payload: Record<string, unknown>) { return api<any>(endpoints.misc.academicState(), { method: "PUT", body: JSON.stringify(payload) }); }
 export async function generateAcademicAiPlan(options: RequestInit = {}) { return api<{ plan: AcademicPlan; items: AcademicPlanItem[]; source_state: AcademicState }>(endpoints.misc.academicAiPlan(), { ...options, method: "POST", body: "{}" }); }
+/** Фаза 1: план подготовки к событию — сохранённый или предпросмотр правилами. */
+export async function getStudyPlan(eventId: string, options: RequestInit = {}) {
+  return api<{ plan: StudyPlan; persisted: boolean; service_notice?: string }>(
+    endpoints.misc.studyPrepPlan(eventId),
+    options,
+  );
+}
+export async function generateStudyPlan(eventId: string) {
+  return api<{ plan: StudyPlan; persisted: boolean; service_notice?: string }>(
+    endpoints.misc.studyPrepPlan(),
+    { method: "POST", body: JSON.stringify({ schedule_entry_id: eventId }) },
+  );
+}
+export async function toggleStudyPlanItem(planId: string, payload: { day: string; index: number; done: boolean }) {
+  return api<{ plan: StudyPlan; persisted: boolean }>(endpoints.misc.studyPrepPlanItem(planId), {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
 export async function listNotes(options: RequestInit = {}) { return api<any>(endpoints.misc.notes(), options); }
 export async function deleteNote(id: string) { return api<any>(endpoints.misc.note(id), { method: "DELETE" }); }
 export async function upsertNote(targetType: string, targetId: string, body: string) { return api<any>(endpoints.misc.notes(), { method: "POST", body: JSON.stringify({ target_type: targetType, target_id: targetId, body }) }); }

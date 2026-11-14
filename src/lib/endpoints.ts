@@ -332,6 +332,10 @@ export const endpoints = {
     academicState: (): string => "/academic/state",
     academicSync: (): string => "/academic/sync",
     academicAiPlan: (): string => "/academic/ai-plan",
+    /** Фаза 1: сохранённый план подготовки к событию (src/components/study/PrepPlan.tsx). */
+    studyPrepPlan: (eventId?: string): string =>
+      withQuery("/study-prep/plan", eventId ? `event=${enc(eventId)}` : undefined),
+    studyPrepPlanItem: (id: string): string => `/study-prep/plan/${enc(id)}`,
     notes: (): string => "/notes",
     note: (id: string): string => `/notes/${enc(id)}`,
     favorites: (): string => "/favorites",

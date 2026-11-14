@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { prepReadinessForEvents } from "./study-prep";
 
 const academic = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -78,6 +79,23 @@ academic.get("/state", requireAuth, async (c) => {
       const sch = Array.isArray(e.schedules) ? e.schedules[0] : e.schedules;
       return sch?.is_active !== false;
     }).slice(0, 30);
+    // Фаза 1: готовность к аттестации — темы плана предмета и их освоенность.
+    // Отдельный отказ (нет таблицы, пустой план) не должен ломать /academic/state.
+    try {
+      const prepEvents = upcoming as Array<Record<string, any>>;
+      const readiness = await prepReadinessForEvents(db, prepEvents, topicProgress);
+      for (const event of prepEvents) {
+        const prep = readiness.get(String(event.id));
+        if (!prep) continue;
+        event.subject_slug = prep.subject_slug;
+        event.prep_topics = prep.topics;
+        event.mastery_pct = prep.mastery_pct;
+        event.days_left = prep.days_left;
+        event.prep_source = prep.source;
+      }
+    } catch (prepError) {
+      console.warn("[academic:state:prep]", prepError instanceof Error ? prepError.message : "unavailable");
+    }
     const recommendations: any[] = [];
     for (const debt of debts) recommendations.push({ priority: "high", action_type: "close_debt",
       title: (debt.subject_name || "Предмет") + " — закрыть академический долг",

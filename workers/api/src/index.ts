@@ -29,6 +29,7 @@ import topics from "./routes/topics";
 import submissions from "./routes/submissions";
 import planner from "./routes/planner";
 import academic from "./routes/academic";
+import studyPrep from "./routes/study-prep";
 import attendance from "./routes/attendance";
 import lectures from "./routes/lectures";
 import myLectures from "./routes/my-lectures";
@@ -195,6 +196,8 @@ v1.route("/homework", studentOnly(homework));
 v1.route("/submissions", studentOnly(submissions));
 v1.route("/planner", studentOnly(planner));
 v1.route("/academic", gatedModule("academic", academic));
+// Фаза 1: готовность к событию и сохранённый план подготовки по дням.
+v1.route("/study-prep", gatedModule("academic", studyPrep));
 v1.route("/attendance", studentOnly(attendance));
 v1.route("/lectures", gatedModule("subjects", lectures));
 // Авторские занятия: пользователь видит и публикует только свои лекции.

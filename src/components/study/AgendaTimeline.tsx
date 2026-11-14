@@ -6,7 +6,7 @@
  * событий — кнопка «Готовиться» (ИИ-чеклист).
  */
 import Link from "next/link";
-import { CalendarDays, Sparkles } from "lucide-react";
+import { CalendarDays, ListChecks, Sparkles } from "lucide-react";
 import { fmtDate } from "@/lib/study/agenda-fmt";
 import { isPrepTarget, type AgendaItem } from "@/lib/study/agenda";
 
@@ -20,10 +20,12 @@ const KIND_TONE: Record<string, string> = {
   lesson: "bg-slate-100 text-slate-600",
 };
 
-export function AgendaTimeline({ agenda, loading, onPrep }: {
+export function AgendaTimeline({ agenda, loading, onPrep, onPlan }: {
   agenda: AgendaItem[];
   loading: boolean;
   onPrep: (item: AgendaItem) => void;
+  /** Фаза 1: сохранённый план подготовки к событию. */
+  onPlan?: (item: AgendaItem) => void;
 }) {
   const open = agenda.filter((item) => item.done !== true);
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -53,10 +55,24 @@ export function AgendaTimeline({ agenda, loading, onPrep }: {
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[var(--muted)]">
             <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" /> {fmtDate(item.date)}{item.time ? " · " + item.time : ""}</span>
+            {item.masteryPct != null ? (
+              <span className="font-semibold text-[var(--primary)]">
+                готовность {item.masteryPct}%{item.daysLeft != null ? ` · через ${item.daysLeft} дн.` : ""}
+              </span>
+            ) : null}
             {item.meta ? <span>{item.meta}</span> : null}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-xs">
+          {prep && onPlan ? (
+            <button
+              type="button"
+              onClick={() => onPlan(item)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--primary)]/40 px-3 py-1.5 font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)]"
+            >
+              <ListChecks className="h-3.5 w-3.5" /> План
+            </button>
+          ) : null}
           {prep ? (
             <button
               type="button"

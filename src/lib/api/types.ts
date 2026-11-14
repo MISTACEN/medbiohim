@@ -25,7 +25,43 @@ export type AcademicEvent = {
   date?: string | null;
   start_time?: string | null;
   room?: string | null;
+  /** Фаза 1: готовность к событию (процент по темам плана предмета). */
+  subject_slug?: string | null;
+  mastery_pct?: number | null;
+  days_left?: number | null;
+  prep_topics?: Array<{ topic_id?: string | null; title?: string; mastery_pct?: number | null }>;
+  prep_source?: "curriculum" | "progress" | "none" | string | null;
   [key: string]: unknown;
+};
+
+/** Шаг плана подготовки (study_plans.days[].items[]). */
+export type StudyPlanItem = {
+  kind: string;
+  title: string;
+  href: string;
+  why: string;
+  done: boolean;
+};
+
+/** День плана подготовки (study_plans.days[]). */
+export type StudyPlanDay = {
+  date: string;
+  label: string;
+  items: StudyPlanItem[];
+};
+
+/** План подготовки к событию (/study-prep/plan). */
+export type StudyPlan = {
+  id: string | null;
+  schedule_entry_id: string | null;
+  subject_slug: string | null;
+  event_kind: string;
+  event_date: string;
+  days: StudyPlanDay[];
+  topics: Array<{ topic_id?: string | null; title: string; mastery_pct: number }>;
+  mastery_pct: number;
+  status: string;
+  generated_by: string;
 };
 
 /** Слабая тема (/academic/state → weak_topics). */
