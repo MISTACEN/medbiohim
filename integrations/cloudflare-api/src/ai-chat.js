@@ -281,7 +281,7 @@ function aiTimeoutMs(cfg) {
   const remaining = Number(cfg?.deadline || 0) - Date.now();
   return Math.max(1, Math.min(7000, remaining || 7000));
 }
-async function callGeminiCompletion(cfg, messages, fetcher) {
+async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25) {
   const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
   const contents = messages.filter((message) => message.role === "user" || message.role === "assistant").map((message) => ({
     role: message.role === "assistant" ? "model" : "user",
@@ -296,7 +296,7 @@ async function callGeminiCompletion(cfg, messages, fetcher) {
       body: JSON.stringify({
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
         contents,
-        generationConfig: { temperature: 0.25, maxOutputTokens: 2500 },
+        generationConfig: { temperature, maxOutputTokens: 2500 },
       }),
       redirect: "error",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
@@ -315,7 +315,7 @@ async function callGeminiCompletion(cfg, messages, fetcher) {
   return { content: text, provider: cfg.id, model: cfg.model };
 }
 
-async function callGigaChatCompletion(cfg, messages, fetcher) {
+async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25) {
   let accessToken = String(cfg.key || "").trim();
   if (!String(cfg.credentials || "").trim() && !accessToken) {
     throw new AiChatApiError(503, "AI_PROVIDER_UNAVAILABLE", "GigaChat не настроен");
@@ -353,7 +353,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher) {
     response = await fetcher(cfg.base.replace(/\/$/, "") + "/chat/completions", {
       method: "POST",
       headers: { authorization: "Bearer " + accessToken, "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ model: cfg.model, temperature: 0.25, max_tokens: 2500, messages }),
+      body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
       redirect: "error",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
@@ -371,9 +371,9 @@ async function callGigaChatCompletion(cfg, messages, fetcher) {
   return { content: text.trim(), provider: cfg.id, model: String(payload?.model || cfg.model) };
 }
 
-async function callAiCompletion(cfg, messages, fetcher) {
-  if (cfg.id === "gemini") return callGeminiCompletion(cfg, messages, fetcher);
-  if (cfg.id === "gigachat") return callGigaChatCompletion(cfg, messages, fetcher);
+async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25) {
+  if (cfg.id === "gemini") return callGeminiCompletion(cfg, messages, fetcher, temperature);
+  if (cfg.id === "gigachat") return callGigaChatCompletion(cfg, messages, fetcher, temperature);
   const endpoint = cfg.base.replace(/\/$/, "") + "/chat/completions";
   let response;
   try {
@@ -385,7 +385,7 @@ async function callAiCompletion(cfg, messages, fetcher) {
         accept: "application/json",
         ...(cfg.id === "openrouter" ? { "HTTP-Referer": "https://medbiohim.vercel.app", "X-Title": "Medbiohim" } : {}),
       },
-      body: JSON.stringify({ model: cfg.model, temperature: 0.25, max_tokens: 2500, messages }),
+      body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
       redirect: "error",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
@@ -411,7 +411,13 @@ async function callAiCompletion(cfg, messages, fetcher) {
  * It reuses the same configured-provider order and safe fallback behavior as chat
  * without writing conversations or messages to Supabase.
  */
-export async function generateAiCompletion(env = {}, messages = [], preferredProvider = "auto", fetcher = fetch) {
+export async function generateAiCompletion(env = {}, messages = [], preferredProvider = "auto", fetcher = fetch, options = {}) {
+  // Режим ответа выбирает вызывающий: «точный» (0.2, RAG обязателен) или
+  // «быстрый» (0.5, без контекста). Без явного значения — прежние 0.25.
+  const requestedTemperature = Number(options?.temperature);
+  const temperature = Number.isFinite(requestedTemperature)
+    ? Math.min(1, Math.max(0, requestedTemperature))
+    : 0.25;
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > 24) {
     throw new AiChatApiError(422, "VALIDATION_ERROR", "Некорректный контекст для ИИ");
   }
@@ -443,7 +449,7 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
   for (const candidate of candidates) {
     try {
       if (deadline - Date.now() <= 250) break;
-      return await callAiCompletion({ ...candidate, deadline }, safeMessages, fetcher);
+      return await callAiCompletion({ ...candidate, deadline }, safeMessages, fetcher, temperature);
     } catch (error) {
       lastError = error;
     }

@@ -119,7 +119,7 @@ export default function HistologyTests() {
         >
           <ChevronRight className="h-4 w-4 rotate-180" /> К выбору теста
         </button>
-        <TestRunner group={group} onExit={() => setGroup(null)} />
+        <TestRunner group={group} onExit={() => setGroup(null)} subjectSlug="histology" subjectName="Гистология" />
       </div>
     );
   }

@@ -119,7 +119,7 @@ export default function PhysiologyTests() {
         >
           <ChevronRight className="h-4 w-4 rotate-180" /> К выбору теста
         </button>
-        <TestRunner group={group} onExit={() => setGroup(null)} />
+        <TestRunner group={group} onExit={() => setGroup(null)} subjectSlug="physiology" subjectName="Физиология" />
       </div>
     );
   }

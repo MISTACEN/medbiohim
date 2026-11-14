@@ -4,13 +4,19 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw, XCircle } from "lucide-react";
 import { answersAsSet, isCorrect, type PhysiologyTestGroup } from "@/lib/physiologyContent";
 import { AnswerOption } from "@/components/questions/AnswerOption";
+import { ExplainWithAi } from "@/components/tests/ExplainWithAi";
 
 export default function TestRunner({
   group,
   onExit,
+  subjectSlug,
+  subjectName,
 }: {
   group: PhysiologyTestGroup;
   onExit: () => void;
+  /** Слаг предмета — по нему тьютор подбирает лекции для разбора ошибки. */
+  subjectSlug?: string;
+  subjectName?: string;
 }) {
   const total = group.questions.length;
   // Ключ есть не у каждого вопроса: в части банков размечена только половина.
@@ -148,6 +154,18 @@ export default function TestRunner({
               : `Неверно. Правильный ответ: ${correctAnswer.join(", ")}.`}
           </span>
         </div>
+      )}
+
+      {checked && !isCorrect(picks, question.answer) && (
+        <ExplainWithAi
+          className="mt-3"
+          question={question.text}
+          // В модель уходит текст вариантов, а не номера: «2» без текста бесполезен.
+          chosen={picks.map((number) => question.options[number - 1]).filter(Boolean).join("; ")}
+          correct={correctAnswer.map((number) => question.options[number - 1]).filter(Boolean).join("; ")}
+          subjectSlug={subjectSlug}
+          subjectName={subjectName}
+        />
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">

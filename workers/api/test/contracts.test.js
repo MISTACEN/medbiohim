@@ -469,8 +469,9 @@ test("FA9: RAG-контекст тьютора — фрагменты лекци
   assert.match(route, /eq\("is_published", true\)/);
   // Только опубликованные лекции; сбой RAG не ломает чат.
   assert.match(route, /RAG — украшение/);
-  // Источники сохраняются в metadata ответа.
-  assert.match(route, /sources: rag\.sources/);
+  // Источники сохраняются в metadata ответа — теперь со номером сноски и id лекции.
+  assert.match(route, /sources: rag\.citations/);
+  assert.match(route, /lecture_id/);
 });
 
 test("FA3: сводка прогресса v2 — свои данные, независимые источники", async () => {

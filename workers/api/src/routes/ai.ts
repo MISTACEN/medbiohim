@@ -12,13 +12,21 @@ const ai = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 type ProviderResult = { text: string; provider: string; model: string };
 
-async function generate(env: Env, messages: ChatMessage[], requested?: string): Promise<ProviderResult> {
+/** Режимы ответа тьютора: «точный» держится на лекциях, «быстрый» — без RAG. */
+export type ChatMode = "precise" | "fast";
+const MODE_TEMPERATURE: Record<ChatMode, number> = { precise: 0.2, fast: 0.5 };
+
+export function normalizeChatMode(value: unknown): ChatMode {
+  return value === "fast" ? "fast" : "precise";
+}
+
+async function generate(env: Env, messages: ChatMessage[], requested?: string, temperature = 0.25): Promise<ProviderResult> {
   const system = messages.find((message) => message.role === "system");
   const context = [...(system ? [system] : []), ...messages.filter((message) => message.role !== "system").slice(-23)];
   const result = await generateAiCompletion(env, context.map((message) => ({
     role: message.role,
     content: message.content.slice(0, 12000),
-  })), requested || "auto");
+  })), requested || "auto", fetch, { temperature });
   return { text: result.content, provider: result.provider, model: result.model };
 }
 
@@ -27,13 +35,13 @@ async function generate(env: Env, messages: ChatMessage[], requested?: string): 
  * например, из-за сертификатов или исчерпанных ключей. Workers AI работает
  * внутри Cloudflare без ключей, поэтому он последний фолбэк тьютора.
  */
-async function generateWithFallback(env: Env, messages: ChatMessage[], requested?: string): Promise<ProviderResult> {
+async function generateWithFallback(env: Env, messages: ChatMessage[], requested?: string, temperature = 0.25): Promise<ProviderResult> {
   try {
-    return await generate(env, messages, requested);
+    return await generate(env, messages, requested, temperature);
   } catch (error) {
     if (!workersAiConfigured(env)) throw error;
     console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
-    const result = await workersAiComplete(env, messages, { temperature: 0.25, maxTokens: 900 });
+    const result = await workersAiComplete(env, messages, { temperature, maxTokens: 900 });
     return { text: result.content, provider: result.provider, model: result.model };
   }
 }
@@ -45,8 +53,13 @@ function normalizeConversationProvider(value: unknown): "auto" | "gemini" | "gig
 
 function systemPrompt(subjectSlug?: string | null): string {
   return "Ты — AI-тьютор платформы «Медбиохим». Отвечай по-русски, понятно студенту медицинского вуза. Объясняй последовательно, не выдумывай факты. Если вопрос учебный — выделяй ключевые понятия, механизм и короткий вывод."
+    + " Если ниже приведены «Материалы курса», опирайся на них как на первоисточник и ставь"
+    + " маркер [N] сразу после утверждения, которое взято из фрагмента N."
     + (subjectSlug ? ` Текущий предмет: ${subjectSlug}.` : "");
 }
+
+/** Источник под ответом тьютора: номер сноски и лекция, на которую она ведёт. */
+export type LectureCitation = { n: number; title: string; lecture_id: string | null; subject_slug: string | null };
 
 /**
  * FA9: RAG-контекст тьютора — топ-5 фрагментов лекций курса в system prompt.
@@ -58,7 +71,7 @@ export async function buildLectureContext(
   supabase: any,
   subjectSlug: string | null | undefined,
   query: string
-): Promise<{ block: string; sources: string[] }> {
+): Promise<{ block: string; sources: string[]; citations: LectureCitation[] }> {
   try {
     let lectureQuery = supabase
       .from("histology_lectures")
@@ -67,7 +80,7 @@ export async function buildLectureContext(
       .limit(40);
     if (subjectSlug) lectureQuery = lectureQuery.eq("subject_slug", subjectSlug);
     const { data: lectures, error } = await lectureQuery;
-    if (error || !lectures?.length) return { block: "", sources: [] };
+    if (error || !lectures?.length) return { block: "", sources: [], citations: [] };
 
     const tokens = Array.from(
       new Set(
@@ -77,7 +90,7 @@ export async function buildLectureContext(
           .filter((token) => token.length >= 4)
       )
     );
-    if (!tokens.length) return { block: "", sources: [] };
+    if (!tokens.length) return { block: "", sources: [], citations: [] };
 
     const scored = (lectures as any[])
       .map((lecture) => {
@@ -92,18 +105,20 @@ export async function buildLectureContext(
           if (at >= 0 && (firstAt < 0 || at < firstAt)) firstAt = at;
           score += inTitle * 5 + (at >= 0 ? 1 : 0) + Math.min(lowerBody.split(token).length - 1, 20) * 0.1;
         }
-        return { title, body, score, firstAt };
+        return { id: String(lecture.id || ""), subjectSlug: lecture.subject_slug ?? null, title, body, score, firstAt };
       })
       .filter((entry) => entry.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
 
-    if (!scored.length) return { block: "", sources: [] };
+    if (!scored.length) return { block: "", sources: [], citations: [] };
 
     const FRAGMENT = 600;
     const parts: string[] = [];
     const sources: string[] = [];
-    for (const entry of scored) {
+    const citations: LectureCitation[] = [];
+    scored.forEach((entry, position) => {
+      const n = position + 1;
       let fragment: string;
       if (entry.firstAt >= 0) {
         const start = Math.max(0, entry.firstAt - 120);
@@ -111,18 +126,22 @@ export async function buildLectureContext(
       } else {
         fragment = entry.body.slice(0, FRAGMENT).trim() + (entry.body.length > FRAGMENT ? "…" : "");
       }
-      parts.push(`Лекция «${entry.title}»:\n${fragment}`);
+      // Номер в начале фрагмента = номер сноски [N] в ответе и в блоке «Источники».
+      parts.push(`[${n}] Лекция «${entry.title}»:\n${fragment}`);
       sources.push(entry.title);
-    }
+      citations.push({ n, title: entry.title, lecture_id: entry.id || null, subject_slug: entry.subjectSlug });
+    });
     const block =
-      "\n\nМатериалы курса (фрагменты лекций). Используй их как первоисточник по предмету; " +
+      "\n\nМатериалы курса (фрагменты лекций, пронумерованы). Используй их как первоисточник по предмету; " +
+      "после каждого утверждения из фрагмента ставь его номер в квадратных скобках — [1], [2] и т.д. " +
+      "Не ссылайся на номера, которых нет в списке. " +
       "если фрагментов недостаточно для ответа — честно скажи, чего не хватает, и не выдумывай:\n\n" +
       parts.join("\n\n");
-    return { block, sources };
+    return { block, sources, citations };
   } catch (error) {
     // RAG — украшение: чат работает и без фрагментов.
     console.error("[ai:rag-context]", error);
-    return { block: "", sources: [] };
+    return { block: "", sources: [], citations: [] };
   }
 }
 
@@ -217,7 +236,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     return c.json(body, status as 429);
   }
 
-  let payload: { content?: string; provider?: string; subject_slug?: string } = {};
+  let payload: { content?: string; provider?: string; subject_slug?: string; mode?: string } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
     return c.json(body, status as 400);
@@ -255,8 +274,13 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     return c.json(body, status as 503);
   }
 
-  // FA9: фрагменты лекций курса в контекст — до сборки messages.
-  const rag = await buildLectureContext(supabase, payload.subject_slug || conversation.subject_slug, content);
+  // FA9/Фаза 2: фрагменты лекций курса в контекст — до сборки messages.
+  // «Быстрый» режим идёт без RAG и с более свободной температурой.
+  const mode = normalizeChatMode(payload.mode);
+  const temperature = MODE_TEMPERATURE[mode];
+  const rag = mode === "precise"
+    ? await buildLectureContext(supabase, payload.subject_slug || conversation.subject_slug, content)
+    : { block: "", sources: [] as string[], citations: [] as LectureCitation[] };
 
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(payload.subject_slug || conversation.subject_slug) + rag.block },
@@ -267,7 +291,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
 
   let generated: ProviderResult;
   try {
-    generated = await generateWithFallback(c.env, messages, payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider));
+    generated = await generateWithFallback(c.env, messages, payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider), temperature);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
     console.error("[ai:message-generation]", { reason });
@@ -303,7 +327,11 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
       content: generated.text,
       provider: generated.provider,
       model: generated.model,
-      metadata: rag.sources.length ? { mode: "api", sources: rag.sources } : { mode: "api" },
+      metadata: {
+        mode: "api",
+        answer_mode: mode,
+        ...(rag.citations.length ? { sources: rag.citations } : {}),
+      },
     })
     .select("id,role,content,provider,model,metadata,created_at")
     .single();
@@ -431,7 +459,7 @@ ai.post("/chat", requireAuth, async (c) => {
     const { body, status } = fail("RATE_LIMIT", "Лимит AI-запросов исчерпан", 429, rid);
     return c.json(body, status as 429);
   }
-  let payload: { messages?: { role?: string; content?: string }[]; model?: string; provider?: string; context_scope?: string } = {};
+  let payload: { messages?: { role?: string; content?: string }[]; model?: string; provider?: string; context_scope?: string; mode?: string; subject_slug?: string } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
     return c.json(body, status as 400);
@@ -440,32 +468,54 @@ ai.post("/chat", requireAuth, async (c) => {
     const { body, status } = fail("VALIDATION", "Нужен messages[]", 400, rid);
     return c.json(body, status as 400);
   }
-  const messages: ChatMessage[] = payload.messages.slice(-40).map((message) => ({
+  const mode = normalizeChatMode(payload.mode);
+  const temperature = MODE_TEMPERATURE[mode];
+  const subjectSlug = payload.subject_slug ? String(payload.subject_slug).slice(0, 80) : null;
+  const chatMessages: ChatMessage[] = payload.messages.slice(-40).map((message) => ({
     role: message.role === "assistant" || message.role === "system" ? message.role : "user",
     content: String(message.content || "").slice(0, 12000),
   }));
+  // Ровно один system-блок: провайдер получает только первый system-message,
+  // поэтому учебный срез и материалы курса склеиваются в один текст.
+  const systemSections: string[] = [systemPrompt(subjectSlug)];
   // Режим «study»: ассистент /study получает срез учебного состояния студента
   // как system-контекст. Срез собирается на каждый запрос и в историю не пишется.
   if (payload.context_scope === "study") {
     try {
       const snapshot = await buildStudyContext(c.get("supabase"), user.id);
       if (snapshot) {
-        messages.unshift({
-          role: "system",
-          content: systemPrompt(null)
-            + " Ты — учебный ассистент студента. Ниже — актуальный срез его учебного состояния"
+        systemSections.push(
+          "Ты — учебный ассистент студента. Ниже — актуальный срез его учебного состояния"
             + " (расписание, ДЗ, слабые темы, очереди повторения). Используй его для конкретных"
             + " советов: что делать сегодня, к чему готовиться и в каком порядке. Не выдумывай"
             + " события, которых нет в данных.\n\n=== УЧЕБНЫЙ КОНТЕКСТ ===\n" + snapshot,
-        });
+        );
       }
     } catch (contextError) {
       console.error("[ai:study-context]", contextError instanceof Error ? contextError.message : String(contextError));
     }
   }
+  // «Точный» режим ищет ответ в лекциях предмета; «быстрый» — без RAG.
+  let citations: LectureCitation[] = [];
+  if (mode === "precise") {
+    const lastQuestion = [...chatMessages].reverse().find((message) => message.role === "user")?.content || "";
+    const rag = await buildLectureContext(c.get("supabase"), subjectSlug, lastQuestion);
+    if (rag.block) systemSections.push(rag.block);
+    citations = rag.citations;
+  }
+  const messages: ChatMessage[] = [
+    { role: "system", content: systemSections.join("\n\n") },
+    ...chatMessages.filter((message) => message.role !== "system"),
+  ];
   try {
-    const result = await generateWithFallback(c.env, messages, payload.provider);
-    return c.json(ok({ message: { role: "assistant", content: result.text }, provider: result.provider, model: result.model }, rid));
+    const result = await generateWithFallback(c.env, messages, payload.provider, temperature);
+    return c.json(ok({
+      message: { role: "assistant", content: result.text },
+      provider: result.provider,
+      model: result.model,
+      mode,
+      sources: citations,
+    }, rid));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
     const reportedStatus = Number((error as any)?.status);

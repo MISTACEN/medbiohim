@@ -10,10 +10,13 @@ import Link from "next/link";
 import { Bot, Loader2, Send } from "lucide-react";
 import { aiChat } from "@/lib/features-api";
 import { describeApiError } from "@/lib/errors";
+import { AnswerSources } from "@/components/ai/AnswerSources";
 
 export function StudyAssistant() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  // Сноски-лекции приходят только в «точном» режиме и только если нашлись материалы.
+  const [sources, setSources] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +37,7 @@ export function StudyAssistant() {
       return;
     }
     setAnswer(response.data.message.content);
+    setSources(response.data.sources ?? null);
     setQuestion("");
   }
 
@@ -70,8 +74,9 @@ export function StudyAssistant() {
       </div>
       {error ? <p className="mt-2 text-sm text-[var(--status-critical-fg)]">{error}</p> : null}
       {answer ? (
-        <div className="mt-3 whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm leading-relaxed">
+                <div className="mt-3 whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm leading-relaxed">
           {answer}
+          <AnswerSources sources={sources} />
         </div>
       ) : null}
     </section>

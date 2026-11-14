@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiConversation, type AiMessage, type AiProvider } from "@/lib/features-api";
+import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiChatMode, type AiConversation, type AiMessage, type AiProvider } from "@/lib/features-api";
+import { AnswerSources } from "@/components/ai/AnswerSources";
 import { listSubjectsCatalog } from "@/lib/api";
 import { Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
@@ -19,6 +20,8 @@ export default function TutorPage() {
   const [available,setAvailable]=useState<Record<AiProvider,boolean>>({auto:true,groq:false,gigachat:false,gemini:false,mistral:false,openrouter:false});
   const [subjects,setSubjects]=useState<Array<{name:string;slug:string}>>([]);
   const [psRegionHint,setPsRegionHint]=useState(false);
+  // «Точный» держит ответ на лекциях предмета и ставит сноски [N]; «Быстрый» — без RAG.
+  const [mode,setMode]=useState<AiChatMode>("precise");
 
   const [subjectSlug,setSubjectSlug]=useState("");
   const [mobileList,setMobileList]=useState(true);
@@ -103,7 +106,7 @@ export default function TutorPage() {
     if(!q||loading||!conversation)return;
     setInput("");setError(null);setLoading(true);
     setMessages(m=>[...m,{id:"local-"+Date.now(),role:"user",content:q,created_at:new Date().toISOString()}]);
-    const r=await aiSendMessage(conversation.id,q,provider,subjectSlug||undefined);
+    const r=await aiSendMessage(conversation.id,q,provider,subjectSlug||undefined,mode);
     setLoading(false);
     if(!r.ok){setError(describeApiError(r.error));return;}
     setConversation(r.data.conversation);
@@ -150,6 +153,11 @@ export default function TutorPage() {
                 <option value="gigachat" disabled={!available.gigachat}>GigaChat{available.gigachat ? "" : " — не настроен"}</option>
                 <option value="gemini" disabled={!available.gemini}>Gemini{psRegionHint ? " — недоступен из RU backend" : available.gemini ? "" : " — не настроен"}</option>
               </select>
+              <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] p-0.5 text-xs" role="group" aria-label="Режим ответа">
+                {([["precise","Точный"],["fast","Быстрый"]] as const).map(([value,label])=>(
+                  <button key={value} type="button" onClick={()=>setMode(value)} aria-pressed={mode===value} title={value==="precise"?"Ответ по лекциям предмета, со сносками [N]":"Быстрее, без поиска по лекциям"} className={"rounded-lg px-2.5 py-1.5 font-semibold transition "+(mode===value?"bg-[var(--primary)] text-white":"text-[var(--muted)] hover:text-[var(--primary)]")}>{label}</button>
+                ))}
+              </div>
               {(!available.gigachat && !available.gemini) && (
                 <span className="text-xs text-[var(--muted)]">Доступен только режим «Авто»: остальные модели не настроены на сервере.</span>
               )}
@@ -158,7 +166,7 @@ export default function TutorPage() {
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
               {messages.length===0&&<div className="flex h-full flex-col items-center justify-center py-16 text-center"><div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary-soft)]"><Sparkles className="h-8 w-8 text-[var(--primary)]"/></div><b>Начните диалог</b><p className="mt-2 max-w-md text-sm text-[var(--muted)]">Сообщения будут сохранены. Можно закрыть страницу и продолжить позже.</p></div>}
-              {messages.map(m=><div key={m.id} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}><div className={"max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[82%] "+(m.role==="user"?"bg-[var(--primary)] text-white":"border border-[var(--border)] bg-[var(--background)]")}>{m.content}{m.model&&<div className="mt-2 text-[10px] opacity-60">{m.provider} · {m.model}</div>}</div></div>)}
+              {messages.map(m=><div key={m.id} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}><div className={"max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[82%] "+(m.role==="user"?"bg-[var(--primary)] text-white":"border border-[var(--border)] bg-[var(--background)]")}>{m.content}{m.role==="assistant"?<AnswerSources sources={m.metadata?.sources}/>:null}{m.model&&<div className="mt-2 text-[10px] opacity-60">{m.provider} · {m.model}</div>}</div></div>)}
               {loading&&<div className="flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin"/>AI формирует ответ…</div>}<div ref={bottomRef}/>
             </div>
             <div className="border-t border-[var(--border)] p-3 sm:p-4">

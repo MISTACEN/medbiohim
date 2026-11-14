@@ -16,6 +16,7 @@ import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/endpoints";
 import { describeApiError } from "@/lib/errors";
+import { ExplainWithAi } from "@/components/tests/ExplainWithAi";
 
 type QOption = string | { key?: unknown; label?: unknown };
 type Question = { id: string; text: string; options: QOption[]; type?: string; is_closed?: boolean; allow_multiple?: boolean };
@@ -38,6 +39,8 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
   const [busy, setBusy] = useState(false);
   const [finished, setFinished] = useState<{ percent: number | null; score: number | null; max_score: number | null } | null>(null);
   const [error, setError] = useState("");
+  // Слаг предмета из детали теста — для RAG-разбора ошибки тьютором.
+  const [subjectSlug, setSubjectSlug] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +62,8 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
         if (!cancelled) {
           setAttemptId(attempt.id);
           setQuestions((t.data?.questions || []).filter((q: any) => q.is_published !== false));
+          const slug = t.data?.subject_slug ?? t.data?.subject?.slug ?? t.data?.test?.subject_slug;
+          if (typeof slug === "string") setSubjectSlug(slug);
           setLoading(false);
         }
       } catch (e: unknown) { if (!cancelled) { setError(describeApiError(e as any)); setLoading(false); } }
@@ -177,6 +182,24 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
           )}
           <button type="button" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50">Назад</button>
         </div>
+        {checked[q.id] && gradingRow?.is_correct === false && (
+          <ExplainWithAi
+            question={q.text}
+            chosen={selectedKeys
+              .map((key) => {
+                const entry = entries.find((item) => item.key === key);
+                return entry ? optionLabel(entry.option) : key;
+              })
+              .join("; ")}
+            correct={((gradingRow?.correct_keys as string[] | undefined) || [])
+              .map((key) => {
+                const entry = entries.find((item) => item.key === key);
+                return entry ? optionLabel(entry.option) : key;
+              })
+              .join("; ")}
+            subjectSlug={subjectSlug || undefined}
+          />
+        )}
         {error && <div className="rounded-xl bg-[var(--status-critical-bg)] px-4 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
       </div>
     </main>
