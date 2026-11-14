@@ -659,6 +659,19 @@ tests.post("/attempts/:id/finish", requireAuth, async (c) => {
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID попытки");
   try {
     const { data, error } = await db.rpc("medbiohim_finish_test_attempt", { p_attempt_id: id });
+    if (!error) {
+      // Фаза 5: завершение теста — событие ленты (сбой записи не влияет на ответ).
+      const { logActivity } = await import("../lib/activity");
+      const attempt: any = (data as any)?.attempt ?? null;
+      await logActivity(c.env, {
+        userId: c.get("user").id,
+        kind: "test_finished",
+        refId: id,
+        payload: attempt
+          ? { percent: attempt.percent ?? null, score: attempt.score ?? null, max_score: attempt.max_score ?? null }
+          : {},
+      });
+    }
     return rpcResult(c, rid, data, error, "Не удалось завершить попытку", "attempt");
   } catch {
     const { body, status } = fail("ATTEMPT_FINISH_UNAVAILABLE", "Не удалось завершить попытку", 503, rid);

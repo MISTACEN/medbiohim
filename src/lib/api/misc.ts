@@ -32,6 +32,19 @@ export async function getProgress(subjectId?: string, groupId?: string, options:
 }
 /** FA3: сводка прогресса v2 — точность по предметам, активность 30 дней, SRS, «что подтянуть». */
 export async function getProgressSummary(options: RequestInit = {}) { return api<any>(endpoints.misc.progressSummary(), options); }
+/** Событие учебной ленты (Фаза 5). */
+export type ActivityEvent = {
+  id: string;
+  kind: string;
+  subject_slug: string | null;
+  ref_id: string | null;
+  payload: Record<string, unknown> | null;
+  created_at: string;
+};
+/** Последние события студента: их пишет сервер, клиент только читает. */
+export async function getRecentActivity(limit = 10, options: RequestInit = {}) {
+  return api<{ items: ActivityEvent[]; count: number }>(endpoints.misc.activity(`limit=${limit}`), options);
+}
 export async function syncAcademicState() { return api<any>(endpoints.misc.academicSync(), { method: "POST", body: "{}" }); }
 export async function getAcademicState(options: RequestInit = {}) { return api<AcademicState>(endpoints.misc.academicState(), options); }
 export async function saveAcademicState(payload: Record<string, unknown>) { return api<any>(endpoints.misc.academicState(), { method: "PUT", body: JSON.stringify(payload) }); }

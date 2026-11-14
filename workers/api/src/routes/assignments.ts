@@ -147,6 +147,14 @@ assignments.patch("/:id", requireAuth, async (c) => {
       .maybeSingle();
     if (error) throw error;
     if (!data) return c.json(fail("NOT_FOUND", "Запись не найдена", 404, rid), 404);
+    // Фаза 5: изменение отработки — событие ленты.
+    const { logActivity } = await import("../lib/activity");
+    await logActivity(c.env, {
+      userId: user.id,
+      kind: "assignment_updated",
+      refId: id,
+      payload: { status: (data as any)?.status ?? null },
+    });
     return c.json(ok({ item: data }, rid));
   } catch (error) {
     console.error("[assignments:update]", error);

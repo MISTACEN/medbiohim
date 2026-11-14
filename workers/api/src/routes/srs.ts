@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { logActivity } from "../lib/activity";
 
 const srs = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -425,7 +426,17 @@ srs.post("/review", requireAuth, async (c) => {
   } catch {}
   const cardId = String(payload?.card_id || payload?.id || "").trim();
   const rating = Number(payload?.rating ?? 0);
-  return reviewCard(c, cardId, rating);
+  const response = await reviewCard(c, cardId, rating);
+  if (response.status < 400) {
+    // Фаза 5: повторение карточки — событие ленты.
+    await logActivity(c.env, {
+      userId: c.get("user").id,
+      kind: "srs_review",
+      refId: cardId,
+      payload: { rating },
+    });
+  }
+  return response;
 });
 
 srs.delete("/cards/:id", requireAuth, async (c) => {
@@ -464,7 +475,12 @@ srs.post("/:id/review", requireAuth, async (c) => {
     payload = await c.req.json();
   } catch {}
   const rating = Number(payload?.rating ?? payload?.quality ?? 3);
-  return reviewCard(c, String(c.req.param("id") || ""), rating);
+  const cardId = String(c.req.param("id") || "");
+  const response = await reviewCard(c, cardId, rating);
+  if (response.status < 400) {
+    await logActivity(c.env, { userId: c.get("user").id, kind: "srs_review", refId: cardId, payload: { rating } });
+  }
+  return response;
 });
 
 srs.get("/due", requireAuth, async (c) => {

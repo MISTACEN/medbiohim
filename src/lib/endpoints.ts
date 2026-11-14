@@ -331,6 +331,8 @@ export const endpoints = {
     dashboard: (): string => "/dashboard",
     progress: (query?: string): string => withQuery("/progress", query),
     progressSummary: (): string => "/progress/summary",
+    /** Фаза 5: лента учебных событий студента. */
+    activity: (query?: string): string => withQuery("/activity", query),
     academicState: (): string => "/academic/state",
     academicSync: (): string => "/academic/sync",
     academicAiPlan: (): string => "/academic/ai-plan",

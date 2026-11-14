@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { logActivity } from "../lib/activity";
 import { rateLimit } from "../lib/redis";
 import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
@@ -340,6 +341,15 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     const { body, status } = fail("AI_DB_UNAVAILABLE", "Не удалось сохранить ответ AI", 503, rid);
     return c.json(body, status as 503);
   }
+
+  // Фаза 5: вопрос тьютора — событие ленты (сбой записи не ломает ответ).
+  await logActivity(c.env, {
+    userId: user.id,
+    kind: "tutor_message",
+    subjectSlug: payload.subject_slug || conversation.subject_slug,
+    refId: conversation.id,
+    payload: { mode, provider: generated.provider },
+  });
 
   const title = conversation.title === "Новый чат"
     ? content.replace(/\s+/g, " ").trim().slice(0, 80)

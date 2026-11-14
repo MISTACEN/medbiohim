@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
+import { logActivity } from "../lib/activity";
 import { rateLimit } from "../lib/redis";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
@@ -265,6 +266,13 @@ lectures.get("/:id", requireAuth, async (c) => {
       const { body, status } = fail("NOT_FOUND", "Лекция не найдена", 404, rid);
       return c.json(body, status as 404);
     }
+    // Фаза 5: открытие лекции — событие ленты.
+    await logActivity(c.env, {
+      userId: c.get("user").id,
+      kind: "lecture_opened",
+      subjectSlug: (data as any).subject_slug ?? null,
+      refId: String((data as any).id || id),
+    });
     return c.json(ok(data, rid));
   } catch (error) {
     console.error("[lectures:detail]", error);

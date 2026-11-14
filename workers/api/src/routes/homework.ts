@@ -392,6 +392,14 @@ homework.post("/:id/progress", requireAuth, async (c) => {
       const { body, status } = fail("DB_UNAVAILABLE", "Не удалось сохранить прогресс", 503, rid);
       return c.json(body, status as 503);
     }
+    // Фаза 5: отметка по ДЗ — событие ленты.
+    const { logActivity } = await import("../lib/activity");
+    await logActivity(c.env, {
+      userId: user.id,
+      kind: "homework_marked",
+      refId: id,
+      payload: { progress, completed: (data as any)?.completed === true },
+    });
     return c.json(ok(data, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Не удалось сохранить прогресс", 503, rid);

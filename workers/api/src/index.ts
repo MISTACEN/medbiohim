@@ -51,6 +51,7 @@ import search from "./routes/search";
 import trainings from "./routes/trainings";
 import trainers from "./routes/trainers";
 import progress from "./routes/progress";
+import activity from "./routes/activity";
 import srs from "./routes/srs";
 import cardPacks from "./routes/card-packs";
 import sessions from "./routes/sessions";
@@ -224,6 +225,8 @@ v1.route("/search", gatedModule("search", search));
 v1.route("/trainings", gatedModule("subjects", trainings));
 v1.route("/trainers", gatedModule("subjects", trainers));
 v1.route("/progress", gatedModule("progress", progress));
+// Фаза 5: лента учебных событий студента (только свои, только чтение).
+v1.route("/activity", studentOnly(activity));
 v1.route("/srs", gatedModule("subjects", srs));
 // Карточки-паки: свои колоды, публикация в мастерскую, ИИ-генерация по лекциям.
 v1.route("/card-packs", gatedModule("subjects", cardPacks));
@@ -322,6 +325,14 @@ const appWithCron = Object.assign(app, {
         const { runCourseRollover } = await import("./jobs/course-rollover");
         const result = await runCourseRollover(env);
         console.log("[course-rollover] результат", JSON.stringify(result));
+      })()
+    );
+    ctx.waitUntil(
+      (async () => {
+        // Срок хранения ленты активности — 180 дней.
+        const { runActivityPrune } = await import("./jobs/activity-prune");
+        const result = await runActivityPrune(env);
+        console.log("[activity-prune] результат", JSON.stringify(result));
       })()
     );
   },
