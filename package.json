@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "test:e2e:supabase": "node scripts/e2e-live-supabase.mjs",
     "test:e2e:api": "node scripts/e2e-live-api.mjs",
-    "test:e2e:study": "node scripts/e2e-live-study.mjs"
+    "test:e2e:study": "node scripts/e2e-live-study.mjs",
+    "test:e2e:agent": "node scripts/e2e-live-agent.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
