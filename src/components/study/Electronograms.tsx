@@ -126,11 +126,11 @@ export function Electronograms({
         ))}
       </div>
 
-      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
-        <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-200">
+      <section className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-4 text-sm">
+        <div className="flex items-center gap-2 font-semibold text-[var(--status-warn-fg)]">
           <TriangleAlert className="h-4 w-4" /> Нервная ткань: не путать срезы
         </div>
-        <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-100/80">
+        <p className="mt-1 text-xs text-[var(--status-warn-fg)] opacity-90">
           Продольный — волокно вдоль, перехваты и насечки. Поперечный — кольца миелина. Это самая частая потеря балла
           по электронограмме.
         </p>
@@ -140,7 +140,7 @@ export function Electronograms({
               key={em.id}
               type="button"
               onClick={() => { setOpenId(em.id); setRevealed(false); }}
-              className="overflow-hidden rounded-xl border border-amber-200 bg-white text-left dark:border-amber-500/30 dark:bg-transparent"
+              className="overflow-hidden rounded-xl border border-[var(--status-warn-border)] bg-white text-left dark:bg-transparent"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={emSrc(em.file)} alt={em.title} loading="lazy" className="h-24 w-full object-cover" />
@@ -191,7 +191,7 @@ export function Electronograms({
               <p className="text-[var(--muted)]">{visible.labels}</p>
               <p>{visible.theory}</p>
               {"difference" in visible && (
-                <p className="rounded-lg bg-amber-50 p-2 text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
+                <p className="rounded-lg bg-[var(--status-warn-bg)] p-2 text-[var(--status-warn-fg)]">
                   <strong>Как отличить:</strong> {visible.difference}
                 </p>
               )}

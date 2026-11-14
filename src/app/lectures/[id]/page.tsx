@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+
 import { ArrowLeft } from "lucide-react";
 import { getLecture, type Lecture } from "@/lib/api";
 import { LectureView } from "@/components/lectures/LectureView";
@@ -26,29 +26,15 @@ export default function LectureViewPage() {
   // Номер занятия ищем в кафедральном плане по lecture_id: API лекции не отдаёт
   // поле topic, поэтому без этого ссылка «Лекция + тест по теме» не рисуется.
   const subjectSlug = String((lec as { subject_slug?: string } | null)?.subject_slug || "");
-  const [lessonNumber, setLessonNumber] = useState<number | null>(null);
-  useEffect(() => {
+  const { data: lessonNumber } = useApiRequest<number | null>(async (signal) => {
     const file = SUBJECT_STATIC_PLANS[subjectSlug];
-    if (!file || !id) {
-      setLessonNumber(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchStaticPlan(file)
-      .then((raw) => {
-        if (cancelled) return;
-        const session = normalizeStaticPlan(raw).sessions.find(
-          (entry) => String(entry.lecture?.lectureId || "") === id
-        );
-        setLessonNumber(session?.lecture?.num ?? session?.num ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setLessonNumber(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [subjectSlug, id]);
+    if (!file || !id) return null;
+    const raw = await fetchStaticPlan(file, signal);
+    const session = normalizeStaticPlan(raw).sessions.find(
+      (entry) => String(entry.lecture?.lectureId || "") === id
+    );
+    return session?.lecture?.num ?? session?.num ?? null;
+  }, [subjectSlug, id], { enabled: Boolean(subjectSlug && id) });
 
   if (loading) return <div className="card p-6 text-sm text-[var(--muted)]">Загрузка лекции…</div>;
   if (error || !lec) {

@@ -22,10 +22,22 @@ const PAGES = [
   "src/app/subjects/[id]/page.tsx",
 ];
 
+// Страницы, которые больше не грузят данные сами, а ведут на новый адрес.
+// Для них проверка строже: ни загрузки, ни состояния на странице быть не должно.
+const REDIRECT_PAGES = new Map([
+  ["src/app/progress/page.tsx", "прогресс переехал на /study#progress"],
+]);
+
 test("§D9 страницы не возвращают ручные cancelled-флаги", () => {
   for (const page of PAGES) {
     const source = readFileSync(new URL(`../${page}`, import.meta.url), "utf8");
     assert.equal(source.includes("let cancelled = false"), false, `${page}: ручной cancelled-флаг вернулся`);
+    if (REDIRECT_PAGES.has(page)) {
+      assert.match(source, /import \{ redirect \} from "next\/navigation"/, `${page}: редирект должен идти через next/navigation`);
+      assert.match(source, /redirect\("\/[^"]+"\)/, `${page}: страница-редирект должна куда-то вести`);
+      assert.equal(source.includes("useState"), false, `${page}: редирект не должен держать состояние загрузки`);
+      continue;
+    }
     assert.match(source, /useApiRequest/, `${page}: загрузка должна идти через useApiRequest`);
   }
 });
