@@ -16,6 +16,14 @@ test("cloze candidates are filtered by literal quotes from the lecture", async (
   assert.match(lectures, /items\.length >= 15/);
 });
 
+test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
+  const lectures = await source("../src/routes/lectures.ts");
+  // Регрессия живого E2E: UUID-проверка отбрасывала все 85 лекций и давала 404.
+  assert.match(lectures, /const LECTURE_ID = \/\^\[A-Za-z0-9\]\[A-Za-z0-9_-\]\{0,63\}\$\//);
+  assert.match(lectures, /function loadLectureForCloze[\s\S]{0,160}if \(!LECTURE_ID\.test\(id\)\) return null;/);
+  assert.doesNotMatch(lectures, /function loadLectureForCloze[\s\S]{0,200}\/\^\[0-9a-f-\]\{36\}\$\//);
+});
+
 test("cloze generation is cached, rate-limited and honest about failure", async () => {
   const lectures = await source("../src/routes/lectures.ts");
   assert.match(lectures, /lectures\.get\("\/:id\/cloze", requireAuth/);

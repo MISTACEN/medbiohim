@@ -63,8 +63,16 @@ export function validateClozeItems(raw: unknown, body: string): ClozeItem[] {
   return items;
 }
 
+/**
+ * id лекции — ТЕКСТОВЫЙ ключ (`lec-44db6ebee0344e24`, `hist-00-gistotekhnika`,
+ * `histology-mbh-study-blood-core`), а не UUID: в таблице 85 из 85 строк такие.
+ * Проверка на UUID отбрасывала все лекции и отдавала 404 — этот баг поймал
+ * живой E2E на временном пользователе.
+ */
+const LECTURE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
 async function loadLectureForCloze(supabase: any, id: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (!LECTURE_ID.test(id)) return null;
   const { data, error } = await supabase
     .from("histology_lectures")
     .select("id,title,subject_slug,body_markdown,is_published")
