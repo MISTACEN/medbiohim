@@ -115,11 +115,14 @@ export async function prepReadinessForEvents(
   supabase: any,
   events: EventRow[],
   progress: ProgressRow[],
+  /** План подготовки строится по любому событию, готовность в сводке — только по аттестациям. */
+  options: { includeAllKinds?: boolean } = {},
 ): Promise<Map<string, PrepReadiness>> {
   const result = new Map<string, PrepReadiness>();
   const today = isoToday();
   const candidates = (events || []).filter(
-    (event) => event?.id && event.date && PREP_KINDS.has(String(event.event_kind || "")),
+    (event) => event?.id && event.date
+      && (options.includeAllKinds || PREP_KINDS.has(String(event.event_kind || ""))),
   );
   if (!candidates.length) return result;
 
@@ -462,7 +465,9 @@ studyPrep.get("/plan", requireAuth, async (c) => {
 
     // Предпросмотр: правила без сохранения (в т.ч. пока миграция не применена).
     const progress = await loadProgress(db, user.id);
-    const readiness = await prepReadinessForEvents(db, [event], progress);
+    // Кнопка «Готовиться» есть у любого события, поэтому план строится по темам
+    // предмета и для занятия: готовность в сводке остаётся только по аттестациям.
+    const readiness = await prepReadinessForEvents(db, [event], progress, { includeAllKinds: true });
     const prep = readiness.get(eventId);
     const topics = prep?.topics ?? [];
     const mastery = prep?.mastery_pct ?? 0;
@@ -518,7 +523,9 @@ studyPrep.post("/plan", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
     const progress = await loadProgress(db, user.id);
-    const readiness = await prepReadinessForEvents(db, [event], progress);
+    // Кнопка «Готовиться» есть у любого события, поэтому план строится по темам
+    // предмета и для занятия: готовность в сводке остаётся только по аттестациям.
+    const readiness = await prepReadinessForEvents(db, [event], progress, { includeAllKinds: true });
     const prep = readiness.get(eventId);
     const topics = prep?.topics ?? [];
     const mastery = prep?.mastery_pct ?? 0;
