@@ -93,5 +93,9 @@ export async function listExamQuestions(params: { subject: string; q?: string; t
   return api<any>(`${endpoints.tests.examQuestions()}?${query.toString()}`);
 }
 export async function getExamQuestionsSummary(): Promise<any> { return apiCached(endpoints.tests.examQuestionsSummary()) as any; }
+/** Полный банк вопросов с ответами для .docx: один запрос, без пагинации. */
+export async function exportExamAnswers(subject: string): Promise<any> {
+  return api(endpoints.tests.examAnswersExport(subject)) as any;
+}
 export async function generateTicket(bankId: string, count = 3, mode = "practice"): Promise<any> { return api(endpoints.tests.ticketsGenerate(), { method: "POST", body: JSON.stringify({ bank_id: bankId, count, mode }) }) as any; }
 export async function listTicketBanks(..._args: any[]): Promise<any> { const options = _args[0] as RequestInit | undefined; return apiCached(endpoints.tests.ticketBanks(), options) as any; }

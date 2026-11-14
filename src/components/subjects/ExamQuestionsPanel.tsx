@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, ListChecks, Loader2, Search } from "lucide-reac
 import { listExamQuestions } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
+import ExamAnswersDownload from "@/components/subjects/ExamAnswersDownload";
 import { describeApiError } from "@/lib/errors";
 
 type ExamQuestion = {
@@ -143,6 +144,13 @@ export default function ExamQuestionsPanel({ subjectSlug }: { subjectSlug: strin
             Найти
           </button>
         </form>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs" style={{ color: "var(--muted)" }}>
+          В банке {total} вопрос(ов) к экзамену
+        </p>
+        <ExamAnswersDownload subjectSlug={subjectSlug} />
       </div>
 
       {items.length === 0 ? (

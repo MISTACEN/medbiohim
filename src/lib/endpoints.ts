@@ -83,6 +83,9 @@ export const endpoints = {
     assignments: (): string => "/tests/assignments",
     examQuestions: (): string => "/exam-questions",
     examQuestionsSummary: (): string => "/exam-questions/summary",
+    /** Фаза 2.7: полный банк вопросов с ответами для выгрузки в .docx. */
+    examAnswersExport: (subject: string): string =>
+      withQuery("/exam-questions/export", `subject=${encodeURIComponent(subject)}`),
   },
 
   /** Расписание, посещаемость, планировщик, iCal. */

@@ -119,6 +119,83 @@ examQuestions.get("/", requireAuth, async (c) => {
   }
 });
 
+/**
+ * Полный список вопросов с ответами для выгрузки в документ (фаза 2.7 карты).
+ *
+ * Генерация детерминированная: банк вопросов кафедры уже содержит ответы, поэтому
+ * ИИ здесь не нужен — документ одинаков при каждом скачивании, пока не менялся
+ * банк. Файл собирается на клиенте (JSZip), поэтому приватные ответы не попадают
+ * в публичный storage и нет дневных квот на «генерацию».
+ */
+const EXPORT_MAX = 600;
+
+examQuestions.get("/export", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const subject = String(c.req.query("subject") || "").trim();
+  if (!subject) {
+    const { body, status } = fail("VALIDATION_ERROR", "Укажите предмет", 422, rid);
+    return c.json(body, status as 422);
+  }
+  try {
+    const { data, error, count } = await db
+      .from("exam_questions")
+      .select("id,text,answer,topic,type,source", { count: "exact" })
+      .eq("subject_slug", subject)
+      .eq("for_exam", true)
+      .eq("is_published", true)
+      .order("topic", { ascending: true })
+      .order("sort_order", { ascending: true })
+      .limit(EXPORT_MAX);
+    if (error) throw error;
+
+    const rows = (data || []) as Row[];
+    const groups: Array<{ topic: string | null; items: Array<Record<string, unknown>> }> = [];
+    const groupIndex = new Map<string, number>();
+    let n = 0;
+    let answered = 0;
+    for (const row of rows) {
+      const answer = row.answer && String(row.answer).trim() ? String(row.answer) : null;
+      if (answer) answered += 1;
+      const topic = String(row.topic || "").trim() || null;
+      const key = topic ?? "";
+      if (!groupIndex.has(key)) {
+        groupIndex.set(key, groups.length);
+        groups.push({ topic, items: [] });
+      }
+      n += 1;
+      groups[groupIndex.get(key)!].items.push({
+        n,
+        text: String(row.text || ""),
+        answer,
+        type: row.type || null,
+        source: row.source || null,
+      });
+    }
+
+    const total = count ?? rows.length;
+    return c.json(
+      ok(
+        {
+          subject,
+          generated_at: new Date().toISOString(),
+          total,
+          returned: rows.length,
+          answered,
+          // Молча обрезать нельзя — клиент пишет это в документе.
+          truncated: total > rows.length,
+          groups,
+        },
+        rid,
+      ),
+    );
+  } catch (error) {
+    console.error("[exam-questions:export]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Не удалось выгрузить вопросы", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 examQuestions.get("/summary", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");
