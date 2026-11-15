@@ -44,7 +44,12 @@ test("offline page exists, is self-contained and offers retry", async () => {
   const source = await readFile(path.join(root, "public", "offline.html"), "utf8");
   assert.match(source, /<html lang="ru">/);
   assert.match(source, /location\.reload/, "должна быть кнопка повторной попытки");
-  assert.doesNotMatch(source, /<script/, "офлайн-страница не тянет внешний JS");
-  // Не должна ссылаться на ресурсы, недоступные офлайн.
+  // Самодостаточность: страница не тянет ВНЕШНИЙ JS/стили (инлайн-скрипт
+  // зеркала верcel↔layero выполняется офлайн и разрешён).
+  assert.doesNotMatch(source, /<script[^>]+src=/, "офлайн-страница не тянет внешний JS");
   assert.doesNotMatch(source, /<link[^>]+href="/, "без внешних стилей — только инлайновые");
+  // Зеркало: обе площадки и ссылка, сохраняющая путь.
+  assert.match(source, /medbiohim\.vercel\.app/);
+  assert.match(source, /medbiohim\.layero\.app/);
+  assert.match(source, /location\.pathname/);
 });
