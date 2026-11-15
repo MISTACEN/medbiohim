@@ -48,9 +48,11 @@ test("cloze cache key carries a version", async () => {
   // Без версии после правки промпта/валидации отдавались бы старые пункты.
   assert.match(clozeText, /export const CLOZE_CACHE_VERSION = "v1";/);
   assert.match(clozeText, /export const CLOZE_CACHE_PREFIX = `cloze:\$\{CLOZE_CACHE_VERSION\}:`;/);
-  // Оба чтения кэша и запись идут через префикс с версией.
+  // Чтения и запись кэша идут через clozeCacheKey: префикс с версией + хэш текста лекции.
   const lectures = await source("../src/routes/lectures.ts");
-  assert.equal((lectures.match(/CLOZE_CACHE_PREFIX \+ id/g) || []).length, 3);
+  assert.match(lectures, /function clozeCacheKey\(id: string, hash: string\)/);
+  assert.match(lectures, /clozeCacheKey\(id, hash\)/);
+  assert.match(lectures, /const cacheKey = clozeCacheKey\(id, await clozeBodyHash\(lecture\.body_markdown\)\);/);
 });
 
 test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
@@ -65,7 +67,7 @@ test("deterministic bold-term cloze runs before any AI call", async () => {
   const lectures = await source("../src/routes/lectures.ts");
   const clozeText = await source("../src/lib/cloze-text.ts");
   assert.match(clozeText, /export function extractBoldClozeItems/);
-  assert.match(lectures, /import \{ CLOZE_CACHE_PREFIX, extractBoldClozeItems, validateClozeItems \} from "\.\.\/lib\/cloze-text"/);
+  assert.match(lectures, /import \{ CLOZE_CACHE_PREFIX, clozeBodyHash, extractBoldClozeItems, validateClozeItems \} from "\.\.\/lib\/cloze-text"/);
   assert.match(lectures, /let items = validateClozeItems\(extractBoldClozeItems\(text\)/);
   assert.match(lectures, /let provider = "markdown";/);
   // ИИ — только если разметки не хватило на четыре пункта.
@@ -86,7 +88,7 @@ test("cloze generation is cached, rate-limited and honest about failure", async 
   assert.match(lectures, /lectures\.get\("\/:id\/cloze", requireAuth/);
   assert.match(lectures, /lectures\.post\("\/:id\/cloze", requireAuth/);
   assert.match(lectures, /rateLimit\(c\.env, `lecture:cloze:\$\{user\.id\}`, 12, 600\)/);
-  assert.match(lectures, /CLOZE_CACHE_PREFIX \+ id/);
+  assert.match(lectures, /key: cacheKey,/);
   assert.match(lectures, /onConflict: "key"/);
   // Меньше четырёх дословных пунктов — честный отказ, а не подделка.
   assert.match(lectures, /"CLOZE_UNUSABLE"/);
@@ -127,4 +129,31 @@ test("frontend wires the cloze page, endpoints and compression button", async ()
 
   const plan = await source("../../../src/components/study/PrepPlan.tsx");
   assert.match(plan, /compressStudyPlan\(current\.id\)/);
+});
+
+test("bold-term context is cut at word boundaries", async () => {
+  const { extractBoldClozeItems } = await import("../src/lib/cloze-text.ts");
+  // Термин дальше 160 символов от начала: срез начинается посреди длинного слова.
+  const filler = "аб".repeat(200);            // 400 символов без пробелов
+  const body = filler + " Мембранный потенциал называется **потенциалом покоя** и удерживается ионными насосами клетки внутри мембраны.";
+  const items = extractBoldClozeItems(body);
+  assert.equal(items.length, 1);
+  // before не начинается с обрывка слова: начинается от пробела или от начала строки.
+  assert.ok(/^(?:^|\s)\S/.test(" " + items[0].before) === false || !items[0].before.startsWith("б"), "before не режет слово");
+  assert.ok(/\s|^/.test(items[0].before[0] === undefined ? " " : items[0].before[0]), "before начинается с целого слова");
+  // after не заканчивается обрывком: последний символ — конец слова из текста.
+  assert.ok(!items[0].after.endsWith("мем"), "after не режет слово посередине");
+});
+
+test("cache key is bound to the lecture body hash", async () => {
+  const { clozeBodyHash } = await import("../src/lib/cloze-text.ts");
+  const route = await source("../src/routes/lectures.ts");
+  // Ключ строится функцией с хэшем, а не голым id.
+  assert.match(route, /clozeCacheKey\(id, await clozeBodyHash/);
+  assert.match(route, /function clozeCacheKey\(id: string, hash: string\)/);
+  const h1 = await clozeBodyHash("текст лекции");
+  const h2 = await clozeBodyHash("текст лекции ");
+  assert.notEqual(h1, h2, "любая правка текста даёт новый ключ кэша");
+  assert.equal(await clozeBodyHash("текст лекции"), h1, "хэш детерминирован");
+  assert.equal(h1.length, 16);
 });

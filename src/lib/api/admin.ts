@@ -9,6 +9,8 @@ const ADMIN_DB_ID = "supabase_primary";
 
 export async function adminPresence(within = 180) { return api<any>(endpoints.admin.presence(within)); }
 export async function adminOverview(): Promise<any> { return api(endpoints.admin.overview()) as any; }
+/** Сводка журнала ИИ-вызовов (days 1-90, default 7): totals + разрезы по дню/функции/провайдеру. */
+export async function adminAiUsage(days = 7): Promise<any> { return api(endpoints.admin.aiUsage(`days=${days}`)) as any; }
 export async function adminUpdateSite(site: Record<string, unknown>): Promise<any> { return api(endpoints.admin.site(), { method: "PUT", body: JSON.stringify(site) }) as any; }
 
 export async function adminDatabaseConnections(): Promise<any> {

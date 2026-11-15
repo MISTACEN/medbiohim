@@ -271,6 +271,11 @@ function getAiCompletionCandidates(env, preferredProvider, userOverride) {
       key: gigaAccessToken || gigaCredentials,
       credentials: gigaCredentials,
       base: "https://gigachat.devices.sberbank.ru/api/v1",
+      // Резервный контур: прокси Layero на случай недоступности sberbank
+      // (контракт эндпоинтов — docs/DEPLOY-LAYERO.md).
+      ...(String(env.GIGACHAT_FALLBACK_BASE_URL || "").trim()
+        ? { fallback_base: String(env.GIGACHAT_FALLBACK_BASE_URL).trim() }
+        : {}),
       model: env.GIGACHAT_MODEL || "GigaChat",
       scope: env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS",
     });
@@ -353,8 +358,12 @@ async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25, 
   return { content: text, provider: cfg.id, model: cfg.model };
 }
 
-async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}) {
-  const started = Date.now();
+/**
+ * Один заход GigaChat: OAuth (если нет готового токена) + chat/completions.
+ * base/oauthUrl параметризованы: тот же код работает через прокси Layero
+ * (резервный контур), где оба эндпоинта лежат под одним origin.
+ */
+async function gigachatAttempt(cfg, messages, fetcher, temperature, report, started, base, oauthUrl) {
   let accessToken = String(cfg.key || "").trim();
   if (!String(cfg.credentials || "").trim() && !accessToken) {
     throw new AiChatApiError(503, "AI_PROVIDER_UNAVAILABLE", "GigaChat не настроен");
@@ -364,7 +373,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
   } else {
     let tokenResponse;
     try {
-      tokenResponse = await callFetch(fetcher, "https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
+      tokenResponse = await callFetch(fetcher, oauthUrl, {
         method: "POST",
         headers: {
           authorization: "Basic " + String(cfg.credentials).trim(),
@@ -391,7 +400,7 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
   }
   let response;
   try {
-    response = await callFetch(fetcher, cfg.base.replace(/\/$/, "") + "/chat/completions", {
+    response = await callFetch(fetcher, base.replace(/\/$/, "") + "/chat/completions", {
       method: "POST",
       headers: { authorization: "Bearer " + accessToken, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
@@ -413,6 +422,23 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
   const text = payload?.choices?.[0]?.message?.content;
   if (typeof text !== "string" || !text.trim()) throw new AiChatApiError(502, "AI_EMPTY_RESPONSE", "ИИ-провайдер вернул пустой ответ");
   return { content: text.trim(), provider: cfg.id, model: String(payload?.model || cfg.model) };
+}
+
+/**
+ * Прямой GigaChat, при отказе основного канала — прокси Layero
+ * (env GIGACHAT_FALLBACK_BASE_URL, контракт в docs/DEPLOY-LAYERO.md).
+ * Повтор только по недоступности: 429 и настройки не ретраятся.
+ */
+async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}) {
+  const started = Date.now();
+  const fallbackBase = String(cfg.fallback_base || "").trim();
+  try {
+    return await gigachatAttempt(cfg, messages, fetcher, temperature, report, started, cfg.base, "https://ngw.devices.sberbank.ru:9443/api/v2/oauth");
+  } catch (error) {
+    if (!fallbackBase || error?.code !== "AI_UPSTREAM_UNAVAILABLE") throw error;
+    report({ id: "gigachat", outcome: "fallback", status: 0, stage: "chat", ms: Date.now() - started, detail: "основной канал недоступен — резервный прокси" });
+    return gigachatAttempt(cfg, messages, fetcher, temperature, report, started, fallbackBase, fallbackBase.replace(/\/$/, "") + "/oauth");
+  }
 }
 
 /**

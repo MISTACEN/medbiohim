@@ -14,6 +14,16 @@ export type ClozeItem = ClozeSeedItem & { hint: string };
 export const CLOZE_CACHE_VERSION = "v1";
 export const CLOZE_CACHE_PREFIX = `cloze:${CLOZE_CACHE_VERSION}:`;
 
+/**
+ * Короткий хэш текста лекции для ключа кэша: правка лекции должна давать новые
+ * пропуски, а не старый набор из site_content. Ключ выглядит как
+ * `cloze:v1:<id>:<hash8>` — расхождение хэша равнозначно отсутствию кэша.
+ */
+export async function clozeBodyHash(body: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(body || "")));
+  return [...new Uint8Array(digest).slice(0, 8)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 /** Сравнение терминов: без регистра, ё→е, без пунктуации и лишних пробелов. */
 export function normalizeLoose(value: string): string {
   return value
@@ -48,6 +58,29 @@ export function squeezeLoose(value: string): string {
  * Живой прод показал, что один только Llama-8b выдерживает дословные цитаты
  * примерно в четверти попыток — а выделенные термины есть в 52 из 60 лекций.
  */
+/**
+ * Сдвигает начало среза к границе слова: если index попал внутрь слова,
+ * ведём вперёд до первого пробела — иначе before начинается с обрывка слова.
+ */
+function boundaryStart(text: string, index: number, limit: number): number {
+  if (index <= 0 || index >= limit) return index;
+  if (/\s/.test(text[index - 1]) || /\s/.test(text[index])) return index;
+  let i = index;
+  while (i < limit && !/\s/.test(text[i])) i += 1;
+  return i;
+}
+
+/**
+ * Сдвигает конец среза к границе слова — аналогично, для after.
+ */
+function boundaryEnd(text: string, index: number, floor: number): number {
+  if (index <= floor || index >= text.length) return index;
+  if (/\s/.test(text[index]) || /\s/.test(text[index - 1])) return index;
+  let i = index;
+  while (i > floor && !/\s/.test(text[i - 1])) i -= 1;
+  return i;
+}
+
 export function extractBoldClozeItems(
   markdown: string,
   limit = 12,
@@ -70,8 +103,11 @@ export function extractBoldClozeItems(
     if (items.length >= limit) break;
     const at = plain.indexOf(term, cursor);
     if (at < 0) continue;
-    const before = plain.slice(Math.max(0, at - 160), at).trim();
-    const after = plain.slice(at + term.length, at + term.length + 160).trim();
+    const start = boundaryStart(plain, Math.max(0, at - 160), at);
+    const before = plain.slice(start, at).trim();
+    const afterFrom = at + term.length;
+    const end = boundaryEnd(plain, Math.min(plain.length, afterFrom + 160), afterFrom);
+    const after = plain.slice(afterFrom, end).trim();
     // Короткие обрезки нечитаемы и неоднозначны — пропускаем.
     if (before.length < 10 || after.length < 10) continue;
     items.push({ before, answer: term, after });

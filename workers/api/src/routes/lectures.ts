@@ -7,7 +7,7 @@ import { logActivity } from "../lib/activity";
 import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 import { rateLimit } from "../lib/redis";
 import { aiDailyQuota, aiQuotaMessage, logAiQuotaRejection, withAiCall } from "../lib/ai-usage";
-import { CLOZE_CACHE_PREFIX, extractBoldClozeItems, validateClozeItems } from "../lib/cloze-text";
+import { CLOZE_CACHE_PREFIX, clozeBodyHash, extractBoldClozeItems, validateClozeItems } from "../lib/cloze-text";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
 import { generateAiCompletion } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
@@ -86,6 +86,12 @@ function clozeCache(c: any) {
   }
 }
 
+// Ключ кэша привязан к хэшу текста лекции: правка лекции или версии разбора
+// даёт новый ключ, а не устаревший набор пропусков из site_content.
+function clozeCacheKey(id: string, hash: string): string {
+  return `${CLOZE_CACHE_PREFIX}${id}:${hash}`;
+}
+
 // GET /lectures/:id/cloze — только кэш: открытие без ожидания ИИ.
 lectures.get("/:id/cloze", requireAuth, async (c) => {
   const rid = requestId();
@@ -93,10 +99,13 @@ lectures.get("/:id/cloze", requireAuth, async (c) => {
   const service = clozeCache(c);
   if (!service) return c.json(ok({ lecture_id: id, items: [], cached: false, available: false }, rid));
   try {
+    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    if (!lecture) return c.json(ok({ lecture_id: id, items: [], cached: false, available: true }, rid));
+    const hash = await clozeBodyHash(lecture.body_markdown);
     const { data, error } = await service
       .from("site_content")
       .select("payload")
-      .eq("key", CLOZE_CACHE_PREFIX + id)
+      .eq("key", clozeCacheKey(id, hash))
       .maybeSingle();
     if (error) throw error;
     const items = Array.isArray(data?.payload?.items) ? data.payload.items : [];
@@ -119,19 +128,6 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
   }
   try {
     const supabase = c.get("supabase");
-    const service = clozeCache(c);
-    if (service) {
-      const { data: cached } = await service
-        .from("site_content")
-        .select("payload")
-        .eq("key", CLOZE_CACHE_PREFIX + id)
-        .maybeSingle();
-      const items = Array.isArray(cached?.payload?.items) ? cached.payload.items : [];
-      if (items.length) {
-        return c.json(ok({ lecture_id: id, items, cached: true, available: true }, rid));
-      }
-    }
-
     const lecture = await loadLectureForCloze(supabase, id);
     if (!lecture) {
       const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
@@ -141,6 +137,19 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
     if (text.length < 400) {
       const { body, status } = fail("LECTURE_TOO_SHORT", "Текст лекции слишком короткий для пропусков", 422, rid);
       return c.json(body, status as 422);
+    }
+    const cacheKey = clozeCacheKey(id, await clozeBodyHash(lecture.body_markdown));
+    const service = clozeCache(c);
+    if (service) {
+      const { data: cached } = await service
+        .from("site_content")
+        .select("payload")
+        .eq("key", cacheKey)
+        .maybeSingle();
+      const items = Array.isArray(cached?.payload?.items) ? cached.payload.items : [];
+      if (items.length) {
+        return c.json(ok({ lecture_id: id, items, cached: true, available: true }, rid));
+      }
     }
 
     // 1) Детерминированный путь — мгновенный и без ИИ.
@@ -217,7 +226,7 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
     if (service) {
       try {
         await service.from("site_content").upsert({
-          key: CLOZE_CACHE_PREFIX + id,
+          key: cacheKey,
           payload: {
             lecture_id: id,
             items,

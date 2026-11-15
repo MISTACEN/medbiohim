@@ -92,6 +92,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
       { href: "/admin/audit", label: "Аудит и откат", icon: History, short: "Аудит", strictAdmin: true, desc: "Кто и что менял в контенте, diff и откат к версии." },
       { href: "/admin/database", label: "База данных / SQL", icon: Database, short: "База / SQL", strictAdmin: true, desc: "Подключения, схема, строки и SQL-редактор." },
       { href: "/admin/api-logs", label: "Журнал API", icon: Activity, short: "Журнал API", desc: "Endpoint, источник, статус и задержки." },
+      { href: "/admin/ai-usage", label: "ИИ-расход", icon: Bot, short: "ИИ-расход", desc: "Вызовы ИИ: функции, провайдеры, задержки, квоты." },
       { href: "/admin/problems", label: "Проблемы и жалобы", icon: Flag, short: "Жалобы", desc: "Обращения студентов и очередь работ." },
     ],
   },

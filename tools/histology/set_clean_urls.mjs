@@ -28,9 +28,18 @@ const MAPPING = {
   "sarkomer-i-sarkolemma.png": ["15-sarkomer-sarkolemma"],
   "vstavochnyj-disk-mezhdu-kardiomiocitami.png": ["16-vstavochnyj-disk"],
   "miokard-zheludochka-serdca.png": ["17-miokard-skan"],
-  "uzlovoj-perehvat-ranve-v-nervnom-volokne-sedalischnogo-nerva.png": ["19-uzlovoj-perehvat-ranve"],
+  "uzlovoj-perehvat-ranve-v-nervnom-volokne-sedalisch.png": ["19-uzlovoj-perehvat-ranve"],
   "nervno-myshechnyj-sinaps.png": ["em-nervno-myshechnyy-sinaps"],
   "poperechnyj-srez-mielinovogo-nervnogo-volokna.png": ["em-mielinovoe-volokno-poperechnyy"],
+  // Добрано из docx «1_Экзаменационные электронограммы» (2026-11-15): растр,
+  // подписи учебника в самих сканах — как у остальных clean-вариантов.
+  // Ключи — как в БД (имена банка обрезаны до 32 символов).
+  "poperechnyj-srez-krovenosnogo-kapillyara.jpeg": ["21-kapillyar-poperechnyj-srez"],
+  "aerogematicheskij-barer.png": ["22-aerogematicheskij-barer"],
+  "dendrity-fotoreceptornyh-palochkovyh-nejronov-setc.png": ["23-dendrity-fotoreceptorov"],
+  "parietalnyj-ekzokrinocit-sobstvennyh-zhelez-zhelud.png": ["24-parietalnyj-ekzokrinocit"],
+  "poverhnost-mnogoryadnogo-resnitchatogo-epiteliya-s.png": ["25-poverhnost-resnitchatogo-epiteliya"],
+  "sosudistyj-klubochek-pochechnogo-telca.png": ["26-sosudistyj-klubochek"],
 };
 
 const CLEAN_DIRS = [

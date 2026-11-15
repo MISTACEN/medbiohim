@@ -267,6 +267,7 @@ export const endpoints = {
     presence: (within: string | number): string => `/admin/presence?within=${enc(String(within))}`,
     overview: (): string => "/admin/overview",
     site: (): string => "/admin/site",
+    aiUsage: (query?: string): string => withQuery("/admin/ai-usage", query),
     users: (query?: string): string => withQuery("/admin/users", query),
     userRoles: (): string => "/admin/users/roles",
     databaseConnections: (): string => "/admin/database/connections",

@@ -604,35 +604,45 @@ studyPrep.patch("/plan/:id", requireAuth, async (c) => {
     return c.json(body, status as 422);
   }
   try {
-    const { data: plan, error } = await db
-      .from("study_plans")
-      .select("id,days,status")
-      .eq("id", planId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (error) throw error;
-    if (!plan) {
-      const { body, status } = fail("PLAN_NOT_FOUND", "План не найден", 404, rid);
-      return c.json(body, status as 404);
+    // Атомарная отметка шага: две вкладки не должны затирать галочки друг друга.
+    // Оптимистическая блокировка по updated_at — запись уходит, только если план
+    // не менялся с момента чтения; иначе перечитываем и применяем заново.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const { data: plan, error } = await db
+        .from("study_plans")
+        .select("id,days,status,updated_at")
+        .eq("id", planId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!plan) {
+        const { body, status } = fail("PLAN_NOT_FOUND", "План не найден", 404, rid);
+        return c.json(body, status as 404);
+      }
+      const days = Array.isArray(plan.days) ? plan.days : [];
+      const target = days.find((entry: any) => String(entry?.date || "") === day);
+      if (!target || !Array.isArray(target.items) || !target.items[index]) {
+        const { body, status } = fail("VALIDATION_ERROR", "Шаг плана не найден", 422, rid);
+        return c.json(body, status as 422);
+      }
+      target.items[index].done = done;
+      const everyDone = days.every((entry: any) =>
+        Array.isArray(entry?.items) ? entry.items.every((item: any) => item?.done === true) : true);
+      const { data: updated, error: updateError } = await db
+        .from("study_plans")
+        .update({ days, status: everyDone ? "completed" : "active", updated_at: new Date().toISOString() })
+        .eq("id", planId)
+        .eq("user_id", user.id)
+        // Условие по прочитанному updated_at: другой PATCH успел пройти — строка
+        // не обновится, перечитываем и переносим отметку на свежую версию.
+        .eq("updated_at", plan.updated_at)
+        .select("id,schedule_entry_id,subject_slug,event_kind,event_date,days,topics,mastery_pct,status,generated_by,updated_at")
+        .maybeSingle();
+      if (updateError) throw updateError;
+      if (updated) return c.json(ok(planPayload(updated, true), rid));
     }
-    const days = Array.isArray(plan.days) ? plan.days : [];
-    const target = days.find((entry: any) => String(entry?.date || "") === day);
-    if (!target || !Array.isArray(target.items) || !target.items[index]) {
-      const { body, status } = fail("VALIDATION_ERROR", "Шаг плана не найден", 422, rid);
-      return c.json(body, status as 422);
-    }
-    target.items[index].done = done;
-    const everyDone = days.every((entry: any) =>
-      Array.isArray(entry?.items) ? entry.items.every((item: any) => item?.done === true) : true);
-    const { data: updated, error: updateError } = await db
-      .from("study_plans")
-      .update({ days, status: everyDone ? "completed" : "active", updated_at: new Date().toISOString() })
-      .eq("id", planId)
-      .eq("user_id", user.id)
-      .select("id,schedule_entry_id,subject_slug,event_kind,event_date,days,topics,mastery_pct,status,generated_by,updated_at")
-      .maybeSingle();
-    if (updateError) throw updateError;
-    return c.json(ok(planPayload(updated, true), rid));
+    const { body, status } = fail("PLAN_CONFLICT", "План менялся параллельно — обновите страницу и повторите", 409, rid);
+    return c.json(body, status as 409);
   } catch (error) {
     console.error("[study-prep:patch]", error);
     const { body, status } = fail("STUDY_PLAN_ERROR", "Не удалось обновить план", 503, rid);

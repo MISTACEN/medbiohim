@@ -19,6 +19,29 @@ function notifyApiLoading(type: "start" | "end") {
   try { window.dispatchEvent(new CustomEvent(type === "start" ? "mbh:api-start" : "mbh:api-end")); } catch {}
 }
 
+/**
+ * C3 резервного контура Layero (docs/DEPLOY-LAYERO.md): N сетевых сбоев подряд
+ * по /api/v1 — канал до воркера недоступен, фронт показывает баннер резервного
+ * зеркала. Любой успешный ответ (даже 4xx/5xx — это ответ сервера) сбрасывает
+ * счётчик и поднимает баннер.
+ */
+const CHANNEL_FAILURE_LIMIT = 3;
+let channelFailures = 0;
+function notifyChannel(ok: boolean) {
+  if (typeof window === "undefined") return;
+  if (ok) {
+    if (channelFailures !== 0) {
+      channelFailures = 0;
+      try { window.dispatchEvent(new CustomEvent("mbh:api-channel-up")); } catch {}
+    }
+    return;
+  }
+  channelFailures += 1;
+  if (channelFailures >= CHANNEL_FAILURE_LIMIT) {
+    try { window.dispatchEvent(new CustomEvent("mbh:api-channel-down")); } catch {}
+  }
+}
+
 async function request(path: string, options: ApiRequestInit = {}, tokenOverride?: string): Promise<{ res: Response; text: string }> {
   const headers: Record<string, string> = { Accept: "application/json", ...(options.headers as Record<string, string> | undefined) };
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
@@ -77,6 +100,7 @@ async function request(path: string, options: ApiRequestInit = {}, tokenOverride
       } catch {}
       window.dispatchEvent(new CustomEvent("mbh:api-log", { detail: entry }));
     }
+    notifyChannel(true);
     return { res, text: await res.text() };
   } catch (error) {
     // Отмена вызывающей стороной и таймаут клиента — не «нет связи»: первая
@@ -100,6 +124,8 @@ async function request(path: string, options: ApiRequestInit = {}, tokenOverride
       (classified as Error & { code?: string }).code = cancelled ? "ABORTED" : "TIMEOUT";
       throw classified;
     }
+    // Отмена и таймаут — не «нет связи»: они не учитываются в канале.
+    notifyChannel(false);
     throw error;
   } finally {
     clearTimeout(timeout);
