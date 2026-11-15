@@ -26,7 +26,7 @@ export const EVENT_LABEL: Record<string, string> = {
 /** События, к которым применима ИИ-подготовка (чек-лист по темам предмета). */
 const PREP_KINDS = new Set(["exam", "credit", "colloquium", "control_work"]);
 
-export type AgendaKind = "exam" | "credit" | "colloquium" | "control_work" | "lesson" | "homework" | "assignment";
+export type AgendaKind = "exam" | "credit" | "colloquium" | "control_work" | "lesson" | "homework" | "assignment" | "retake" | "makeup" | "assessment";
 
 export type AgendaItem = {
   id: string;
