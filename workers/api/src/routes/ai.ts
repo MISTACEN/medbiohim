@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { extractText, getDocumentProxy } from "unpdf";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAdmin, requireAuth, type AuthVariables } from "../middleware/auth";
@@ -32,6 +33,108 @@ const FAST_WORKERS_AI_MODEL = "@cf/meta/llama-3.2-3b-instruct";
 
 export function normalizeChatMode(value: unknown): ChatMode {
   return value === "fast" ? "fast" : "precise";
+}
+
+type OralVerdict = { score: number; verdict: string; missed: string[]; mistakes: string[]; follow_up: string };
+
+function decodeBase64Url(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function decodeBase64Text(base64: string): string {
+  try {
+    return new TextDecoder().decode(decodeBase64Url(base64));
+  } catch {
+    return "";
+  }
+}
+
+type ImageExtract = { text: string; code: string; message: string };
+
+/**
+ * Текст с фото: сначала мультимодальный Gemini (читает фото сам), при его
+ * отсутствии — настроенный OCR-шлюз (тот же, что в Мастерской). Если не настроено
+ * ничего — возвращаем подсказку, а не пустой ответ.
+ */
+async function extractImageText(env: Env, base64: string, mime: string): Promise<ImageExtract> {
+  const region = String(env.AI_BACKEND_REGION || "ru").trim().toLowerCase();
+  const proxyReady = Boolean(env.GEMINI_VERCEL_PROXY_URL && env.GEMINI_VERCEL_PROXY_SECRET);
+  const model = String(env.GEMINI_MODEL || "gemini-2.0-flash").trim();
+  const prompt = "Это фото страницы конспекта/слайда/учебника по медицине. Перепиши весь видимый текст дословно в markdown: заголовки, списки, таблицы. Формулы — латиницей. Ничего не добавляй от себя, неразборчивые места помечай [неразборчиво].";
+  if (env.GEMINI_API_KEY && (region !== "ru" || proxyReady)) {
+    const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent";
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "x-goog-api-key": String(env.GEMINI_API_KEY).trim(), "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data: base64 } }, { text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 8000 },
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (response.ok) {
+      const payload: any = await response.json().catch(() => null);
+      const text = (payload?.candidates?.[0]?.content?.parts || []).map((part: any) => String(part?.text || "")).join("").trim();
+      if (text) return { text, code: "", message: "" };
+    } else {
+      console.error("[ai:notes-gemini]", response.status);
+    }
+  }
+  const ocrEndpoint = String(env.OCR_API_URL || "").trim();
+  if (ocrEndpoint) {
+    const response = await fetch(ocrEndpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(env.OCR_API_KEY ? { authorization: "Bearer " + String(env.OCR_API_KEY).trim() } : {}),
+      },
+      body: JSON.stringify({
+        model: env.OCR_MODEL || "xiaomi-ocr-0",
+        temperature: 0,
+        messages: [{ role: "user", content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: "data:" + mime + ";base64," + base64 } },
+        ] }],
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+    const payload: any = await response.json().catch(() => null);
+    const text = String(payload?.choices?.[0]?.message?.content || "").trim();
+    if (text) return { text, code: "", message: "" };
+    console.error("[ai:notes-ocr]", response.status);
+  }
+  return {
+    text: "",
+    code: "VISION_NOT_CONFIGURED",
+    message: "Распознавание фото не настроено на сервере. Загрузите PDF с текстовым слоем или текстовый файл.",
+  };
+}
+
+/**
+ * Парсинг вердикта экзаменатора. Провайдеры иногда оборачивают JSON в
+ * markdown-код-блок или добавляют прозу — вырезаем первое валидное вхождение.
+ */
+function parseOralVerdict(raw: string): OralVerdict | null {
+  const text = String(raw || "");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(text.slice(start, end + 1)) as Partial<OralVerdict>;
+    const score = Math.max(0, Math.min(10, Math.round(Number(parsed.score) || 0)));
+    return {
+      score,
+      verdict: String(parsed.verdict || "").slice(0, 300),
+      missed: (Array.isArray(parsed.missed) ? parsed.missed : []).map((m) => String(m).slice(0, 300)).slice(0, 8),
+      mistakes: (Array.isArray(parsed.mistakes) ? parsed.mistakes : []).map((m) => String(m).slice(0, 300)).slice(0, 8),
+      follow_up: String(parsed.follow_up || "").slice(0, 500),
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function generate(
@@ -797,6 +900,186 @@ ai.post("/chat", requireAuth, async (c) => {
     const status = reportedStatus === 429 || reportedStatus === 503 ? reportedStatus
       : reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
     const { body, status: responseStatus } = fail(String((error as any)?.code || (status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM")), error instanceof Error ? error.message : status === 503 ? "Не настроен доступный AI-провайдер" : "AI-провайдеры временно недоступны", status, rid);
+    return c.json(body, responseStatus as 502 | 503);
+  }
+});
+
+/**
+ * Оценка устного ответа студента (roadmap 2.8): текст ответа (расшифровка речи
+ * или набранный вручную) сравнивается с эталоном банка по критериям полноты,
+ * точности и владения терминами. Ответ — строго JSON, чтобы фронт не парсил прозу.
+ */
+ai.post("/oral-evaluate", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const rl = await rateLimit(c.env, `ai:oral:${user.id}`, 20, 300);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много оценок подряд. Подождите пару минут.", 429, rid);
+    return c.json(body, status as 429);
+  }
+  let payload: { question?: string; reference?: string; answer?: string } = {};
+  try { payload = await c.req.json(); } catch {
+    const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const question = String(payload.question || "").slice(0, 800).trim();
+  const reference = String(payload.reference || "").slice(0, 6000).trim();
+  const answer = String(payload.answer || "").slice(0, 6000).trim();
+  if (!question || !answer) {
+    const { body, status } = fail("VALIDATION", "Нужны question и answer", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: [
+        "Ты — строгий, но доброжелательный экзаменатор медицинского вуза.",
+        "Студент ответил вслух (текст — расшифровка речи, возможны оговорки распознавания).",
+        "Сравни ответ с эталоном и оцени: полнота, точность фактов, владение терминами.",
+        "Не требуй дословного совпадения с эталоном: оценивай смысл, не форму.",
+        "Оговорки распознавания речи (пропуски знаков, похожие слова) не снижают балл, если смысл ясен.",
+        "Ответь СТРОГО в формате JSON без markdown-обёртки:",
+        '{"score":0,"verdict":"…","missed":["пункт 1","пункт 2"],"mistakes":["…"],"follow_up":"уточняющий вопрос"}',
+        'score — целое 0-10; verdict — одной фразой «Принято»/«Почти»/«Не принято» с кратким обоснованием;',
+        'missed — важное из эталона, чего нет в ответе (пустой массив если всё названо);',
+        'mistakes — фактические ошибки ответа; follow_up — уточняющий вопрос экзаменатора.',
+        reference ? "\n=== ЭТАЛОН ===\n" + reference : "\n(Эталона нет: оценивай ответ сам по медицинским знаниям.)",
+      ].join("\n"),
+    },
+    { role: "user", content: "Вопрос билета: " + question + "\n\nОтвет студента: " + answer },
+  ];
+  try {
+    const result = await trackedGeneration(c.env, messages, "auto", 0.2, {
+      route: "POST /ai/oral-evaluate",
+      feature: "oral_exam",
+      userId: user.id,
+      requestId: rid,
+    });
+    const parsed = parseOralVerdict(result.text);
+    if (!parsed) {
+      const { body, status } = fail("AI_MALFORMED", "Экзаменатор вернул ответ не в том формате — попробуйте ещё раз", 502, rid);
+      return c.json(body, status as 502);
+    }
+    return c.json(ok({ ...parsed, provider: result.provider, model: result.model }, rid));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown";
+    const reportedStatus = Number((error as any)?.status);
+    const status = reportedStatus === 429 || reportedStatus === 503 ? reportedStatus
+      : reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
+    const { body, status: responseStatus } = fail(String((error as any)?.code || (status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM")), error instanceof Error ? error.message : "ИИ-провайдеры временно недоступны", status, rid);
+    return c.json(body, responseStatus as 502 | 503);
+  }
+});
+
+/**
+ * Конспект из файла (roadmap 2.5 MVP): фото или PDF → структурный конспект
+ * markdown. PDF с текстовым слоем разбирается локально (unpdf) и конспектируется
+ * любым доступным провайдером; фото требует мультимодального Gemini или
+ * OCR-шлюза — без них честная 503 с подсказкой. Ответ на сервере не хранится:
+ * студент сам сохраняет конспект как личную лекцию.
+ */
+const NOTES_MAX_BASE64 = 12_000_000;
+
+ai.post("/notes-from-file", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const rl = await rateLimit(c.env, `ai:notes:${user.id}`, 10, 600);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много конспектов подряд. Подождите несколько минут.", 429, rid);
+    return c.json(body, status as 429);
+  }
+  let payload: { content_base64?: string; mime?: string; filename?: string } = {};
+  try { payload = await c.req.json(); } catch {
+    const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const base64 = String(payload.content_base64 || "").replace(/^data:[^,]+,/, "");
+  if (!base64) {
+    const { body, status } = fail("VALIDATION", "Передайте файл в content_base64", 400, rid);
+    return c.json(body, status as 400);
+  }
+  if (base64.length > NOTES_MAX_BASE64) {
+    const { body, status } = fail("PAYLOAD_TOO_LARGE", "Файл больше 8 МБ — разбейте его на части", 413, rid);
+    return c.json(body, status as 413);
+  }
+  const mime = String(payload.mime || "").trim().toLowerCase();
+  const filename = String(payload.filename || "").slice(0, 120);
+
+  // 1) Извлечь текст источника.
+  let sourceText = "";
+  let sourceKind = mime;
+  try {
+    if (mime === "application/pdf" || /\.pdf$/i.test(filename)) {
+      const document = await getDocumentProxy(decodeBase64Url(base64));
+      const { text } = await extractText(document, { mergePages: true });
+      sourceText = String(text || "").replace(/\u0000/g, "").trim();
+      sourceKind = "pdf";
+      if (!sourceText) {
+        const { body, status } = fail("EMPTY_DOCUMENT", "В PDF нет текстового слоя (это скан). Конспект из сканов пока недоступен.", 422, rid);
+        return c.json(body, status as 422);
+      }
+    } else if (/^image\//.test(mime)) {
+      const extracted = await extractImageText(c.env, base64, mime);
+      sourceText = extracted.text;
+      sourceKind = "image";
+      if (!sourceText) {
+        const { body, status } = fail(extracted.code, extracted.message, 503, rid);
+        return c.json(body, status as 503);
+      }
+    } else if (/^text\//.test(mime) || /\.(txt|md|markdown)$/i.test(filename)) {
+      sourceText = decodeBase64Text(base64).trim();
+      sourceKind = "text";
+    } else {
+      const { body, status } = fail("UNSUPPORTED_TYPE", "Поддерживаются PDF, изображения (JPG/PNG/WebP) и текстовые файлы", 422, rid);
+      return c.json(body, status as 422);
+    }
+  } catch (error) {
+    console.error("[ai:notes-extract]", error instanceof Error ? error.message : String(error));
+    const { body, status } = fail("EXTRACT_FAILED", "Не удалось прочитать файл: он повреждён или защищён", 422, rid);
+    return c.json(body, status as 422);
+  }
+
+  if (sourceText.length < 200) {
+    const { body, status } = fail("TEXT_TOO_SHORT", "В файле слишком мало текста для конспекта", 422, rid);
+    return c.json(body, status as 422);
+  }
+  sourceText = sourceText.slice(0, 60000);
+
+  // 2) Конспект любым доступным провайдером (текст уже извлечён — мультимодальность не нужна).
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: [
+        "Ты — редактор студенческих конспектов по медицине.",
+        "Из чернового текста (распознанного фото/PDF или файла) собери структурный конспект в markdown:",
+        "заголовки по смыслу, списки, таблицы в markdown, формулы — латиницей.",
+        "Сохраняй ВСЕ факты и цифры источника, ничего не придумывай; неразборчивые места помечай [неразборчиво].",
+        "В конце добавь раздел «Ключевые термины» — 10-15 терминов с краткими определениями.",
+        "Верни только markdown конспекта, без вступлений и пояснений.",
+      ].join("\n"),
+    },
+    { role: "user", content: "Источник (" + sourceKind + ", " + (filename || "без имени") + "):\n\n" + sourceText },
+  ];
+  try {
+    const result = await trackedGeneration(c.env, messages, "auto", 0.2, {
+      route: "POST /ai/notes-from-file",
+      feature: "notes_file",
+      userId: user.id,
+      requestId: rid,
+      metadata: { source_kind: sourceKind, source_chars: sourceText.length },
+    });
+    return c.json(ok({
+      notes_markdown: result.text,
+      source_chars: sourceText.length,
+      provider: result.provider,
+      model: result.model,
+    }, rid));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown";
+    const reportedStatus = Number((error as any)?.status);
+    const status = reportedStatus === 429 || reportedStatus === 503 ? reportedStatus
+      : reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
+    const { body, status: responseStatus } = fail(String((error as any)?.code || (status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM")), error instanceof Error ? error.message : "ИИ-провайдеры временно недоступны", status, rid);
     return c.json(body, responseStatus as 502 | 503);
   }
 });

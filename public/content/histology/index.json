@@ -14,8 +14,8 @@
    },
    "content": "citologiya-embriologiya.json",
    "stats": {
-    "questions": 294,
-    "answered": 270
+    "questions": 426,
+    "answered": 274
    }
   },
   {
@@ -31,7 +31,7 @@
    },
    "content": "obschaya-gistologiya.json",
    "stats": {
-    "questions": 361,
+    "questions": 640,
     "answered": 361
    }
   },
@@ -48,7 +48,7 @@
    },
    "content": "chastnaya-gistologiya.json",
    "stats": {
-    "questions": 50,
+    "questions": 802,
     "answered": 50
    }
   }

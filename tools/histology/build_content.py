@@ -449,26 +449,27 @@ def source_h2008() -> dict:
     темы сборника делятся на эмбриологию, общую и частную гистологию;
     точка деления — тема «СИСТЕМА СПИННОГО МОЗГА (в схемах)» (первая
     тема частной части). «ВОПРОСНИК … за полный курс» — отдельный
-    смешанный банк (частичная дубликация тематических заданий снимается
-    общей дедупликацией)."""
+    смешанный банк; в документе его ДВА списка (40 + 155 заданий,
+    «проверка знаний» и «проверка») — берём оба, пересечение из трёх
+    вопросов снимает общая дедупликация."""
     text = antiword(SRC / SOURCES["h2008"][0])
 
     def norm_title(t: str) -> str:
         return re.sub(r"\s+", " ", t).strip().rstrip(".").upper()
 
-    vop = re.search(r"^\s*ВОПРОСНИК\s*$", text, re.M)
+    vops = list(re.finditer(r"(?m)^\s*ВОПРОСНИК\s*$", text))
     oglavl = text.find("ОГЛАВЛЕНИЕ")
-    assert vop and oglavl > vop.start(), "h2008: ВОПРОСНИК/ОГЛАВЛЕНИЕ не найдены"
+    assert vops and oglavl > vops[0].start(), "h2008: ВОПРОСНИК/ОГЛАВЛЕНИЕ не найдены"
     themes = [
         (m.start(), norm_title(m.group(1)))
         for m in re.finditer(r"(?m)^\s*Тема[.:]\s+(.+)$", text)
-        if m.start() < vop.start()
+        if m.start() < vops[0].start()
     ]
     split = next(p for p, n in themes if "В СХЕМАХ" in n)
 
     emb, obs, chast = [], [], []
     for i, (pos, name) in enumerate(themes):
-        end = themes[i + 1][0] if i + 1 < len(themes) else vop.start()
+        end = themes[i + 1][0] if i + 1 < len(themes) else vops[0].start()
         qs = parse_open_numbered(text[pos:end])
         if name in H2008_SKIP_THEMES:
             continue
@@ -478,14 +479,19 @@ def source_h2008() -> dict:
             obs += qs
         else:
             chast += qs
-    voprosnik = parse_open_numbered(text[vop.start():oglavl])
+    # Списки ВОПРОСНИК идут друг за другом: каждый — от своего заголовка
+    # до следующего заголовка (последний — до ОГЛАВЛЕНИЯ).
+    voprosnik = []
+    for i, vop in enumerate(vops):
+        end = vops[i + 1].start() if i + 1 < len(vops) else oglavl
+        voprosnik += parse_open_numbered(text[vop.start():end])
 
     # контроль детерминированности разбора
     for name, qs, expected in (
         ("эмбриология", emb, 42),
         ("общая", obs, 200),
         ("частная", chast, 412),
-        ("вопросник", voprosnik, 102),
+        ("вопросник", voprosnik, 195),
     ):
         if len(qs) != expected:
             raise SystemExit("h2008: %s: %d заданий вместо %d" % (name, len(qs), expected))
@@ -520,7 +526,7 @@ EXAM_STOM_SECTIONS = [
     ("Вопросы по эмбриологии", "cit"),
     ("Вопросы по общей гистологии", "obs"),
     ("Вопросы по частной гистологии", "chas"),
-    ("Профильные", "chas"),
+    ("Профильные", "prof"),
 ]
 # ожидаемое число вопросов по разделам — страховка от сбоя разбора
 EXAM_EXPECTED = {
@@ -580,7 +586,7 @@ def source_examstom() -> dict:
 
 # ------------------------------------------------- контрольные работы
 
-KONTROL_EXPECTED = {"kontrol1": 39, "kontrol2": 40}
+KONTROL_EXPECTED = {"kontrol1": 49, "kontrol2": 40}
 
 
 def source_kontrol(source_key: str) -> list:
@@ -600,8 +606,13 @@ def source_kontrol(source_key: str) -> list:
 
     def flush_section():
         nonlocal header, bullet
+        # Раздел с пунктами уже включает header в текст каждого пункта
+        # (join_cont в flush_bullet) — добавлять голый заголовок отдельным
+        # заданием нельзя, иначе после каждого списка остаётся пустой
+        # вопрос «Назовите:».
+        had_bullet = bullet is not None
         flush_bullet()
-        if header is not None:
+        if header is not None and not had_bullet:
             questions.append({"text": header})
         header = None
 

@@ -7,6 +7,7 @@ import { listSubjectsCatalog } from "@/lib/api";
 import { Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import { AiQuickActions } from "@/components/study/AiQuickActions";
 
 export default function TutorPage() {
   const [items,setItems]=useState<AiConversation[]>([]);
@@ -172,6 +173,7 @@ export default function TutorPage() {
             </div>
             <div className="border-t border-[var(--border)] p-3 sm:p-4">
               {error&&<div className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+              <AiQuickActions topic={input} onPrompt={(p) => { setInput(p); inputRef.current?.focus(); }} />
               <div className="flex gap-2"><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
             </div>
           </div>

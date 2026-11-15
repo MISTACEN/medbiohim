@@ -66,9 +66,11 @@ for (const summary of index.manuals) {
         assert.ok(!numbers.has(question.number), `${summary.slug}: duplicate question number ${question.number}`);
         numbers.add(question.number);
         if (open) {
-          assert.ok(question.answer, `${summary.slug}: open question without etalon`);
+          // Открытые задания бывают с эталоном (экзаменационные задачи) и
+          // без — «режим разбора» (сборник 2008, контрольные, вопросы кафедры).
+          // Эталон обязателен только там, где он заявлен содержимым банка.
           assert.deepEqual(question.options, [], `${summary.slug}: open question with options`);
-          answered += 1;
+          if (question.answer) answered += 1;
         } else {
           assert.ok(question.options.length >= 2, `${summary.slug}: question without options`);
           if (question.answer) {
@@ -106,8 +108,20 @@ for (const summary of index.manuals) {
     }
   });
 
-  test(`${summary.slug}: answer coverage is at least 90%`, () => {
-    const coverage = manual.stats.answered / Math.max(1, manual.stats.questions);
-    assert.ok(coverage >= 0.9, `${summary.slug}: answer coverage ${(coverage * 100).toFixed(1)}%`);
+  test(`${summary.slug}: banks with etalons keep coverage`, () => {
+    // Банки «режима разбора» (сборник 2008, контрольные, вопросы кафедры)
+    // эталонов не имеют — их покрытие 0% по определению. Проверяем только
+    // банки, где эталон заявлен хотя бы одним вопросом: там покрытие должно
+    // быть почти полным (допуск 10% — на пропуски в источнике).
+    for (const bank of manual.banks) {
+      const answered = bank.questions.filter((question) => question.answer).length;
+      if (answered === 0) continue;
+      const coverage = answered / bank.questions.length;
+      assert.ok(
+        coverage >= 0.9,
+        `${summary.slug} / ${bank.title}: answer coverage ${(coverage * 100).toFixed(1)}%`
+      );
+    }
+    assert.ok(manual.stats.answered > 0, `${summary.slug}: no answered questions at all`);
   });
 }

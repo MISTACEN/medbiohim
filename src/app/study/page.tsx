@@ -23,7 +23,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { GraduationCap, Loader2, TriangleAlert } from "lucide-react";
+import { FileText, GraduationCap, Loader2, TriangleAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { getProgress } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
@@ -266,6 +266,21 @@ export default function StudyPage() {
         <ExamAgent />
         <StudyAssistant />
       </div>
+
+      <section id="import" className="scroll-mt-24">
+        <Link
+          href="/study/import"
+          className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm transition hover:border-[var(--primary)]/50"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--primary-soft)]">
+            <FileText className="h-5 w-5 text-[var(--primary)]" />
+          </span>
+          <span className="min-w-0">
+            <span className="block font-bold">Конспект из файла</span>
+            <span className="mt-0.5 block text-sm text-[var(--muted)]">Фото лекции, PDF или txt — ИИ соберёт конспект и сохранит в личные лекции</span>
+          </span>
+        </Link>
+      </section>
 
       <section id="plan" className="scroll-mt-24">
         <AcademicSection />

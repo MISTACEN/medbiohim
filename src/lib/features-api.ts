@@ -204,6 +204,14 @@ export async function aiSendMessage(id:string,content:string,provider?:AiProvide
 export type AiChatMode = "precise" | "fast";
 export async function aiChat(messages:Array<{role:"system"|"user"|"assistant";content:string}>,provider?:AiProvider,options?:{contextScope?:string;mode?:AiChatMode;subjectSlug?:string}){ return api<{message:{role:string;content:string};provider:string;model:string;mode?:string;sources?:AiSource[]}>("/ai/chat",{method:"POST",body:JSON.stringify({messages,provider,context_scope:options?.contextScope,mode:options?.mode,subject_slug:options?.subjectSlug}),timeoutMs:60000}); }
 
+/* —— Устный экзамен: оценка расшифрованного ответа экзаменатором-ИИ (roadmap 2.8) —— */
+export type OralVerdict = { score: number; verdict: string; missed: string[]; mistakes: string[]; follow_up: string; provider: string; model: string };
+export async function aiOralEvaluate(payload:{question:string;reference?:string;answer:string}){ return api<OralVerdict>("/ai/oral-evaluate",{method:"POST",body:JSON.stringify(payload),timeoutMs:60000}); }
+
+/* —— Конспект из файла: фото/PDF/текст → структурный markdown (roadmap 2.5 MVP) —— */
+export type NotesFromFileResult = { notes_markdown: string; source_chars: number; provider: string; model: string };
+export async function aiNotesFromFile(payload:{content_base64:string;mime:string;filename?:string}){ return api<NotesFromFileResult>("/ai/notes-from-file",{method:"POST",body:JSON.stringify(payload),timeoutMs:90000}); }
+
 /* —— BYOM: своя ИИ-модель пользователя —— */
 export type UserAiConfig = {
   provider: "openai_compatible" | "anthropic";

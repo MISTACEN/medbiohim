@@ -21,6 +21,8 @@ import { rateLimit } from "./redis.ts";
 
 export const AI_FEATURES = [
   "tutor_chat",
+  "oral_exam",
+  "notes_file",
   "lecture_cloze",
   "card_pack",
   "lecture_generate",
@@ -37,6 +39,8 @@ export type AiFeature = (typeof AI_FEATURES)[number];
  */
 export const AI_DAILY_LIMITS: Record<AiFeature, number | null> = {
   tutor_chat: 150,
+  oral_exam: 40,
+  notes_file: 15,
   lecture_cloze: 20,
   card_pack: 25,
   lecture_generate: 30,
@@ -46,6 +50,8 @@ export const AI_DAILY_LIMITS: Record<AiFeature, number | null> = {
 
 const FEATURE_LABELS: Record<AiFeature, string> = {
   tutor_chat: "ответов тьютора",
+  oral_exam: "оценок устного ответа",
+  notes_file: "конспектов из файлов",
   lecture_cloze: "конспектов с пропусками",
   card_pack: "наборов карточек",
   lecture_generate: "черновиков лекций",

@@ -428,6 +428,16 @@ export default function PreparationPage() {
               </span>
             </button>
           ))}
+          <Link
+            href={`/tests/preparation/${encodeURIComponent(id)}/oral?count=${limit}${returnHref ? `&return=${encodeURIComponent(returnHref)}` : ""}`}
+            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40"
+          >
+            <span className="block font-extrabold text-slate-900">Устный ответ</span>
+            <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">Отвечайте вслух — ИИ-экзаменатор оценит и задаст уточняющий вопрос</span>
+            <span className="mt-3 inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">
+              {limit} случайных вопросов
+            </span>
+          </Link>
         </div>
         <div className="card space-y-4 p-5">
           <label className="flex flex-wrap items-center gap-2 text-sm">
