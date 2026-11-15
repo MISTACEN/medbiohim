@@ -59,18 +59,32 @@ export function clearAuthCookies(res: NextResponse): NextResponse {
   return res;
 }
 
-// CSRF defense-in-depth (RFC §4.3): SameSite=Lax already blocks cross-site POST
-// cookies, but we additionally verify Sec-Fetch-Site and Origin host.
-export function csrfRejected(req: NextRequest): boolean {
-  const secFetchSite = req.headers.get("sec-fetch-site");
-  if (secFetchSite && secFetchSite !== "same-origin") return true;
-  const origin = req.headers.get("origin");
-  if (origin) {
-    try {
-      if (new URL(origin).host !== new URL(req.url).host) return true;
-    } catch {
-      return true;
-    }
+// CSRF defense-in-depth (RFC §4.3): SameSite=Lax уже блокирует кросс-сайт POST
+// cookies, но мы дополнительно сверяем Origin с хостом запроса.
+//
+// ВАЖНО: хост запроса нельзя брать из req.url — за обратным прокси (Layero)
+// req.url указывает на внутренний адрес (localhost:3000), и честный
+// same-origin запрос выглядел кросс-хостовым: вход не ставил куки ни в одном
+// браузере на Layero. Берём x-forwarded-host, req.url — только fallback.
+function requestHost(req: NextRequest): string {
+  const forwarded = req.headers.get("x-forwarded-host");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  try {
+    return new URL(req.url).host;
+  } catch {
+    return "";
   }
-  return false;
+}
+
+export function csrfRejected(req: NextRequest): boolean {
+  // SameSite=Lax уже не пускает кросс-сайтовые POST с куками; Origin,
+  // проставленный браузером кросс-сайтовому запросу, подделать из JS нельзя.
+  // Отклоняем только явное несовпадение хоста Origin.
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).host !== requestHost(req);
+  } catch {
+    return true;
+  }
 }
