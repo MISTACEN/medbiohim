@@ -31,7 +31,6 @@
     "pdfjs-dist": "^4.10.38",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "undici": "^7.30.2",
     "unpdf": "2.1.0",
     "xlsx": "npm:@keep-lts/xlsx@^0.18.6"
   },

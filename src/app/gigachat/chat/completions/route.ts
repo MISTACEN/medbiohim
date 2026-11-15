@@ -2,17 +2,45 @@
  * Релей GigaChat chat/completions (docs/DEPLOY-LAYERO.md): принимает OpenAI-
  * подобный запрос от воркера (x-medbiohim-internal: GIGACHAT_RELAY_SECRET,
  * Authorization: Bearer <access_token>) и пересылает в Сбер. Ответ — как у
- * GigaChat (JSON / SSE не используется: тьютор ходит без streaming).
+ * GigaChat (JSON; тьютор ходит без streaming).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { Agent, fetch as undiciFetch, type RequestInit as UndiciRequestInit } from "undici";
+import https from "node:https";
+import { URL } from "node:url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CHAT_URL = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions";
-const dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
 const MAX_BODY_CHARS = 400_000;
+
+function postHttps(url: string, headers: Record<string, string>, body: string, timeoutMs: number): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const req = https.request(
+      {
+        hostname: target.hostname,
+        port: target.port || 443,
+        path: target.pathname + target.search,
+        method: "POST",
+        headers,
+        // Сертификат Сбера не доверен Node — отключаем проверку цепочки только
+        // здесь и только для релея GigaChat.
+        rejectUnauthorized: false,
+      },
+      (res) => {
+        let data = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => { data += chunk; if (data.length > 4_000_000) req.destroy(); });
+        res.on("end", () => resolve({ status: res.statusCode || 502, text: data }));
+      },
+    );
+    req.on("error", (error) => reject(error));
+    req.setTimeout(timeoutMs, () => req.destroy(new Error("timeout")));
+    req.write(body);
+    req.end();
+  });
+}
 
 function unauthorized() {
   return NextResponse.json(
@@ -35,19 +63,18 @@ export async function POST(req: NextRequest) {
   const body = (await req.text()).slice(0, MAX_BODY_CHARS);
 
   try {
-    const upstream = await undiciFetch(CHAT_URL, {
-      method: "POST",
-      headers: {
+    const upstream = await postHttps(
+      CHAT_URL,
+      {
         authorization: bearer,
         "content-type": "application/json",
         accept: "application/json",
+        "content-length": String(Buffer.byteLength(body)),
       },
       body,
-      dispatcher,
-      signal: AbortSignal.timeout(90_000),
-    } as UndiciRequestInit);
-    const text = await upstream.text();
-    return new NextResponse(text, {
+      90_000,
+    );
+    return new NextResponse(upstream.text, {
       status: upstream.status,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });

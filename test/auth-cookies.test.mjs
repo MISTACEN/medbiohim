@@ -91,10 +91,11 @@ test("logout endpoint revokes via Supabase with Bearer from mb_at and clears coo
   assert.match(logoutRoute, /422/);
 });
 
-test("CSRF defense-in-depth: Sec-Fetch-Site and Origin host checks on all auth endpoints", () => {
-  assert.match(authCookies, /sec-fetch-site/);
-  assert.match(authCookies, /secFetchSite !== "same-origin"/);
-  assert.match(authCookies, /new URL\(origin\)\.host !== new URL\(req\.url\)\.host/);
+test("CSRF defense-in-depth: Origin host checks on all auth endpoints", () => {
+  // Origin сверяется с x-forwarded-host (за прокси Layero req.url — внутренний
+  // хост; сверка с req.url ломала вход на Layero во всех браузерах).
+  assert.match(authCookies, /x-forwarded-host/);
+  assert.match(authCookies, /new URL\(origin\)\.host !== requestHost\(req\)/);
   for (const [name, src] of [["session", sessionRoute], ["refresh", refreshRoute], ["logout", logoutRoute]]) {
     assert.match(src, /if \(csrfRejected\(req\)\)/, `${name}: CSRF gate`);
     assert.match(src, /CSRF_REJECTED/, `${name}: CSRF_REJECTED code`);
