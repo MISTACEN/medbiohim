@@ -46,6 +46,7 @@ export type UserAiOverride = {
   key: string;
   base: string;
   model: string;
+  preferOwn: boolean;
 };
 
 export type UserAiConfigRow = {
@@ -81,6 +82,7 @@ export async function loadUserAiOverride(
       key,
       base: String(row.base_url || "").replace(/\/$/, ""),
       model: String(row.model || ""),
+      preferOwn: row.prefer_own === true,
     };
   } catch {
     // Расшифровка/чтение не должны ломать чат: просто работаем на платформенных провайдерах.

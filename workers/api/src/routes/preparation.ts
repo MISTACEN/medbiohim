@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { logActivity } from "../lib/activity";
 // Reuse the archived, already hardened Supabase/RLS preparation implementation while
 // the API is consolidated into one Worker. This is bundled into this Worker, not a
 // runtime proxy to PHP/SpaceWeb or the Shadow Worker.
@@ -167,6 +168,21 @@ preparation.post("/preparation/:id/finish", requireAuth, async (c) => {
     if (result?.ok && result.data && deadline && isExpired(deadline)) {
       result.data.time_exceeded = true;
       result.data.deadline_at = deadline;
+    }
+    // Фаза 5: завершение подготовки — событие ленты. Режим solve завершается
+    // через preparation-RPC, а не через test_attempts, поэтому без этой точки
+    // строки test_finished в «Недавно» не появлялись. Сбой записи не влияет
+    // на ответ.
+    if (result?.ok && result.data) {
+      const stats: any = (result.data as any).stats ?? null;
+      await logActivity(c.env, {
+        userId: c.get("user").id,
+        kind: "test_finished",
+        refId: id,
+        payload: stats
+          ? { percent: stats.percent ?? null, correct: stats.correct ?? null, total: stats.total ?? null }
+          : {},
+      });
     }
     return respond(c, rid, result, "Не удалось завершить подготовку");
   } catch {

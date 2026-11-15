@@ -3,9 +3,10 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAdmin, requireAuth, type AuthVariables } from "../middleware/auth";
 import { logActivity } from "../lib/activity";
-import { rateLimit } from "../lib/redis";
+import { rateLimit, getRedis } from "../lib/redis";
 import { shouldUseLectureRag } from "../lib/ai-scope";
 import { selectLectureExcerpts } from "../lib/lecture-rag";
+import { loadUserAiOverride } from "../lib/user-ai-config";
 import {
   aiDailyQuota,
   aiQuotaMessage,
@@ -76,9 +77,10 @@ async function generateWithFallback(
   requested?: string,
   temperature = 0.25,
   onAttempt?: (attempt: Record<string, unknown>) => void,
+  userOverride?: unknown,
 ): Promise<ProviderResult> {
   try {
-    return await generate(env, messages, requested, temperature, onAttempt);
+    return await generate(env, messages, requested, temperature, onAttempt, userOverride);
   } catch (error) {
     if (!workersAiConfigured(env)) throw error;
     console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
@@ -117,16 +119,23 @@ function trackedGeneration(
   requested: string | undefined,
   temperature: number,
   usage: AiUsageContext,
+  userOverride?: unknown,
 ): Promise<ProviderResult> {
   return withAiCall(env, usage, () =>
     generateWithFallback(env, messages, requested, temperature, (attempt) => {
       (usage.attempts ??= []).push(attempt);
-    }));
+      // Каждая реальная попытка — проба провайдера для честного /providers:
+      // отказ живёт в Redis 10 минут и убирает провайдера из выбора /tutor.
+      const id = String(attempt?.id || "");
+      if (id && id !== "custom") {
+        void recordProviderProbe(env, id, attempt?.outcome === "ok", `${attempt?.outcome || "error"} ${attempt?.status || ""}`.trim());
+      }
+    }, userOverride));
 }
 
-function normalizeConversationProvider(value: unknown): "auto" | "gemini" | "gigachat" {
-  // Current Supabase migration constrains ai_conversations.provider to these values.
-  return value === "gemini" || value === "gigachat" ? value : "auto";
+function normalizeConversationProvider(value: unknown): "auto" | "gemini" | "gigachat" | "custom" {
+  // CHECK-констрейнт ai_conversations.provider допускает custom (20261115_user_ai_configs).
+  return value === "gemini" || value === "gigachat" || value === "custom" ? value : "auto";
 }
 
 function systemPrompt(subjectSlug?: string | null): string {
@@ -212,8 +221,49 @@ export async function buildLectureContext(
   }
 }
 
+/**
+ * Честный /providers: провайдер, чей последний живой вызов провалился
+ * (диагностика админа или реальный вызов студента), помечается degraded на
+ * 10 минут — и в /tutor он больше не предлагается, пока сам не ответит.
+ * Кэш в Redis: пишется при diagnostics и при фолбэке в trackedGeneration.
+ */
+const PROBE_TTL_SECONDS = 600;
+const PROBED_PROVIDERS = ["groq", "mistral", "gigachat", "openai", "openrouter", "gemini"];
+
+async function recordProviderProbe(env: Env, provider: string, ok: boolean, detail: string): Promise<void> {
+  const redis = getRedis(env);
+  if (!redis) return;
+  try {
+    await redis.set(`ai:probe:${provider}`, JSON.stringify({ ok, detail: detail.slice(0, 120), at: Date.now() }), { ex: PROBE_TTL_SECONDS });
+  } catch { /* кэш проб не критичен */ }
+}
+
+async function readProviderProbes(env: Env): Promise<Record<string, { ok: boolean; detail: string } | null>> {
+  const redis = getRedis(env);
+  const out: Record<string, { ok: boolean; detail: string } | null> = {};
+  if (!redis) return out;
+  try {
+    for (const id of PROBED_PROVIDERS) {
+      const raw = await redis.get(`ai:probe:${id}`);
+      out[id] = raw ? (JSON.parse(String(raw)) as { ok: boolean; detail: string }) : null;
+    }
+  } catch { /* без кэша — статус как есть */ }
+  return out;
+}
+
 ai.get("/providers", requireAuth, async (c) => {
   const status = getAiProviderStatus(c.env) as any;
+  // Degraded-пометки: провайдер, проваливший последний живой вызов, честно
+  // помечается недоступным — фронтенд его в выборе не предлагает.
+  const probes = await readProviderProbes(c.env);
+  for (const [id, probe] of Object.entries(probes)) {
+    const meta = status.providers?.[id];
+    if (!meta?.configured || !probe) continue;
+    if (!probe.ok) {
+      meta.available = false;
+      meta.reason = `degraded: ${probe.detail} — проверьте /ai/diagnostics`;
+    }
+  }
   // BYOM: пользовательская модель появляется в списке, если настроена.
   try {
     const { data: config } = await c.get("supabase")
@@ -290,8 +340,10 @@ ai.get("/diagnostics", requireAdmin, async (c) => {
         ms: Date.now() - started,
         ...(servedByRequested ? {} : { fell_back_to: result.provider }),
       });
+      await recordProviderProbe(c.env, id, servedByRequested, servedByRequested ? "ok" : `fell back to ${result.provider}`);
     } catch (error: any) {
       providers.push({ id, configured: true, ok: false, code: String(error?.code || "ERROR"), ms: Date.now() - started });
+      await recordProviderProbe(c.env, id, false, String(error?.code || "ERROR"));
     }
   }
   return c.json(ok({ region: status.region, default_provider: status.default, providers, attempts }, rid));
@@ -452,10 +504,18 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
 
   let generated: ProviderResult;
   try {
+    // BYOM: конфиг пользователя подставляется, когда выбран «custom» или
+    // включён приоритет своей модели; при отказе — платформенные провайдеры.
+    const userOverride = await loadUserAiOverride(c.env, supabase, user.id);
+    const requestedProvider = payload.provider === "custom"
+      ? "custom"
+      : payload.provider || (conversation.provider === "auto"
+        ? (userOverride?.preferOwn ? "custom" : undefined)
+        : conversation.provider);
     generated = await trackedGeneration(
       c.env,
       messages,
-      payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider),
+      requestedProvider,
       temperature,
       {
         route: "POST /ai/conversations/:id/messages",
@@ -465,6 +525,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
         requestId: rid,
         metadata: { mode },
       },
+      userOverride ?? undefined,
     );
     // Модель не поставила сносок — гарантируем их сами (см. lib/ai-citations.ts).
     generated = { ...generated, text: formatAnswer(generated.text, rag.citations) };
@@ -706,14 +767,18 @@ ai.post("/chat", requireAuth, async (c) => {
     ...chatMessages.filter((message) => message.role !== "system"),
   ];
   try {
-    const result = await trackedGeneration(c.env, messages, payload.provider, temperature, {
+    const userOverride = await loadUserAiOverride(c.env, c.get("supabase"), user.id);
+    const chatRequested = payload.provider === "custom" || (!payload.provider && (userOverride as any)?.preferOwn)
+      ? "custom"
+      : payload.provider;
+    const result = await trackedGeneration(c.env, messages, chatRequested, temperature, {
       route: "POST /ai/chat",
       feature: "tutor_chat",
       userId: user.id,
       subjectSlug,
       requestId: rid,
       metadata: { mode, context_scope: payload.context_scope ?? null },
-    });
+    }, userOverride ?? undefined);
     // Явно запрошенный провайдер мог отказать: клиент должен видеть, что ответ
     // пришёл от другого, а не считать, что Mistral/GigaChat работает.
     const requested = String(payload.provider || "").trim().toLowerCase();

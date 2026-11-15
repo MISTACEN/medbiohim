@@ -58,11 +58,7 @@ export const MIN_RELATIVE_SCORE = 0.6;
 /** Совпадение основы в названии темы весит как три совпадения в тексте. */
 export const TITLE_BOOST = 3;
 /** Минимум упоминаний основы на 1000 символов текста (без совпадения в названии). */
-export const MIN_DENSITY = 0.3;
-/** Лекция, покрывшая весь вопрос, может упоминать термин заметно реже. */
-export const MIN_DENSITY_FULL = 0.1;
-/** С какой доли веса вопроса лекция считается ответившей на него целиком. */
-export const FULL_COVERAGE = 0.9;
+export const MIN_DENSITY = 0.1;
 /** Основа в такой доле лекций корпуса считается общей и в скоринг не идёт. */
 export const UBIQUITOUS_DF_SHARE = 0.8;
 
@@ -260,8 +256,7 @@ export function selectLectureExcerpts(
     // ответа о пищеварении.
     if (titleMatches === 0) {
       if (relevance < MIN_RELEVANCE) continue;
-      const minDensity = relevance >= FULL_COVERAGE ? MIN_DENSITY_FULL : MIN_DENSITY;
-      if (density < minDensity) continue;
+      if (density < MIN_DENSITY) continue;
     }
     matches.push({
       id: doc.id,
