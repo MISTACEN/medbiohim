@@ -38,8 +38,6 @@ import TicketGenerator from "@/components/subjects/TicketGenerator";
 import { PlanTimeline } from "@/components/subjects/PlanTimeline";
 import TabFallback from "@/components/subjects/TabFallback";
 import PhysiologyPractice from "@/components/physiology/PhysiologyPractice";
-import PhysiologyTests from "@/components/physiology/PhysiologyTests";
-import HistologyTests from "@/components/histology/HistologyTests";
 import Colloquium from "@/components/physiology/Colloquium";
 import SubjectQuestionBank from "@/components/questions/SubjectQuestionBank";
 import HobaPortal from "@/components/portals/HobaPortal";
@@ -667,8 +665,9 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
           </div>
         )}
 
-        {tab === "tests" && slug === "physiology" && <PhysiologyTests />}
-        {tab === "tests" && slug === "histology" && <HistologyTests />}
+        {/* Унификация: физиология и гистология показывают единый DB-TestsHub
+            (банки + «Полные тесты»); статический PhysiologyTests/HistologyTests
+            больше не рендерим (одни и те же вопросы дважды). */}
         {tab === "tests" && (
           <SubjectAssignments subjectId={subject?.id || subjectId} />
         )}

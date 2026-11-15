@@ -432,7 +432,9 @@ export function TestsHub({
   // вернуться именно туда, откуда пришли.
   useEffect(() => {
     if (!autoStart || startedRef.current || !focusTopic) return;
-    const first = levelFiltered[0];
+    // Свободная подготовка стартует с САМОГО КРУПНОГО банка предмета
+    // (полный банк темы), а не с первой попавшейся темы из списка.
+    const first = [...levelFiltered].sort((a, b) => b.questionCount - a.questionCount)[0];
     if (!first) return;
     startedRef.current = true;
     const url = new URL(window.location.href);
@@ -471,9 +473,18 @@ export function TestsHub({
     if (!modules.some((module) => module.key === moduleFilter)) setModuleFilter("all");
   }, [modules, moduleFilter]);
 
+  // Полные тесты (phys_full:* — перенос фич PhysiologyTests): мега-микс +
+  // по методичкам. Рендерятся отдельной секцией ПЕРВОЙ, из обычных групп исключены.
+  const fullTests = useMemo(() => levelFiltered.filter((test) => (test.source || "").startsWith("phys_full:")), [levelFiltered]);
+  const fullMega = fullTests.find((t) => (t.source || "") === "phys_full:physiology") || null;
+  const fullManuals = fullTests
+    .filter((t) => (t.source || "") !== "phys_full:physiology")
+    .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
+
   const groups = useMemo<TopicGroup[]>(() => {
     const map = new Map<string, TopicGroup>();
     for (const test of levelFiltered) {
+      if ((test.source || "").startsWith("phys_full:")) continue;
       if (moduleFilter !== "all" && test.moduleKey !== moduleFilter) continue;
       const key = test.topicKey;
       const meta = topicMeta.get(test.topicId);
@@ -497,10 +508,22 @@ export function TestsHub({
       }
     }
     return Array.from(map.values())
-      .map((group) => ({
-        ...group,
-        tests: group.tests.slice().sort((a, b) => a.orderIndex - b.orderIndex || a.title.localeCompare(b.title, "ru")),
-      }))
+      .map((group) => {
+        // Дедуп: одинаковые банки (тот же объём и название) показываем один раз —
+        // раньше «Банк тестовых заданий…» и «Тест по теме занятия» дублировали друг друга.
+        const seen = new Set<string>();
+        const deduped = group.tests.filter((test) => {
+          const key = `${(test.title || "").trim().toLowerCase()}|${test.questionCount}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        return {
+          ...group,
+          tests: deduped.slice().sort((a, b) => a.orderIndex - b.orderIndex || a.title.localeCompare(b.title, "ru")),
+          questionCount: deduped.reduce((sum, t) => sum + t.questionCount, 0),
+        };
+      })
       .sort((a, b) => {
         if (a.moduleOrder !== b.moduleOrder) return a.moduleOrder - b.moduleOrder;
         const moduleCompare = a.moduleTitle.localeCompare(b.moduleTitle, "ru");
@@ -510,7 +533,7 @@ export function TestsHub({
       });
   }, [levelFiltered, moduleFilter, topicMeta]);
 
-  const totalQuestions = levelFiltered.reduce((sum, test) => sum + test.questionCount, 0);
+  const totalQuestions = levelFiltered.filter((t) => !(t.source || "").startsWith("phys_full:")).reduce((sum, test) => sum + test.questionCount, 0);
   const selectedMode = MODES.find((item) => item.id === mode) || MODES[0];
   const showModuleFilter = modules.length > 1 && modules.some((module) => !module.fallback);
   const hasActiveFilters = Boolean(search.trim()) || moduleFilter !== "all" || (!scoped && subjectFilter !== "all");
@@ -751,6 +774,44 @@ export function TestsHub({
         </div>
       ) : (
         <div className="space-y-3">
+          {fullTests.length > 0 && (
+            <section className="overflow-hidden rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-sm">
+              <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">Полные тесты</div>
+                  <h2 className="mt-0.5 text-base font-extrabold text-slate-950">Все вопросы методичек одним заходом</h2>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{selectedMode.label}</span>
+              </header>
+              <div className="space-y-2 px-3 pb-3 sm:px-4 sm:pb-4">
+                {fullMega && (
+                  <article className="flex flex-col gap-3 rounded-xl border border-indigo-300 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold leading-snug text-slate-900">🏋️ Все тесты физиологии · мега-микс</h3>
+                      <p className="mt-1 text-xs text-[var(--muted)]">{fullMega.questionCount} {plural(fullMega.questionCount, "вопрос", "вопроса", "вопросов")} из всех методичек</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <Link href={buildHref(fullMega, mode, count)} className="btn-primary inline-flex min-h-10 items-center gap-2 text-sm">
+                        <Play className="h-4 w-4" /> {selectedMode.label}
+                      </Link>
+                      <Link href={buildBankHref(fullMega, mode, count)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-3 py-2 text-sm font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]">
+                        <BookOpenCheck className="h-4 w-4" /> Банк
+                      </Link>
+                    </div>
+                  </article>
+                )}
+                {fullManuals.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {fullManuals.map((test) => (
+                      <Link key={test.id} href={buildHref(test, mode, count)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--muted)] transition hover:border-indigo-300 hover:text-indigo-700">
+                        Полный тест · {test.title.replace(/^Полный тест · /, "")} · {test.questionCount}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
           {groups.map((group) => (
             <section key={group.key} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
               <header className="border-b border-[var(--border)] bg-slate-50/60 px-4 py-3 sm:px-5">
@@ -804,7 +865,6 @@ export function TestsHub({
                             до {test.maxAttempts} {plural(test.maxAttempts, "попытки", "попыток", "попыток")}
                           </span>
                         )}
-                        <span>Источник: {test.source}</span>
                         {!scoped && <span>{subjectLabel(test.subjectSlug, test.subjectName)}</span>}
                       </div>
                     </div>
