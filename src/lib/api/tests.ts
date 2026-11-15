@@ -75,7 +75,7 @@ export async function retryTestAnswerGrading(attemptId: string, questionId: stri
 export async function startPreparation(testId: string, mode: "full" | "count" | "sequential" = "full", questionLimit?: number, groupId?: string, experience?: "prepare" | "solve" | "exam" | "control"): Promise<any> {
   return api(endpoints.tests.preparationStart(testId), { method: "POST", body: JSON.stringify({ mode, question_limit: questionLimit, group_id: groupId, experience }) }) as any;
 }
-export async function getPreparation(sessionId: string): Promise<any> { return api(endpoints.tests.preparation(sessionId)) as any; }
+export async function getPreparation(sessionId: string, opts?: { oral?: boolean }): Promise<any> { return api(endpoints.tests.preparation(sessionId) + (opts?.oral ? "?oral=1" : "")) as any; }
 export async function savePreparation(sessionId: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.tests.preparation(sessionId), { method: "PATCH", body: JSON.stringify(payload) }) as any; }
 export async function finishPreparation(sessionId: string): Promise<any> { return api(endpoints.tests.preparationFinish(sessionId), { method: "POST", body: "{}" }) as any; }
 export async function preparationAiReview(sessionId: string): Promise<any> { return api(endpoints.tests.preparationAiReview(sessionId), { method: "POST", body: "{}" }) as any; }

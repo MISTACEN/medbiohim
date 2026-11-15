@@ -65,7 +65,9 @@ export default function OralExamPage() {
         setLoading(false);
         return;
       }
-      const loaded = await getPreparation(started.data.session.id);
+      // oral=1: сервер отдаёт эталоны своей сессии и до завершения —
+      // без них устному экзаменатору не с чем сравнивать ответ.
+      const loaded = await getPreparation(started.data.session.id, { oral: true });
       if (cancelled) return;
       if (!loaded.ok) {
         setError(describeApiError(loaded.error));

@@ -916,7 +916,19 @@ export async function getSupabasePreparation(request, env, sessionId, fetcher = 
     const answers = await c.rows("test_preparation_results", { select: "question_id,answer_text,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at,is_correct,score,answered_at",
       session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id, limit: "1000" });
     const completed = String(session.status) === "completed";
-    const questions = ids.map((id) => byId.get(id)).filter(Boolean).map((q) => publicPreparationQuestion(q, completed));
+    // Устный экзаменатор (страница /oral) сверяет ответ студента с эталоном
+    // банка ДО ответа: по ?oral=1 отдаём answer_display своей сессии и в
+    // незавершённом статусе (correct_keys по-прежнему не отдаём).
+    let oral = false;
+    try { oral = new URL(request.url).searchParams.get("oral") === "1"; } catch { oral = false; }
+    const questions = ids.map((id) => byId.get(id)).filter(Boolean).map((q) => {
+      const pub = publicPreparationQuestion(q, completed);
+      if (oral && !completed) {
+        const normalized = normalizeQuestion(q);
+        pub.answer_display = normalized.answer_display || null;
+      }
+      return pub;
+    });
     const safe = { ...session, question_ids: ids, test_title: testRows[0]?.title ?? null };
     delete safe.question_snapshot;
     return { ok: true, data: { session: safe, questions, answers } };
