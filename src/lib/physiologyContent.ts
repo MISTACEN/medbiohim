@@ -6,6 +6,8 @@ export type PhysiologyQuestion = {
   text: string;
   options: string[];
   answer: string;
+  /** Ключ восстановлен редакцией (в сборнике пропущен) — не эталон кафедры. */
+  restored?: boolean;
 };
 
 export type PhysiologyTestGroup = {

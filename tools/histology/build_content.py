@@ -90,13 +90,27 @@ NUM_TOKEN = re.compile(r"(\d{1,3})\s*([.\-)])")
 
 
 def antiword(doc: Path) -> str:
-    raw = subprocess.run(["antiword", str(doc)], capture_output=True).stdout
-    for enc in ("utf-8", "cp1251"):
+    """Текст .doc через antiword.
+
+    Карта UTF-8 задаётся явно: в части сборок antiword'а без неё кириллица
+    превращается в «?». Если карты нет, возвращаемся к вызову по умолчанию.
+    """
+    for args in (["antiword", "-m", "UTF-8.txt", str(doc)], ["antiword", str(doc)]):
+        raw = subprocess.run(args, capture_output=True).stdout
+        if not raw:
+            continue
         try:
-            return raw.decode(enc)
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+        text = raw.decode("utf-8", "replace")
+        if text.count("\ufffd") == 0 and text.count("?") < len(text) * 0.1:
+            return text
+        try:
+            return raw.decode("cp1251")
         except UnicodeDecodeError:
             continue
-    return raw.decode("cp1251", "ignore")
+    return ""
 
 
 def fix_mojibake(s: str) -> str:
@@ -766,6 +780,78 @@ NEW_BANK_PARTS = {
     ],
 }
 
+# Ключи, которых нет в сборнике 2007 (в блоке «ОТВЕТЫ» пропущены номера
+# 1, 55, 68, 81 — проверено по .doc и .docx одного издания). Восстановлены
+# по тексту лекции hist-01-citologiya-organelly.md и по формулировкам
+# вариантов: ответ — номер варианта, начиная с 1.
+#
+# Сопоставление — по НОРМАЛИЗОВАННОМУ ТЕКСТУ ВОПРОСА (norm_key), а не по
+# номеру после дедупликации/перенумерации: нумерация пересборки хрупка
+# (при изменении состава источников номера уезжают), текст вопроса — нет.
+ANSWER_OVERRIDES = {
+    "Цитология: тесты закрытого типа": {
+        # 1: «Содержимое клетки отделено от внешней среды…» → плазмолемма
+        "содержимое клетки отделено от внешней среды или соседних клеток": {
+            "answer": "4",
+            "restored": True,
+            "why": "содержимое клетки отделяет плазмолемма",
+        },
+        # 55: «Диаметр канальцев гладкой ЭПС…» → 50–100 нм (варианта 20–100 нм в сборнике нет)
+        "диаметр канальцев гладкой эндоплазматической сети составляет в среднем": {
+            "answer": "3",
+            "restored": True,
+            "why": "50–100 нм; варианта 20–100 нм в сборнике нет",
+        },
+        # 68: «Диффузия является примером…» → пассивный транспорт
+        "диффузия является примером": {
+            "answer": "3",
+            "restored": True,
+            "why": "диффузия — пример пассивного транспорта",
+        },
+        # 81: «Половые клетки имеют набор хромосом…» → 1n
+        "половые клетки имеют набор хромосом": {
+            "answer": "1",
+            "restored": True,
+            "why": "половые клетки гаплоидны (1n)",
+        },
+    },
+}
+
+
+def apply_answer_overrides(banks: list, overrides: dict) -> list:
+    """Проставляет восстановленные ключи, сопоставляя вопросы по norm_key текста.
+
+    Независимо от перенумерации и дедупликации: если у вопроса банка
+    (по заголовку банка) нет эталона и его нормализованный текст совпадает
+    с override-ключом — ответ ставится, вопрос помечается restored=True.
+    Возвращает список банков, у которых остались непокрытые override'ы —
+    для отчёта (ключ без вопроса = изменилась формулировка в источнике).
+    """
+    unmatched: list = []
+    for bank in banks:
+        entries = overrides.get(bank.get("title") or "", {})
+        if not entries:
+            continue
+        seen_keys: dict = {}
+        for entry_key, entry in entries.items():
+            seen_keys[norm_key(entry_key)] = entry
+        for q in bank["questions"]:
+            if q.get("answer"):
+                continue
+            hit = seen_keys.get(norm_key(q.get("text") or ""))
+            if hit:
+                q["answer"] = hit["answer"]
+                q["restored"] = True
+        for entry_key in entries:
+            covered = any(
+                q.get("restored") and norm_key(q.get("text") or "") == norm_key(entry_key)
+                for q in bank["questions"]
+            )
+            if not covered:
+                unmatched.append((bank["title"], entry_key[:60]))
+    return unmatched
+
+
 
 def build():
     per_source = {
@@ -832,6 +918,11 @@ def build():
             bank.pop("_slug", None)
             for i, q in enumerate(bank["questions"], 1):
                 q["number"] = i
+        # Восстановленные ключи — по нормализованному тексту вопроса
+        # (см. apply_answer_overrides): устойчиво к перенумерации и дедупу.
+        unmatched_overrides = apply_answer_overrides(banks, ANSWER_OVERRIDES)
+        for bank_title, entry_key in unmatched_overrides:
+            print("override не применён (текст не найден): %s :: %s" % (bank_title, entry_key))
         answered = sum(1 for b in banks for q in b["questions"] if q["answer"])
         total = sum(len(b["questions"]) for b in banks)
         src_key = spec["bank_sources"][0]

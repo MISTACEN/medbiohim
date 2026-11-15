@@ -17,7 +17,7 @@ export default function TutorPage() {
   const [booting,setBooting]=useState(true);
   const [error,setError]=useState<string|null>(null);
   const [provider,setProvider]=useState<AiProvider>("auto");
-  const [available,setAvailable]=useState<Record<AiProvider,boolean>>({auto:true,groq:false,gigachat:false,gemini:false,mistral:false,openrouter:false});
+  const [available,setAvailable]=useState<Record<AiProvider,boolean>>({auto:true,groq:false,gigachat:false,gemini:false,mistral:false,openrouter:false,custom:false});
   const [subjects,setSubjects]=useState<Array<{name:string;slug:string}>>([]);
   const [psRegionHint,setPsRegionHint]=useState(false);
   // «Точный» держит ответ на лекциях предмета и ставит сноски [N]; «Быстрый» — без RAG.
@@ -58,7 +58,7 @@ export default function TutorPage() {
   const boot = useCallback(async ()=>{
     setBooting(true);
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
-    if(ps.ok) { setAvailable({auto:true,groq:!!ps.data.providers.groq?.available,gigachat:!!ps.data.providers.gigachat?.available,gemini:!!ps.data.providers.gemini?.available,mistral:!!ps.data.providers.mistral?.available,openrouter:!!ps.data.providers.openrouter?.available}); setPsRegionHint(ps.data.region==="ru" && !!ps.data.providers.gemini?.reason); }
+    if(ps.ok) { setAvailable({auto:true,groq:!!ps.data.providers.groq?.available,gigachat:!!ps.data.providers.gigachat?.available,gemini:!!ps.data.providers.gemini?.available,mistral:!!ps.data.providers.mistral?.available,openrouter:!!ps.data.providers.openrouter?.available,custom:!!ps.data.providers.custom?.available}); if (ps.data.providers.custom?.prefer_own) setProvider("custom"); }
     if(ss.ok) {
       // В БД предмет может занимать несколько активных строк под одним слагом
       // (курсы/семестры) — в селекторе нужен один пункт на слаг, иначе React
@@ -133,7 +133,7 @@ export default function TutorPage() {
           <div className="flex items-center justify-between border-b border-[var(--border)] p-3"><b className="text-sm">Мои чаты</b><button type="button" onClick={()=>void newChat()} className="rounded-lg bg-[var(--primary)] p-2 text-white"><Plus className="h-4 w-4"/></button></div>
           <div className="flex-1 overflow-y-auto p-2">
             {items.map(c=><div key={c.id} className={"group mb-1 flex items-center gap-1 rounded-xl "+(conversation?.id===c.id?"bg-[var(--primary-soft)]":"hover:bg-[var(--card)]")}>
-              <button type="button" onClick={()=>void loadConversation(c.id)} className="min-w-0 flex-1 px-3 py-2.5 text-left"><div className="truncate text-sm font-medium">{c.title}</div><div className="mt-0.5 text-[10px] text-[var(--muted)]">{c.provider==="auto"?"Авто":c.provider==="gigachat"?"GigaChat":"Gemini"}{c.model?" · "+c.model:""}</div></button>
+              <button type="button" onClick={()=>void loadConversation(c.id)} className="min-w-0 flex-1 px-3 py-2.5 text-left"><div className="truncate text-sm font-medium">{c.title}</div><div className="mt-0.5 text-[10px] text-[var(--muted)]">{c.provider==="auto"?"Авто":c.provider==="gigachat"?"GigaChat":c.provider==="custom"?"Своя модель":"Gemini"}{c.model?" · "+c.model:""}</div></button>
               <button type="button" onClick={()=>void removeChat(c.id)} className="mr-1 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5"/></button>
             </div>)}
           </div>
@@ -152,6 +152,7 @@ export default function TutorPage() {
                 <option value="auto">Авто — лучший доступный</option>
                 <option value="gigachat" disabled={!available.gigachat}>GigaChat{available.gigachat ? "" : " — не настроен"}</option>
                 <option value="gemini" disabled={!available.gemini}>Gemini{psRegionHint ? " — недоступен из RU backend" : available.gemini ? "" : " — не настроен"}</option>
+                <option value="custom" disabled={!available.custom}>Своя модель{available.custom ? " ✓" : " — не подключена (Настройки → Своя ИИ-модель)"}</option>
               </select>
               <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] p-0.5 text-xs" role="group" aria-label="Режим ответа">
                 {([["precise","Точный"],["fast","Быстрый"]] as const).map(([value,label])=>(

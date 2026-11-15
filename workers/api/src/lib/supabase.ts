@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import type { Env } from "../env";
-import { isHttpsUrl, requireEnv } from "../env";
+import { isHttpsUrl, requireEnv } from "../env.ts";
 
 export function createUserClient(env: Env, accessToken: string): SupabaseClient {
   const url = requireEnv(env, "SUPABASE_URL");

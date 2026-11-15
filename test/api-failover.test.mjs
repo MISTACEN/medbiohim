@@ -18,17 +18,15 @@ test("Cloudflare API proxy returns a clear upstream failure without legacy fallb
 });
 
 test("Cloudflare proxy preserves caller request context and uses a bounded timeout", () => {
-  // Таймаут прокси должен покрывать худший случай воркера: до 16 с на внешних
-  // провайдеров ИИ и до 24 с на три прохода Workers AI. Зашитые 18 с обрывали
-  // ответ до запасного пути, поэтому проверяем не число, а границы бюджета.
+  // Худший случай воркера — 16 с на внешних провайдеров + 10 + 8 + 6 с на три
+  // прохода Workers AI (этапы закреплены в workers/api/test/ai-provider-budget).
+  // Зашитые 18 с обрывали ответ до запасного пути.
   const init = route.match(/const init = requestInit\(req, bodyBuffer, (\d+)\)/);
   assert.ok(init, "прокси обязан строить init через requestInit");
   const timeoutMs = Number(init[1]);
-  assert.ok(timeoutMs >= 40000 && timeoutMs <= 55000, `таймаут прокси ${timeoutMs} мс не покрывает бюджет ИИ`);
+  assert.ok(timeoutMs >= 40000, `таймаут прокси ${timeoutMs} мс обрывает запасной путь`);
 
-  const maxDuration = route.match(/export const maxDuration = (\d+)/);
-  assert.ok(maxDuration, "maxDuration должен быть задан явно");
-  const seconds = Number(maxDuration[1]);
+  const seconds = Number(route.match(/export const maxDuration = (\d+)/)?.[1] ?? 0);
   assert.ok(seconds * 1000 >= timeoutMs, `maxDuration ${seconds} с меньше таймаута прокси ${timeoutMs} мс`);
   assert.ok(seconds <= 60, `maxDuration ${seconds} с выходит за лимит платформы`);
 

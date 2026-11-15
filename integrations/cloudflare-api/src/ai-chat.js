@@ -246,7 +246,9 @@ export async function deleteAiConversation(request, env, userId, conversationId,
 }
 
 
-function getAiCompletionCandidates(env, preferredProvider) {
+function getAiCompletionCandidates(env, preferredProvider, userOverride) {
+  // BYOM: пользовательская модель. prefer_own — своей моделью отвечаем первым,
+  // при её отказе фолбэк на платформенные; явный выбор «custom» — только она.
   const preferred = String(preferredProvider || "auto").trim().toLowerCase();
   const region = String(env.AI_BACKEND_REGION || "ru").trim().toLowerCase();
   const geminiProxyReady = Boolean(env.GEMINI_VERCEL_PROXY_URL && env.GEMINI_VERCEL_PROXY_SECRET);
@@ -280,6 +282,20 @@ function getAiCompletionCandidates(env, preferredProvider) {
       base: "https://generativelanguage.googleapis.com/v1beta",
       model: env.GEMINI_MODEL || "gemini-2.0-flash",
     });
+  }
+  if (userOverride && userOverride.key && userOverride.base && userOverride.model) {
+    const custom = {
+      id: "custom",
+      key: String(userOverride.key).trim(),
+      base: String(userOverride.base).trim(),
+      model: String(userOverride.model).trim(),
+      provider: userOverride.provider === "anthropic" ? "anthropic" : "openai_compatible",
+    };
+    if (userOverride.preferOwn || preferred === "custom") {
+      candidates.unshift(custom);
+    } else {
+      candidates.push(custom);
+    }
   }
   const configuredDefault = String(env.AI_CHAT_PRIMARY_PROVIDER || "groq").trim().toLowerCase();
   const first = preferred === "auto" ? configuredDefault : preferred;
@@ -399,9 +415,62 @@ async function callGigaChatCompletion(cfg, messages, fetcher, temperature = 0.25
   return { content: text.trim(), provider: cfg.id, model: String(payload?.model || cfg.model) };
 }
 
+/**
+ * Claude (Anthropic Messages API) — формат для BYOM-провайдера "anthropic":
+ * ключ в x-api-key, system — отдельным полем, max_tokens обязателен,
+ * ответ — массив content-блоков.
+ */
+async function callClaudeCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}) {
+  const endpoint = cfg.base.replace(/\/$/, "") + "/v1/messages";
+  const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
+  const chat = messages.filter((message) => message.role !== "system");
+  const started = Date.now();
+  let response;
+  try {
+    response = await callFetch(fetcher, endpoint, {
+      method: "POST",
+      headers: {
+        "x-api-key": cfg.key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: 2500,
+        temperature,
+        ...(system ? { system } : {}),
+        messages: chat.map((message) => ({ role: message.role, content: message.content })),
+      }),
+      redirect: "manual",
+      signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
+    });
+  } catch (error) {
+    report({ id: cfg.id, outcome: "network", status: 0, ms: Date.now() - started, error: String(error?.name || "error"), detail: String(error?.message || "").slice(0, 160) });
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
+  }
+  let payload = null;
+  try { payload = await response.json(); } catch { /* handled below */ }
+  if (!response.ok) {
+    report({ id: cfg.id, outcome: "http", status: response.status, ms: Date.now() - started });
+    if (response.status === 429) throw new AiChatApiError(429, "AI_RATE_LIMIT", "ИИ-провайдер ограничил частоту запросов");
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "ИИ-провайдер временно недоступен");
+  }
+  const text = Array.isArray(payload?.content)
+    ? payload.content.filter((block) => block?.type === "text").map((block) => String(block.text || "")).join("").trim()
+    : "";
+  if (!text) {
+    report({ id: cfg.id, outcome: "empty", status: response.status, ms: Date.now() - started });
+    throw new AiChatApiError(502, "AI_EMPTY_RESPONSE", "ИИ-провайдер вернул пустой ответ");
+  }
+  report({ id: cfg.id, outcome: "ok", status: response.status, ms: Date.now() - started });
+  return { content: text, provider: cfg.id, model: String(payload?.model || cfg.model) };
+}
+
 async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}) {
   if (cfg.id === "gemini") return callGeminiCompletion(cfg, messages, fetcher, temperature, report);
   if (cfg.id === "gigachat") return callGigaChatCompletion(cfg, messages, fetcher, temperature, report);
+  if (cfg.id === "custom" && cfg.provider === "anthropic") return callClaudeCompletion(cfg, messages, fetcher, temperature, report);
   const endpoint = cfg.base.replace(/\/$/, "") + "/chat/completions";
   const started = Date.now();
   let response;
@@ -466,7 +535,7 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
     });
   }
 
-  const candidates = getAiCompletionCandidates(env, preferredProvider);
+  const candidates = getAiCompletionCandidates(env, preferredProvider, options?.userOverride);
   if (!candidates.length) {
     const status = getAiProviderStatus(env);
     const preferred = String(preferredProvider || "auto").trim().toLowerCase();

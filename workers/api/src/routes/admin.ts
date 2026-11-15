@@ -13,6 +13,7 @@ import { checkLectureForPublish, syncPublishedLecture } from "../lib/lecture-qua
 import { gigachatConfigured, gigachatTransport } from "../lib/gigachat";
 import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
 import { requireContentOwnership } from "../lib/content-access";
+import { aiDailyQuota, aiQuotaMessage, logAiCall, logAiQuotaRejection } from "../lib/ai-usage";
 
 const admin = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -408,13 +409,36 @@ admin.post("/lectures/generate", requireAuth, async (c) => {
   if (imageUrl && !/^https:\/\//i.test(imageUrl)) return error(c, rid, 422, "VALIDATION_ERROR", "image_url должен использовать HTTPS");
   const apiKey = String(c.env.OPENAI_API_KEY || "").trim();
   if (!apiKey) return error(c, rid, 503, "AI_NOT_CONFIGURED", "Для генерации лекций настройте OPENAI_API_KEY в Cloudflare secrets");
+  // Генерация целой лекции — самый дорогой ИИ-вызов платформы: суточная квота.
+  const quota = await aiDailyQuota(c.env, "lecture_generate", user.id);
+  if (!quota.allowed) {
+    await logAiQuotaRejection(c.env, {
+      route: "POST /admin/lectures/generate",
+      feature: "lecture_generate",
+      userId: user.id,
+      subjectSlug,
+      requestId: rid,
+    });
+    return error(c, rid, 429, "AI_DAILY_LIMIT", aiQuotaMessage(quota, "lecture_generate"));
+  }
+  const model = c.env.OPENAI_MODEL || "gpt-4o-mini";
+  const startedAt = Date.now();
+  const aiUsage = {
+    route: "POST /admin/lectures/generate",
+    feature: "lecture_generate" as const,
+    userId: user.id,
+    subjectSlug,
+    requestId: rid,
+    provider: "openai",
+    model,
+  };
   let generated: any;
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { authorization: "Bearer " + apiKey, "content-type": "application/json" },
       body: JSON.stringify({
-        model: c.env.OPENAI_MODEL || "gpt-4o-mini",
+        model,
         temperature: 0.35,
         response_format: { type: "json_object" },
         messages: [
@@ -425,10 +449,20 @@ admin.post("/lectures/generate", requireAuth, async (c) => {
       signal: AbortSignal.timeout(25000)
     });
     const payload: any = await response.json().catch(() => ({}));
-    if (!response.ok) return error(c, rid, 502, "AI_GENERATION_FAILED", "AI-провайдер не смог сгенерировать лекцию");
+    if (!response.ok) {
+      await logAiCall(c.env, { ...aiUsage, outcome: "error", errorCode: "AI_HTTP_" + response.status, latencyMs: Date.now() - startedAt });
+      return error(c, rid, 502, "AI_GENERATION_FAILED", "AI-провайдер не смог сгенерировать лекцию");
+    }
     generated = JSON.parse(String(payload.choices?.[0]?.message?.content || "{}"));
     if (!validText(generated.title, 500) || !validText(generated.body_md, 40000)) throw new Error("invalid generated document");
-  } catch {
+    await logAiCall(c.env, { ...aiUsage, outcome: "ok", latencyMs: Date.now() - startedAt });
+  } catch (generationError) {
+    await logAiCall(c.env, {
+      ...aiUsage,
+      outcome: "error",
+      errorCode: String((generationError as any)?.code || (generationError as any)?.name || "BAD_OUTPUT"),
+      latencyMs: Date.now() - startedAt,
+    });
     return error(c, rid, 502, "AI_GENERATION_FAILED", "Не удалось получить корректный черновик лекции");
   }
   try {

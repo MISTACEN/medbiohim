@@ -116,7 +116,17 @@ export default function TestRunner({
         <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${((index + 1) / total) * 100}%` }} />
       </div>
 
-      <p className="mt-4 text-base font-semibold leading-7 text-slate-900">{question.text}</p>
+      <p className="mt-4 text-base font-semibold leading-7 text-slate-900">
+        {question.text}
+        {question.restored && (
+          <span
+            className="ml-2 inline-block align-middle rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--status-warn-fg)]"
+            title="Эталона в сборнике нет: ключ восстановлен редакцией по лекции"
+          >
+            ключ восстановлен
+          </span>
+        )}
+      </p>
       <p className="mt-1 text-xs text-slate-400">
         {questionGraded ? "Выберите один или несколько вариантов" : "Ключа в источнике нет — режим разбора без оценки"}
       </p>
@@ -154,6 +164,17 @@ export default function TestRunner({
               : `Неверно. Правильный ответ: ${correctAnswer.join(", ")}.`}
           </span>
         </div>
+      )}
+
+      {!questionGraded && (
+        <ExplainWithAi
+          className="mt-3"
+          review
+          question={question.text}
+          chosen={picks.map((number) => question.options[number - 1]).filter(Boolean).join("; ")}
+          subjectSlug={subjectSlug}
+          subjectName={subjectName}
+        />
       )}
 
       {checked && !isCorrect(picks, question.answer) && (

@@ -15,6 +15,7 @@
     "test:api-failover": "node --test test/api-failover.test.mjs",
     "test:physiology": "node --test test/physiology-content.test.mjs",
     "test:histology": "node --test test/histology-content.test.mjs",
+    "test:overrides": "python -m unittest tools/histology/test_build_content_overrides.py",
     "test:contrast": "node scripts/check-contrast.mjs",
     "test:e2e": "playwright test",
     "test:e2e:supabase": "node scripts/e2e-live-supabase.mjs",

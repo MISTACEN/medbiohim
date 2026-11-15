@@ -119,6 +119,13 @@ describe("межпредметные модули", () => {
       "/labs/simulations?slug=membrane-potential&subject=physiology",
     );
 
+    // Прогресс живёт якорем на /study: query не должен сдвигать якорь.
+    const progressModule = moduleById("progress.learning")!;
+    expect(moduleHref(progressModule)).toBe("/study#progress");
+    expect(moduleHref(progressModule, { subjectKey: "physiology" })).toBe(
+      "/study?subject=physiology#progress",
+    );
+
     for (const entry of LEARNING_MODULES) {
       expect(entry.base.startsWith("/")).toBe(true);
       if (entry.functions.includes("simulation")) {

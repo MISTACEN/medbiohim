@@ -24,7 +24,9 @@ test("глобальный fetch вызывается через globalThis, а 
   assert.match(provider, /return globalThis\.fetch\(url, init\)/);
   const detached = provider.match(/await fetcher\(/g) || [];
   assert.equal(detached.length, 0, `осталось прямых вызовов fetcher: ${detached.length}`);
-  assert.equal((provider.match(/await callFetch\(fetcher,/g) || []).length, 5);
+  // 5 исходных вызовов + адаптер Claude (BYOM): считаем нижней границей,
+  // а не точным числом — каждый новый провайдер добавляет легитимный вызов.
+  assert.ok((provider.match(/await callFetch\(fetcher,/g) || []).length >= 6);
 });
 
 test("редирект не задаётся как error — workerd его не поддерживает", () => {

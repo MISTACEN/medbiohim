@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-
 import { ArrowLeft } from "lucide-react";
 import { getLecture, type Lecture } from "@/lib/api";
 import { LectureView } from "@/components/lectures/LectureView";
@@ -28,7 +27,7 @@ export default function LectureViewPage() {
   const subjectSlug = String((lec as { subject_slug?: string } | null)?.subject_slug || "");
   const { data: lessonNumber } = useApiRequest<number | null>(async (signal) => {
     const file = SUBJECT_STATIC_PLANS[subjectSlug];
-    if (!file || !id) return null;
+    if (!file) return null; // enabled уже требует слаг и id
     const raw = await fetchStaticPlan(file, signal);
     const session = normalizeStaticPlan(raw).sessions.find(
       (entry) => String(entry.lecture?.lectureId || "") === id

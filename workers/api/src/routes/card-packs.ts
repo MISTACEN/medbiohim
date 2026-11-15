@@ -11,6 +11,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { buildLectureContext } from "./ai";
+import { aiDailyQuota, aiQuotaMessage, logAiQuotaRejection, withAiCall } from "../lib/ai-usage";
 // @ts-expect-error Plain JS module without type declarations.
 import { generateAiCompletion } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
 
@@ -273,6 +274,20 @@ cardPacks.post("/ai-generate", requireAuth, async (c) => {
   if (!topic || topic.length > 300) return err(c, rid, 422, "VALIDATION_ERROR", "Укажите тему (до 300 символов)");
   if (!subjectSlug) return err(c, rid, 422, "VALIDATION_ERROR", "Выберите предмет для контекста лекций");
 
+  // Генерация пака — дорогая внешняя ИИ-операция: суточная квота на студента.
+  const userId = c.get("user").id;
+  const quota = await aiDailyQuota(c.env, "card_pack", userId);
+  if (!quota.allowed) {
+    await logAiQuotaRejection(c.env, {
+      route: "POST /card-packs/ai-generate",
+      feature: "card_pack",
+      userId,
+      subjectSlug,
+      requestId: rid,
+    });
+    return err(c, rid, 429, "AI_DAILY_LIMIT", aiQuotaMessage(quota, "card_pack"));
+  }
+
   const db = c.get("supabase");
   try {
     const lectureContext = await buildLectureContext(db, subjectSlug, topic);
@@ -291,10 +306,24 @@ cardPacks.post("/ai-generate", requireAuth, async (c) => {
       "=== ФРАГМЕНТЫ ЛЕКЦИЙ ===",
       lectureContext,
     ].join("\n");
-    const result = await generateAiCompletion(
+    const attempts: Array<Record<string, unknown>> = [];
+    const result = await withAiCall<{ content?: string; provider?: string; model?: string }>(
       c.env,
-      [{ role: "user", content: prompt.slice(0, 24000) }],
-      "auto",
+      {
+        route: "POST /card-packs/ai-generate",
+        feature: "card_pack",
+        userId,
+        subjectSlug,
+        requestId: rid,
+        attempts,
+      },
+      () => generateAiCompletion(
+        c.env,
+        [{ role: "user", content: prompt.slice(0, 24000) }],
+        "auto",
+        fetch,
+        { onAttempt: (attempt: Record<string, unknown>) => attempts.push(attempt) },
+      ),
     );
     let draft: { cards?: Array<{ front?: string; back?: string; source?: string }> } = {};
     const raw = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();

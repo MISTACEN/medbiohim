@@ -9,7 +9,7 @@ test("tutor has two answer modes with fixed temperatures", async () => {
   assert.match(route, /MODE_TEMPERATURE: Record<ChatMode, number> = \{ precise: 0\.2, fast: 0\.5 \}/);
   assert.match(route, /value === "fast" \? "fast" : "precise"/);
   // Температура доезжает до провайдера, а не остаётся жёстко 0.25.
-  assert.match(route, /fetch, \{ temperature \}\)/);
+  assert.match(route, /fetch, \{ temperature\b/);
   assert.match(route, /workersAiComplete\(env, input, \{ temperature, maxTokens, timeoutMs \}\)/);
 });
 

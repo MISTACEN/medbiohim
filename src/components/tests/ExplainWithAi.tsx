@@ -19,6 +19,7 @@ export function ExplainWithAi({
   correct,
   subjectSlug,
   subjectName,
+  review = false,
   className = "",
 }: {
   /** Текст вопроса теста. */
@@ -30,6 +31,8 @@ export function ExplainWithAi({
   /** Слаг предмета: по нему тьютор берёт лекции. */
   subjectSlug?: string | null;
   subjectName?: string | null;
+  /** В источнике нет ключа: разбираем вопрос по материалам курса, а не ошибку. */
+  review?: boolean;
   className?: string;
 }) {
   const [answer, setAnswer] = useState("");
@@ -46,13 +49,19 @@ export function ExplainWithAi({
       [
         {
           role: "user",
-          content:
-            `Разбери мою ошибку в тесте${subjectName ? ` по предмету «${subjectName}»` : ""}.\n`
-            + `Вопрос: ${question}\n`
-            + (chosen ? `Мой ответ (неверный): ${chosen}\n` : "")
-            + (correct ? `Правильный ответ: ${correct}\n` : "")
-            + "Объясни коротко (3–6 предложений): почему мой ответ неверен и почему верен правильный. "
-            + "Дай одну мнемонику. Опирайся на материалы курса и ставь сноску [N] после утверждений из фрагментов.",
+          content: review
+            ? `Разбери тестовый вопрос${subjectName ? ` по предмету «${subjectName}»` : ""}: к нему нет ключа в источнике.\n`
+              + `Вопрос: ${question}\n`
+              + (chosen ? `Мой выбор: ${chosen}\n` : "")
+              + "Объясни коротко (3–6 предложений), что проверяет вопрос и какой вариант следует выбрать — со ссылкой на материалы курса. "
+              + "Если материалы не дают однозначного ответа, скажи об этом прямо. Дай одну мнемонику. "
+              + "Ставь сноску [N] после утверждений из фрагментов."
+            : `Разбери мою ошибку в тесте${subjectName ? ` по предмету «${subjectName}»` : ""}.\n`
+              + `Вопрос: ${question}\n`
+              + (chosen ? `Мой ответ (неверный): ${chosen}\n` : "")
+              + (correct ? `Правильный ответ: ${correct}\n` : "")
+              + "Объясни коротко (3–6 предложений): почему мой ответ неверен и почему верен правильный. "
+              + "Дай одну мнемонику. Опирайся на материалы курса и ставь сноску [N] после утверждений из фрагментов.",
         },
       ],
       "auto",
@@ -76,7 +85,7 @@ export function ExplainWithAi({
         className="inline-flex items-center gap-1.5 rounded-full border border-[var(--primary)]/40 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-        Объяснить · ИИ
+        {review ? "Разобрать · ИИ" : "Объяснить · ИИ"}
       </button>
       {error ? <p className="mt-2 text-xs text-[var(--status-critical-fg)]">{error}</p> : null}
       {answer ? (

@@ -12,6 +12,7 @@
 import type { Env } from "../env";
 import { GigaChatError, gigachatComplete, gigachatConfigured } from "./gigachat.ts";
 import { WorkersAiError, workersAiComplete, workersAiConfigured } from "./workers-ai.ts";
+import { withAiCall } from "./ai-usage.ts";
 
 export type TelegramCategory = "homework" | "material_candidate" | "schedule" | "other";
 
@@ -415,7 +416,12 @@ export async function classifyMessage(
   const mode = String(env.AI_SORT_PROVIDER || "cloudflare").toLowerCase();
   const attempted: "cloudflare" | "gigachat" = mode === "gigachat" ? "gigachat" : "cloudflare";
   try {
-    const result = await completeWithAi(env, [
+    // Один вызов ИИ = одна строка журнала: видно провайдера, модель и задержку.
+    const result = await withAiCall(env, {
+      route: "telegram:classify",
+      feature: "telegram_sort",
+      metadata: { mode, chat_title: input.chatTitle || null },
+    }, () => completeWithAi(env, [
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
@@ -427,7 +433,7 @@ export async function classifyMessage(
           heuristic: { category: fallback.category, confidence: fallback.confidence },
         }),
       },
-    ], input.fetcher);
+    ], input.fetcher));
     const parsed = parseAiClassification(result.content, result.provider);
     if (!parsed) return { ...fallback, reason: `rules_${result.provider}_invalid_json` };
     parsed.model = result.model;

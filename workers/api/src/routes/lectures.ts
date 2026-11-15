@@ -6,6 +6,7 @@ import { createServiceClient } from "../lib/supabase";
 import { logActivity } from "../lib/activity";
 import { workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 import { rateLimit } from "../lib/redis";
+import { aiDailyQuota, aiQuotaMessage, logAiQuotaRejection, withAiCall } from "../lib/ai-usage";
 import { CLOZE_CACHE_PREFIX, extractBoldClozeItems, validateClozeItems } from "../lib/cloze-text";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
@@ -161,7 +162,32 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
     ].join("\n");
     if (items.length < 4) {
       const prompt = buildPrompt(14000, "8–15", 120);
-      const result = await generateClozeDraft(c.env, prompt, buildPrompt(6000, "6–10", 60));
+      const compactPrompt = buildPrompt(6000, "6–10", 60);
+      // ИИ-путь — дорогая генерация: детерминированный разбор выше бесплатен,
+      // поэтому квота проверяется только здесь.
+      const quota = await aiDailyQuota(c.env, "lecture_cloze", user.id);
+      if (!quota.allowed) {
+        await logAiQuotaRejection(c.env, {
+          route: "POST /lectures/:id/cloze",
+          feature: "lecture_cloze",
+          userId: user.id,
+          subjectSlug: lecture.subject_slug,
+          requestId: rid,
+        });
+        const { body, status } = fail("AI_DAILY_LIMIT", aiQuotaMessage(quota, "lecture_cloze"), 429, rid);
+        return c.json(body, status as 429);
+      }
+      const result = await withAiCall(
+        c.env,
+        {
+          route: "POST /lectures/:id/cloze",
+          feature: "lecture_cloze",
+          userId: user.id,
+          subjectSlug: lecture.subject_slug,
+          requestId: rid,
+        },
+        () => generateClozeDraft(c.env, prompt, compactPrompt),
+      );
       let draft: { items?: unknown } = {};
       const rawText = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
       try {

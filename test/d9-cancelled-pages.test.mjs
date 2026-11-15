@@ -1,7 +1,7 @@
 // D9 (TECH-AUDIT-PLAN-2026-10-27 §6): единый слой отменяемой загрузки.
 // Первая волна мигрировала пять ключевых страниц; этот тест фиксирует
-// остаток — 13 второстепенных страниц, где ручной `cancelled`-флаг больше
-// не нужен: отмену и отказ от setState после unmount делает useApiRequest.
+// остаток — страницы, где ручной `cancelled`-флаг больше не нужен: отмену и
+// отказ от setState после unmount делает useApiRequest.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -22,20 +22,17 @@ const PAGES = [
   "src/app/subjects/[id]/page.tsx",
 ];
 
-// Страницы, которые больше не грузят данные сами, а ведут на новый адрес.
-// Для них проверка строже: ни загрузки, ни состояния на странице быть не должно.
-const REDIRECT_PAGES = new Map([
-  ["src/app/progress/page.tsx", "прогресс переехал на /study#progress"],
-]);
+// Страница-редирект больше не грузит данные сама: вместо useApiRequest от неё
+// требуется только переход и отсутствие состояния загрузки.
+const REDIRECT_PAGES = new Set(["src/app/progress/page.tsx"]);
 
 test("§D9 страницы не возвращают ручные cancelled-флаги", () => {
   for (const page of PAGES) {
     const source = readFileSync(new URL(`../${page}`, import.meta.url), "utf8");
     assert.equal(source.includes("let cancelled = false"), false, `${page}: ручной cancelled-флаг вернулся`);
     if (REDIRECT_PAGES.has(page)) {
-      assert.match(source, /import \{ redirect \} from "next\/navigation"/, `${page}: редирект должен идти через next/navigation`);
-      assert.match(source, /redirect\("\/[^"]+"\)/, `${page}: страница-редирект должна куда-то вести`);
-      assert.equal(source.includes("useState"), false, `${page}: редирект не должен держать состояние загрузки`);
+      assert.match(source, /redirect\("\/[^"]+"\)/, `${page}: страница-редирект должна вести на новый адрес`);
+      assert.doesNotMatch(source, /useApiRequest|useState|fetch\(/, `${page}: редирект не должен грузить данные`);
       continue;
     }
     assert.match(source, /useApiRequest/, `${page}: загрузка должна идти через useApiRequest`);

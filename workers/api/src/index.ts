@@ -61,6 +61,7 @@ import presence from "./routes/presence";
 import community from "./routes/community";
 import calculators from "./routes/calculators";
 import ai from "./routes/ai";
+import aiConfig from "./routes/ai-config";
 import chemistry from "./routes/chemistry";
 import plans from "./routes/plans";
 import storage from "./routes/storage";
@@ -81,6 +82,7 @@ import externalPlatforms from "./routes/external-platforms";
 import questionComments from "./routes/question-comments";
 import workshop from "./routes/workshop";
 import adminWorkshopConvert from "./routes/admin-workshop-convert";
+import adminAiUsage from "./routes/admin-ai-usage";
 import staff from "./routes/staff";
 import teacher from "./routes/teacher/index";
 import access from "./routes/access";
@@ -252,6 +254,8 @@ v1.route("/access", access);
 v1.route("/bootstrap", bootstrapMigrate);
 v1.route("/calculators", gatedModule("calculators", calculators));
 v1.route("/ai", gatedModule("tutor", ai));
+// BYOM: «Своя ИИ-модель» пользователя (шифрованный ключ, OpenAI-compatible/Claude).
+v1.route("/ai/config", gatedModule("tutor", aiConfig));
 v1.route("/chemistry", chemistry);
 v1.route("/storage", storage);
 v1.route("/files", files);
@@ -263,6 +267,8 @@ v1.route("/admin", adminAttestations);
 v1.route("/admin", adminWorkshopConvert);
 // SA6: ручной запуск исполнения запросов на удаление аккаунта (только админ).
 v1.route("/admin", adminAccount);
+// Журнал ИИ-вызовов: маршрут, провайдер, модель, задержка, результат + лимиты.
+v1.route("/admin", adminAiUsage);
 v1.route("/histology", histology);
 v1.route("/labs", labs);
 v1.route("/attestations", gatedModule("attestations", attestations));

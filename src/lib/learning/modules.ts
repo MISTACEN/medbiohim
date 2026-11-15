@@ -649,7 +649,8 @@ const SHARED_MODULES: LearningModule[] = [
     primary: "physiology",
     categories: ["Прогресс"],
     functions: ["progress"],
-    base: "/progress",
+    // /progress остался редиректом на этот якорь — ведём сразу к разделу.
+    base: "/study#progress",
     progressKey: "progress.learning",
     relations: allAreas(1, "Сводный прогресс по дисциплине и инструментам."),
   },
@@ -764,7 +765,9 @@ export function moduleHref(module: LearningModule, context: ModuleLinkContext = 
   if (subjectKey) params.push(`subject=${encodeURIComponent(subjectKey)}`);
   if (context.topic) params.push(`topic=${encodeURIComponent(context.topic)}`);
   if (!params.length) return module.base;
-  return `${module.base}${module.base.includes("?") ? "&" : "?"}${params.join("&")}`;
+  // Якорь в base (`/study#progress`) должен идти последним — query ставим до него.
+  const [path, hash] = module.base.split("#");
+  return `${path}${path.includes("?") ? "&" : "?"}${params.join("&")}${hash ? `#${hash}` : ""}`;
 }
 
 export function relationFor(

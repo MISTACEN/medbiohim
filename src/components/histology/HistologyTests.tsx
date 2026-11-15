@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpenCheck, ChevronRight, Layers, ListChecks, Loader2, Play, Sparkles } from "lucide-react";
 import TestRunner from "../physiology/TestRunner";
 import {
+  groupHasAnswers,
   loadHistologyIndex,
   loadHistologyManual,
   type HistologyIndex,
@@ -207,6 +208,7 @@ export default function HistologyTests() {
                       <div className="text-sm font-semibold text-slate-900">{bank.title}</div>
                       <div className="mt-1 text-xs text-slate-500">
                         {plural(bank.questions.length, "вопрос", "вопроса", "вопросов")}
+                        {groupHasAnswers(bank) ? null : " · без ключа в источнике — разбор с ИИ"}
                       </div>
                     </div>
                     <button

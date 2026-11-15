@@ -9,6 +9,7 @@ import {
   Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles, Send,
   MonitorSmartphone, LogOut, Database, ArrowRight, Rows3 } from "lucide-react";
 import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
+import { AiModelSettings } from "@/components/settings/AiModelSettings";
 import { describeApiError } from "@/lib/errors";
 import { deleteAvatar, forgetAvatar, getAvatarUrl, uploadAvatar } from "@/lib/api";
 import { describeLastSeen, describeUserAgent } from "@/lib/device";
@@ -575,6 +576,8 @@ function SettingsPageInner() {
         </div>
         <p className="text-xs text-slate-500">Влияет на отступы в таблицах расписания, журналов и админки. Настройка хранится в этом браузере.</p>
       </section>
+
+      <AiModelSettings />
 
       <section className="card space-y-4 p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><KeyRound className="h-5 w-5" /> Пароль</h2>

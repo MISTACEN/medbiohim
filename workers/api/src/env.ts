@@ -56,6 +56,8 @@ export type Env = {
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
   GROQ_API_KEY?: string;
+  /** BYOM: ключ шифрования пользовательских API-ключей (AES-GCM-256, base64). */
+  USER_KEY_ENCRYPTION_KEY?: string;
   GROQ_BASE_URL?: string;
   GROQ_MODEL?: string;
   MISTRAL_API_KEY?: string;

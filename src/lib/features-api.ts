@@ -188,12 +188,12 @@ export async function srsDeleteCard(id: string) {
   return api<{ deleted: boolean }>(`/srs/cards/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 /* —— Persistent AI chat —— */
-export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter";
+export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter" | "custom";
 export type AiConversation = { id:string; title:string; provider:AiProvider; model?:string|null; subject_slug?:string|null; created_at:string; updated_at:string };
 /** Сноска-источник под ответом тьютора: номер [N] и лекция. */
 export type AiSource = { n: number; title: string; lecture_id: string | null; subject_slug?: string | null };
 export type AiMessage = { id:string; role:"system"|"user"|"assistant"; content:string; provider?:string|null; model?:string|null; created_at:string; metadata?:{sources?:AiSource[]|string[]|null; answer_mode?:string|null; mode?:string|null}|null };
-export async function aiProviders(){ return api<{region:string;providers:Record<Exclude<AiProvider,"auto">,{configured:boolean;available:boolean;model?:string;reason?:string|null}>;default:AiProvider} >("/ai/providers"); }
+export async function aiProviders(){ return api<{region:string;providers:Record<Exclude<AiProvider,"auto">,{configured:boolean;available:boolean;model?:string;reason?:string|null;prefer_own?:boolean}>;default:AiProvider} >("/ai/providers"); }
 export async function aiConversations(){ return api<{items:AiConversation[]}>("/ai/conversations"); }
 export async function aiCreateConversation(payload?:{title?:string;provider?:AiProvider;subject_slug?:string}){ return api<{conversation:AiConversation}>("/ai/conversations",{method:"POST",body:JSON.stringify(payload||{})}); }
 export async function aiGetConversation(id:string){ return api<{conversation:AiConversation;messages:AiMessage[]}>(`/ai/conversations/${encodeURIComponent(id)}`); }
@@ -203,6 +203,29 @@ export async function aiSendMessage(id:string,content:string,provider?:AiProvide
 /** Режим ответа: «точный» — с RAG и сносками, «быстрый» — без контекста. */
 export type AiChatMode = "precise" | "fast";
 export async function aiChat(messages:Array<{role:"system"|"user"|"assistant";content:string}>,provider?:AiProvider,options?:{contextScope?:string;mode?:AiChatMode;subjectSlug?:string}){ return api<{message:{role:string;content:string};provider:string;model:string;mode?:string;sources?:AiSource[]}>("/ai/chat",{method:"POST",body:JSON.stringify({messages,provider,context_scope:options?.contextScope,mode:options?.mode,subject_slug:options?.subjectSlug}),timeoutMs:60000}); }
+
+/* —— BYOM: своя ИИ-модель пользователя —— */
+export type UserAiConfig = {
+  provider: "openai_compatible" | "anthropic";
+  base_url: string;
+  model: string;
+  key_hint: string;
+  prefer_own: boolean;
+  updated_at?: string;
+};
+
+export async function getAiConfig() {
+  return api<{ config: UserAiConfig | null; encryption_ready: boolean }>("/ai/config", { timeoutMs: 30000 });
+}
+export async function saveAiConfig(payload: { provider: string; base_url: string; model: string; api_key: string; prefer_own: boolean }) {
+  return api<{ config: UserAiConfig }>("/ai/config", { method: "PUT", body: JSON.stringify(payload), timeoutMs: 30000 });
+}
+export async function deleteAiConfig() {
+  return api<{ deleted: boolean }>("/ai/config", { method: "DELETE", timeoutMs: 30000 });
+}
+export async function testAiConfig(payload: { provider: string; base_url: string; model: string; api_key: string }) {
+  return api<{ ok: boolean; status: number; ms: number; error?: string }>("/ai/config/test", { method: "POST", body: JSON.stringify(payload), timeoutMs: 30000 });
+}
 
 /* —— Карточки-паки (Quizlet-стиль): свои колоды, мастерская, ИИ-генерация —— */
 export type CardPack = {

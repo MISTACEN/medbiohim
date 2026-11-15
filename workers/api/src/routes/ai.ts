@@ -5,6 +5,14 @@ import { requireAdmin, requireAuth, type AuthVariables } from "../middleware/aut
 import { logActivity } from "../lib/activity";
 import { rateLimit } from "../lib/redis";
 import { shouldUseLectureRag } from "../lib/ai-scope";
+import { selectLectureExcerpts } from "../lib/lecture-rag";
+import {
+  aiDailyQuota,
+  aiQuotaMessage,
+  logAiQuotaRejection,
+  withAiCall,
+  type AiUsageContext,
+} from "../lib/ai-usage";
 import { formatAnswer } from "../lib/ai-citations";
 import { WorkersAiError, workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
@@ -25,13 +33,20 @@ export function normalizeChatMode(value: unknown): ChatMode {
   return value === "fast" ? "fast" : "precise";
 }
 
-async function generate(env: Env, messages: ChatMessage[], requested?: string, temperature = 0.25): Promise<ProviderResult> {
+async function generate(
+  env: Env,
+  messages: ChatMessage[],
+  requested?: string,
+  temperature = 0.25,
+  onAttempt?: (attempt: Record<string, unknown>) => void,
+  userOverride?: unknown,
+): Promise<ProviderResult> {
   const system = messages.find((message) => message.role === "system");
   const context = [...(system ? [system] : []), ...messages.filter((message) => message.role !== "system").slice(-23)];
   const result = await generateAiCompletion(env, context.map((message) => ({
     role: message.role,
     content: message.content.slice(0, 12000),
-  })), requested || "auto", fetch, { temperature });
+  })), requested || "auto", fetch, { temperature, ...(onAttempt ? { onAttempt } : {}), ...(userOverride ? { userOverride } : {}) });
   return { text: result.content, provider: result.provider, model: result.model };
 }
 
@@ -55,9 +70,15 @@ function compactForWorkersAi(messages: ChatMessage[]): ChatMessage[] {
   ];
 }
 
-async function generateWithFallback(env: Env, messages: ChatMessage[], requested?: string, temperature = 0.25): Promise<ProviderResult> {
+async function generateWithFallback(
+  env: Env,
+  messages: ChatMessage[],
+  requested?: string,
+  temperature = 0.25,
+  onAttempt?: (attempt: Record<string, unknown>) => void,
+): Promise<ProviderResult> {
   try {
-    return await generate(env, messages, requested, temperature);
+    return await generate(env, messages, requested, temperature, onAttempt);
   } catch (error) {
     if (!workersAiConfigured(env)) throw error;
     console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
@@ -84,6 +105,23 @@ async function generateWithFallback(env: Env, messages: ChatMessage[], requested
       }
     }
   }
+}
+
+/**
+ * Ответ тьютора с записью в журнал ИИ: одна строка на ответ, включая все
+ * фолбэки между провайдерами (итоговый provider/model и суммарная задержка).
+ */
+function trackedGeneration(
+  env: Env,
+  messages: ChatMessage[],
+  requested: string | undefined,
+  temperature: number,
+  usage: AiUsageContext,
+): Promise<ProviderResult> {
+  return withAiCall(env, usage, () =>
+    generateWithFallback(env, messages, requested, temperature, (attempt) => {
+      (usage.attempts ??= []).push(attempt);
+    }));
 }
 
 function normalizeConversationProvider(value: unknown): "auto" | "gemini" | "gigachat" {
@@ -126,35 +164,17 @@ export async function buildLectureContext(
     const { data: lectures, error } = await lectureQuery;
     if (error || !lectures?.length) return { block: "", sources: [], citations: [] };
 
-    const tokens = Array.from(
-      new Set(
-        String(query || "")
-          .toLowerCase()
-          .split(/[^a-zа-яё0-9]+/i)
-          .filter((token) => token.length >= 4)
-      )
+    // Отбор — в lib/lecture-rag.ts: основы слов, редкость в корпусе, порог
+    // релевантности и приоритет совпадений в названии темы.
+    const scored = selectLectureExcerpts(
+      (lectures as any[]).map((lecture) => ({
+        id: String(lecture.id || ""),
+        title: String(lecture.title || ""),
+        body: String(lecture.body_markdown || ""),
+        subjectSlug: lecture.subject_slug ?? null,
+      })),
+      query,
     );
-    if (!tokens.length) return { block: "", sources: [], citations: [] };
-
-    const scored = (lectures as any[])
-      .map((lecture) => {
-        const title = String(lecture.title || "");
-        const body = String(lecture.body_markdown || "");
-        const lowerBody = body.toLowerCase();
-        let score = 0;
-        let firstAt = -1;
-        for (const token of tokens) {
-          const inTitle = title.toLowerCase().split(token).length - 1;
-          const at = lowerBody.indexOf(token);
-          if (at >= 0 && (firstAt < 0 || at < firstAt)) firstAt = at;
-          score += inTitle * 5 + (at >= 0 ? 1 : 0) + Math.min(lowerBody.split(token).length - 1, 20) * 0.1;
-        }
-        return { id: String(lecture.id || ""), subjectSlug: lecture.subject_slug ?? null, title, body, score, firstAt };
-      })
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-
     if (!scored.length) return { block: "", sources: [], citations: [] };
 
     const FRAGMENT = 600;
@@ -164,8 +184,8 @@ export async function buildLectureContext(
     scored.forEach((entry, position) => {
       const n = position + 1;
       let fragment: string;
-      if (entry.firstAt >= 0) {
-        const start = Math.max(0, entry.firstAt - 120);
+      if (entry.anchor >= 0) {
+        const start = Math.max(0, entry.anchor - 120);
         fragment = (start > 0 ? "…" : "") + entry.body.slice(start, start + FRAGMENT).trim() + (start + FRAGMENT < entry.body.length ? "…" : "");
       } else {
         fragment = entry.body.slice(0, FRAGMENT).trim() + (entry.body.length > FRAGMENT ? "…" : "");
@@ -193,7 +213,27 @@ export async function buildLectureContext(
 }
 
 ai.get("/providers", requireAuth, async (c) => {
-  return c.json(ok(getAiProviderStatus(c.env), requestId()));
+  const status = getAiProviderStatus(c.env) as any;
+  // BYOM: пользовательская модель появляется в списке, если настроена.
+  try {
+    const { data: config } = await c.get("supabase")
+      .from("user_ai_configs")
+      .select("provider,model,prefer_own,key_hint")
+      .eq("user_id", c.get("user").id)
+      .maybeSingle();
+    if (config) {
+      status.providers = status.providers || {};
+      status.providers.custom = {
+        configured: true,
+        available: true,
+        model: String(config.model || ""),
+        reason: `своя модель (${config.provider === "anthropic" ? "Claude" : "OpenAI-compatible"})${config.key_hint ? " · ···" + config.key_hint : ""}`,
+        prefer_own: config.prefer_own === true,
+      };
+      if (config.prefer_own === true) status.default = "custom";
+    }
+  } catch { /* без конфига — просто платформенные */ }
+  return c.json(ok(status, requestId()));
 });
 
 /**
@@ -216,13 +256,26 @@ ai.get("/diagnostics", requireAdmin, async (c) => {
       continue;
     }
     const started = Date.now();
+    // Каждая проверка — своя строка журнала; в попытках видны и предыдущие
+    // провайдеры, поэтому видно, кто отказал до успеха.
     try {
-      const result = await generateAiCompletion(
-        c.env as any,
-        [probe],
-        id,
-        fetch,
-        { temperature: 0, onAttempt: (attempt: Record<string, unknown>) => attempts.push({ ...attempt, requested: id }) },
+      const result = await withAiCall<{ content: string; provider: string; model: string }>(
+        c.env,
+        {
+          route: "GET /ai/diagnostics",
+          feature: "diagnostics",
+          userId: c.get("user").id,
+          requestId: rid,
+          attempts,
+          metadata: { requested: id },
+        },
+        () => generateAiCompletion(
+          c.env as any,
+          [probe],
+          id,
+          fetch,
+          { temperature: 0, onAttempt: (attempt: Record<string, unknown>) => attempts.push({ ...attempt, requested: id }) },
+        ),
       );
       // «ok» — это ответил ИМЕННО запрошенный провайдер. Раньше фолбэк
       // (например, Mistral ответил 429, а ответ дал Groq) отмечался как успех
@@ -330,6 +383,18 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     const { body, status } = fail("RATE_LIMIT", "Слишком много запросов к AI. Подождите несколько минут.", 429, rid);
     return c.json(body, status as 429);
   }
+  // Минутный лимит выше сдерживает всплеск, суточный — общий расход на студента.
+  const quota = await aiDailyQuota(c.env, "tutor_chat", user.id);
+  if (!quota.allowed) {
+    await logAiQuotaRejection(c.env, {
+      route: "POST /ai/conversations/:id/messages",
+      feature: "tutor_chat",
+      userId: user.id,
+      requestId: rid,
+    });
+    const { body, status } = fail("AI_DAILY_LIMIT", aiQuotaMessage(quota, "tutor_chat"), 429, rid);
+    return c.json(body, status as 429);
+  }
 
   let payload: { content?: string; provider?: string; subject_slug?: string; mode?: string } = {};
   try { payload = await c.req.json(); } catch {
@@ -387,7 +452,20 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
 
   let generated: ProviderResult;
   try {
-    generated = await generateWithFallback(c.env, messages, payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider), temperature);
+    generated = await trackedGeneration(
+      c.env,
+      messages,
+      payload.provider || (conversation.provider === "auto" ? undefined : conversation.provider),
+      temperature,
+      {
+        route: "POST /ai/conversations/:id/messages",
+        feature: "tutor_chat",
+        userId: user.id,
+        subjectSlug: conversationSubject,
+        requestId: rid,
+        metadata: { mode },
+      },
+    );
     // Модель не поставила сносок — гарантируем их сами (см. lib/ai-citations.ts).
     generated = { ...generated, text: formatAnswer(generated.text, rag.citations) };
   } catch (error) {
@@ -566,6 +644,18 @@ ai.post("/chat", requireAuth, async (c) => {
     const { body, status } = fail("RATE_LIMIT", "Лимит AI-запросов исчерпан", 429, rid);
     return c.json(body, status as 429);
   }
+  // Суточная квота: минута уже ограничена выше, здесь — расход за день.
+  const quota = await aiDailyQuota(c.env, "tutor_chat", user.id);
+  if (!quota.allowed) {
+    await logAiQuotaRejection(c.env, {
+      route: "POST /ai/chat",
+      feature: "tutor_chat",
+      userId: user.id,
+      requestId: rid,
+    });
+    const { body, status } = fail("AI_DAILY_LIMIT", aiQuotaMessage(quota, "tutor_chat"), 429, rid);
+    return c.json(body, status as 429);
+  }
   let payload: { messages?: { role?: string; content?: string }[]; model?: string; provider?: string; context_scope?: string; mode?: string; subject_slug?: string } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
@@ -616,7 +706,14 @@ ai.post("/chat", requireAuth, async (c) => {
     ...chatMessages.filter((message) => message.role !== "system"),
   ];
   try {
-    const result = await generateWithFallback(c.env, messages, payload.provider, temperature);
+    const result = await trackedGeneration(c.env, messages, payload.provider, temperature, {
+      route: "POST /ai/chat",
+      feature: "tutor_chat",
+      userId: user.id,
+      subjectSlug,
+      requestId: rid,
+      metadata: { mode, context_scope: payload.context_scope ?? null },
+    });
     // Явно запрошенный провайдер мог отказать: клиент должен видеть, что ответ
     // пришёл от другого, а не считать, что Mistral/GigaChat работает.
     const requested = String(payload.provider || "").trim().toLowerCase();
