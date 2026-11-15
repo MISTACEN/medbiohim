@@ -79,7 +79,10 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
   const refresh = useCallback(async (slug?: string, selectedScope: "shared" | "personal" = scopeFromUrl) => {
     setLoading(true);
     setError(null);
-    const [sumRes, dueRes] = await Promise.all([srsSummary(), srsDue(25, slug || undefined, selectedScope)]);
+    // ВАЖНО: у srsDue третий параметр — subject_slug. Раньше слаг уходил
+    // вторым аргументом в subject_id, из-за чего очередь повторения была
+    // всегда пуста («На сейчас карточек нет») при живом счётчике «К повторению».
+    const [sumRes, dueRes] = await Promise.all([srsSummary(), srsDue(25, undefined, slug || undefined, selectedScope)]);
     setLoading(false);
     if (!sumRes.ok) {
       setError(describeApiError(sumRes.error));
