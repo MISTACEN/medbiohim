@@ -184,6 +184,7 @@ async function generate(
   onAttempt?: (attempt: Record<string, unknown>) => void,
   userOverride?: unknown,
   model?: string,
+  unhealthy?: string[],
 ): Promise<ProviderResult> {
   const system = messages.find((message) => message.role === "system");
   const context = [...(system ? [system] : []), ...messages.filter((message) => message.role !== "system").slice(-23)];
@@ -194,6 +195,7 @@ async function generate(
     ...(onAttempt ? { onAttempt } : {}),
     ...(userOverride ? { userOverride } : {}),
     ...(model ? { model } : {}),
+    ...(unhealthy?.length ? { unhealthy } : {}),
   });
   return { text: result.content, provider: result.provider, model: result.model };
 }
@@ -226,9 +228,10 @@ async function generateWithFallback(
   onAttempt?: (attempt: Record<string, unknown>) => void,
   userOverride?: unknown,
   model?: string,
+  unhealthy?: string[],
 ): Promise<ProviderResult> {
   try {
-    return await generate(env, messages, requested, temperature, onAttempt, userOverride, model);
+    return await generate(env, messages, requested, temperature, onAttempt, userOverride, model, unhealthy);
   } catch (error) {
     if (!workersAiConfigured(env)) throw error;
     console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
@@ -269,6 +272,7 @@ function trackedGeneration(
   usage: AiUsageContext,
   userOverride?: unknown,
   model?: string,
+  unhealthy?: string[],
 ): Promise<ProviderResult> {
   return withAiCall(env, usage, () =>
     generateWithFallback(env, messages, requested, temperature, (attempt) => {
@@ -279,7 +283,7 @@ function trackedGeneration(
       if (id && id !== "custom") {
         void recordProviderProbe(env, id, attempt?.outcome === "ok", `${attempt?.outcome || "error"} ${attempt?.status || ""}`.trim());
       }
-    }, userOverride, model));
+    }, userOverride, model, unhealthy));
 }
 
 /**
@@ -729,6 +733,11 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     const requestedModel = effectiveProvider !== "auto" && effectiveProvider !== "custom"
       ? await validateConversationModel(c, effectiveProvider, payload.model)
       : null;
+    // Провайдеры с недавними отказами (пробы) уходят в конец цепочки: auto
+    // не должен ждать 403/429 заведомо больных upstream'ов.
+    const unhealthy = Object.entries(await readProviderProbes(c.env))
+      .filter(([, probe]) => probe && !probe.ok)
+      .map(([id]) => id);
     generated = await trackedGeneration(
       c.env,
       messages,
@@ -744,9 +753,24 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
       },
       userOverride ?? undefined,
       requestedModel ?? undefined,
+      unhealthy,
     );
     // Модель не поставила сносок — гарантируем их сами (см. lib/ai-citations.ts).
     generated = { ...generated, text: formatAnswer(generated.text, rag.citations) };
+    // Успешный ответ подтверждает модель: добавляем её в живой список
+    // провайдера (кэш ai:models:<id>), чтобы выбор модели у всех был актуальным.
+    try {
+      if (generated.provider && generated.model && !String(generated.model).startsWith("@cf/")) {
+        const redis = await getRedis(c.env);
+        const key = `ai:models:${generated.provider}`;
+        const cached = redis ? await redis.get(key) : null;
+        const list = cached ? JSON.parse(String(cached)) : [];
+        if (Array.isArray(list) && !list.includes(String(generated.model))) {
+          list.push(String(generated.model));
+          if (redis) await redis.set(key, JSON.stringify(list.slice(-40)), { ex: 6 * 3600 });
+        }
+      }
+    } catch { /* кэш моделей — украшение */ }
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
     console.error("[ai:message-generation]", { reason });

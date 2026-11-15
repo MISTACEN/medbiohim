@@ -466,6 +466,52 @@ export async function listProviderModels(env = {}, providerId, fetcher = fetch) 
 }
 
 /**
+ * Кэш OAuth-токена GigaChat на время жизни изолята воркера (~25 мин).
+ * Без него каждое сообщение платит двойной такс: 526 на прямом OAuth
+ * (SSL Сбера) + повтор через релей. Ключ — credentials+scope+oauthUrl.
+ */
+const GIGA_TOKEN_CACHE = new Map();
+
+async function gigachatAccessToken(cfg, fetcher, oauthUrl, report, started) {
+  const preIssued = String(cfg.key || "").trim();
+  if (!String(cfg.credentials || "").trim() && preIssued) return preIssued;
+  const cacheKey = String(cfg.credentials || "") + "|" + String(cfg.scope || "") + "|" + oauthUrl;
+  const cached = GIGA_TOKEN_CACHE.get(cacheKey);
+  if (cached && cached.expires > Date.now() + 60_000) return cached.token;
+
+  let tokenResponse;
+  try {
+    tokenResponse = await callFetch(fetcher, oauthUrl, {
+      method: "POST",
+      headers: {
+        authorization: "Basic " + String(cfg.credentials).trim(),
+        "content-type": "application/x-www-form-urlencoded",
+        RqUID: crypto.randomUUID(),
+        accept: "application/json",
+        // Релей на Layero требует общий секрет (когда настроен).
+        ...(cfg.relay_secret ? { "x-medbiohim-internal": String(cfg.relay_secret) } : {}),
+      },
+      body: new URLSearchParams({ scope: cfg.scope || "GIGACHAT_API_PERS" }),
+      redirect: "manual",
+      signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
+    });
+  } catch (error) {
+    report({ id: "gigachat", outcome: "network", status: 0, stage: "oauth", ms: Date.now() - started, error: String(error?.name || "error"), detail: String(error?.message || "").slice(0, 160) });
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
+  }
+  let tokenPayload = null;
+  try { tokenPayload = await tokenResponse.json(); } catch { /* handled below */ }
+  if (!tokenResponse.ok || typeof tokenPayload?.access_token !== "string") {
+    report({ id: "gigachat", outcome: "http", status: tokenResponse.status, stage: "oauth", ms: Date.now() - started });
+    if (tokenResponse.status === 429) throw new AiChatApiError(429, "AI_RATE_LIMIT", "GigaChat ограничил частоту запросов");
+    throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
+  }
+  const ttlMs = Math.min(Number(tokenPayload?.expires_at) * 1000 - Date.now() || 25 * 60_000, 25 * 60_000);
+  GIGA_TOKEN_CACHE.set(cacheKey, { token: tokenPayload.access_token, expires: Date.now() + Math.max(60_000, ttlMs) });
+  return tokenPayload.access_token;
+}
+
+/**
  * Один заход GigaChat: OAuth (если нет готового токена) + chat/completions.
  * base/oauthUrl параметризованы: тот же код работает через прокси Layero
  * (резервный контур), где оба эндпоинта лежат под одним origin.
@@ -478,34 +524,9 @@ async function gigachatAttempt(cfg, messages, fetcher, temperature, report, star
   if (!String(cfg.credentials || "").trim() && accessToken) {
     // A pre-issued access token can be used directly; credentials are never returned to the caller.
   } else {
-    let tokenResponse;
-    try {
-      tokenResponse = await callFetch(fetcher, oauthUrl, {
-        method: "POST",
-        headers: {
-          authorization: "Basic " + String(cfg.credentials).trim(),
-          "content-type": "application/x-www-form-urlencoded",
-          RqUID: crypto.randomUUID(),
-          accept: "application/json",
-          // Релей на Layero требует общий секрет (когда настроен).
-          ...(cfg.relay_secret ? { "x-medbiohim-internal": String(cfg.relay_secret) } : {}),
-        },
-        body: new URLSearchParams({ scope: cfg.scope || "GIGACHAT_API_PERS" }),
-        redirect: "manual",
-        signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
-      });
-    } catch (error) {
-      report({ id: "gigachat", outcome: "network", status: 0, stage: "oauth", ms: Date.now() - started, error: String(error?.name || "error"), detail: String(error?.message || "").slice(0, 160) });
-      throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
-    }
-    let tokenPayload = null;
-    try { tokenPayload = await tokenResponse.json(); } catch { /* handled below */ }
-    if (!tokenResponse.ok || typeof tokenPayload?.access_token !== "string") {
-      report({ id: "gigachat", outcome: "http", status: tokenResponse.status, stage: "oauth", ms: Date.now() - started });
-      if (tokenResponse.status === 429) throw new AiChatApiError(429, "AI_RATE_LIMIT", "GigaChat ограничил частоту запросов");
-      throw new AiChatApiError(502, "AI_UPSTREAM_UNAVAILABLE", "GigaChat временно недоступен");
-    }
-    accessToken = tokenPayload.access_token;
+    // OAuth с кэшем токена: без него каждое сообщение платило двойной такс
+    // (526 прямого OAuth + повтор через релей).
+    accessToken = await gigachatAccessToken(cfg, fetcher, oauthUrl, report, started);
   }
   let response;
   try {
@@ -692,8 +713,22 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
   const modelOverride = resolveProviderModel(env, preferredProviderKey, options?.model);
   if (modelOverride && preferredProviderKey !== "auto") {
     for (const candidate of candidates) {
-      if (candidate.id === preferredProviderKey) candidate.model = modelOverride;
+      if (candidate.id === preferredProviderKey) {
+        // Дефолт запоминаем: если провайдер снимет выбранную модель (400/404),
+        // цепочка сначала откатится к дефолту этого же провайдера.
+        candidate.defaultModel = candidate.model;
+        candidate.model = modelOverride;
+      }
     }
+  }
+
+  // Провайдеры с недавними отказами (пробы Redis) уходят в конец цепочки:
+  // пользователь не должен ждать 403/429 заведомо больных upstream'ов.
+  const unhealthy = new Set(
+    (Array.isArray(options?.unhealthy) ? options.unhealthy : []).map((x) => String(x).toLowerCase()),
+  );
+  if (unhealthy.size) {
+    candidates.sort((a, b) => Number(unhealthy.has(a.id)) - Number(unhealthy.has(b.id)));
   }
 
   const report = typeof options?.onAttempt === "function" ? options.onAttempt : () => {};
@@ -705,6 +740,20 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
       return await callAiCompletion({ ...candidate, deadline }, safeMessages, fetcher, temperature, report);
     } catch (error) {
       lastError = error;
+      // Выбранная студентом модель снята провайдером (400/404 = ошибка модели,
+      // а не канала): откатываемся к дефолтной модели ЭТОГО же провайдера,
+      // прежде чем ронять весь провайдер в фолбэк.
+      if (candidate.defaultModel && candidate.model !== candidate.defaultModel
+        && [400, 404].includes(Number(error?.status || 0))) {
+        try {
+          return await callAiCompletion(
+            { ...candidate, model: candidate.defaultModel, deadline },
+            safeMessages, fetcher, temperature, report,
+          );
+        } catch (retryError) {
+          lastError = retryError;
+        }
+      }
       // Без этой строки отказ провайдера исчезал молча: в /ai/providers ключ
       // есть, значит «настроен», а ответ приходит от следующего кандидата или
       // от Workers AI — и причину видно только по логам воркера.
