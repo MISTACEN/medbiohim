@@ -14,13 +14,15 @@
  */
 import type { ReactNode } from "react";
 
-export type AnswerOptionState = "idle" | "selected" | "correct" | "wrong";
+export type AnswerOptionState = "idle" | "selected" | "correct" | "partial" | "wrong";
 export type AnswerOptionVariant = "button" | "choice" | "row";
 
 const STATE_CLASSES: Record<AnswerOptionState, string> = {
   idle: "border-slate-200 bg-white text-slate-700",
   selected: "border-indigo-400 bg-indigo-50 text-indigo-900",
   correct: "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]",
+  // Частично верный ответ (выбрана часть эталона или часть выбора неверна).
+  partial: "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]",
   wrong: "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]",
 };
 
@@ -57,7 +59,9 @@ function badgeNode(badge: ReactNode, variant: "circle" | "square", state: Answer
     const tone =
       state === "correct"
         ? "bg-[var(--status-ok-fg)] text-white"
-        : state === "selected"
+        : state === "partial"
+          ? "bg-[var(--status-warn-fg)] text-white"
+          : state === "selected"
           ? "bg-indigo-600 text-white"
           : "bg-slate-100 text-slate-600";
     return (

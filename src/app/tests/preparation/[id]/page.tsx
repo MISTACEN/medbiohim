@@ -8,6 +8,8 @@ import { QuestionReport } from "@/components/QuestionReport";
 import { LoadingBar } from "@/components/ui/LoadingBar";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { AnswerOption } from "@/components/questions/AnswerOption";
+import { ExplainWithAi } from "@/components/tests/ExplainWithAi";
+import { resolveSubjectSlug } from "@/lib/subjectSlug";
 import { displayOptionEntries } from "@/components/questions/optionOrder";
 import {
   startPreparation,
@@ -174,6 +176,17 @@ export default function PreparationPage() {
     const d = await getPreparation(s.data.session.id);
     if (d.ok) {
       setSession(d.data.session);
+      // Возобновлённая сессия приносит свои mode/experience: ссылка могла быть
+      // открыта с другого устройства или из хаба с другим режимом, но прогресс
+      // важнее — переключаемся на то, в чём студент реально остановился.
+      const resumedMode = d.data.session?.mode;
+      if (resumedMode === "full" || resumedMode === "count" || resumedMode === "sequential") {
+        setMode((prev) => (prev === resumedMode ? prev : resumedMode));
+      }
+      const resumedExperience = d.data.session?.experience;
+      if (["prepare", "solve", "exam", "control"].includes(resumedExperience) && resumedExperience !== experience) {
+        setExperience(resumedExperience);
+      }
       const loadedQuestions: PreparationQuestion[] = Array.isArray(d.data.questions) ? d.data.questions : [];
       setQuestions(loadedQuestions);
       // A stale session can contain an index equal to/outside the current question list
@@ -184,7 +197,8 @@ export default function PreparationPage() {
         ? Math.min(savedIndex, loadedQuestions.length - 1)
         : 0;
       setIdx(safeIndex);
-      if (m === "sequential") {
+      if ((d.data.session?.mode || m) === "sequential") {
+        setMode("sequential");
         const p = await getBankProgress(id, user?.groupId);
         if (p.ok) setBankProgress(p.data);
       }
@@ -297,8 +311,25 @@ export default function PreparationPage() {
     // с эталоном. Пока идёт проверка, интерфейс не показывает ни «верно»,
     // ни «неверно» — раньше до ответа сервера всё выглядело как ошибка.
     setAnswers((a) => ({ ...a, [questionId]: v }));
-    setChecking((a) => ({ ...a, [questionId]: true }));
     setError("");
+
+    // Мгновенная проверка закрытых вопросов: в снимке у вариантов есть
+    // correct-флаги, поэтому вердикт и эталон считаются локально, а ответ
+    // уходит на сервер фоном. Раньше здесь была пауза на round-trip
+    // (Vercel → Worker → Supabase) даже для простого выбора варианта.
+    const localKeys = correctKeys(q);
+    const locallyGradable = experience === "prepare" && q.is_closed !== false && localKeys.length > 0;
+    if (locallyGradable) {
+      const given = selectedKeys(q, v);
+      const okLocally = q.requires_order
+        ? JSON.stringify(given) === JSON.stringify(localKeys)
+        : sameSet(given, localKeys);
+      setGrading((g) => ({ ...g, [questionId]: { ...(g[questionId] || {}), is_correct: okLocally, correct_keys: localKeys } }));
+      setChecked((a) => ({ ...a, [questionId]: true }));
+      refreshSequentialProgressOptimistic();
+    } else {
+      setChecking((a) => ({ ...a, [questionId]: true }));
+    }
 
     void queueSave(
       { current_index: idx, question_id: questionId, answer_text: v, reveal: experience === "prepare" },
@@ -319,7 +350,8 @@ export default function PreparationPage() {
       if (r.ok) {
         if (r.data?.grading) setGrading((g) => ({ ...g, [questionId]: r.data.grading }));
         setChecked((a) => ({ ...a, [questionId]: true }));
-        refreshSequentialProgressOptimistic();
+        // Оптимистичный прогресс по банку уже учли при локальной проверке.
+        if (!locallyGradable) refreshSequentialProgressOptimistic();
       }
     });
   }
@@ -534,6 +566,12 @@ export default function PreparationPage() {
                     <span className="text-slate-500">Правильный ответ: </span>
                     <div className="font-semibold text-[var(--status-ok-fg)]"><ChemRichText text={etalon || "—"} asHtml={qq.is_closed !== true} className="inline" /></div>
                   </div>
+                  {qq.explanation ? (
+                    <div className="mt-2 rounded-lg bg-white/70 p-3">
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Пояснение кафедры</div>
+                      <ChemRichText text={String(qq.explanation)} className="mt-1 space-y-1" />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );
@@ -603,12 +641,44 @@ export default function PreparationPage() {
       q.type === "practical" ||
       options.length === 0
     : !q.is_closed || options.length === 0) && !isCloze && !isMatch;
-  const correctOptionKeys = new Set(correctKeys(q, serverGrading));
+  const correctKeysList = correctKeys(q, serverGrading);
+  const correctOptionKeys = new Set(correctKeysList);
   const isMulti = !isOpen && (q.allow_multiple === true || q.requires_order === true || correctOptionKeys.size > 1);
   const selectedOptionKeys = selectedKeys(q, answers[q.id]);
-  const correct = serverGrading?.is_correct === true;
-  const unresolved = serverGrading && serverGrading.is_correct == null;
+  // Эталоны и цвета показываем только там, где это обещано режимом:
+  // «Подготовка» — сразу, «Решение»/«Экзамен» — только после завершения.
+  const revealAnswers = experience === "prepare";
+  const scoreRaw = Number(serverGrading?.score);
+  const partial =
+    (Number.isFinite(scoreRaw) && scoreRaw > 0 && scoreRaw < 1) ||
+    (revealAnswers &&
+      isMulti &&
+      selectedOptionKeys.length > 0 &&
+      selectedOptionKeys.length < correctKeysList.length &&
+      selectedOptionKeys.every((key) => correctOptionKeys.has(key)));
+  // В банке бывает не задан ни один верный вариант (импортированный вопрос без
+  // эталона): такой вопрос нельзя показывать как ошибку студента.
+  const noKey = q.is_closed !== false && correctKeysList.length === 0;
+  const correct = serverGrading?.is_correct === true && !partial && !noKey;
+  const unresolved = noKey || (serverGrading && serverGrading.is_correct == null);
   const answeredCount = Object.keys(checked).length;
+  // Счёт по текущей сессии: верно / частично / ошибки + средний балл.
+  const scoreOf = (item: any) => {
+    const g = grading[item.id];
+    if (!g) return null;
+    const s = Number(g.score);
+    if (Number.isFinite(s)) return Math.min(1, Math.max(0, s));
+    return g.is_correct === true ? 1 : g.is_correct === false ? 0 : null;
+  };
+  const countedScores = questions.map(scoreOf).filter((v): v is number => v != null);
+  const correctCount = countedScores.filter((v) => v === 1).length;
+  const partialCount = countedScores.filter((v) => v > 0 && v < 1).length;
+  const wrongCount = countedScores.filter((v) => v === 0).length;
+  const averagePercent = countedScores.length
+    ? Math.round((countedScores.reduce((sum, v) => sum + v, 0) / countedScores.length) * 100)
+    : 0;
+  // Экзамен: ни вердиктов, ни номеров вопросов — всё только после сдачи.
+  const hideNumbers = experience === "exam";
   const isLast = idx === questions.length - 1;
   const experienceLabel =
     experience === "exam"
@@ -619,6 +689,8 @@ export default function PreparationPage() {
           ? "Самопроверка"
           : "Тренировка";
   const reference = etalonDisplay(q, serverGrading);
+  // Слаг для RAG-разбора ошибки: название предмета → канонический slug.
+  const subjectSlugForAi = resolveSubjectSlug("", meta?.subject || subjectParam);
 
   function toggleOption(key: string) {
     if (checked[q.id] || isChecking) return;
@@ -646,7 +718,7 @@ export default function PreparationPage() {
           </div>
           <h1 className="page-title">{meta?.title || "Тест"}</h1>
           <p className="page-subtitle">
-            Вопрос {idx + 1} из {questions.length} · отвечено {answeredCount}
+            {hideNumbers ? "Вопрос" : `Вопрос ${idx + 1} из ${questions.length}`} · отвечено {answeredCount}
             {mode === "sequential" ? " · проход всего банка" : ""}
             {isOpen
               ? " · письменный ответ"
@@ -660,6 +732,14 @@ export default function PreparationPage() {
                 ? "проверка после завершения"
                 : "проверка сразу"}
           </p>
+          {!hideNumbers && countedScores.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+              <span className="rounded-full bg-[var(--status-ok-bg)] px-2.5 py-1 text-[var(--status-ok-fg)]">Верно {correctCount}</span>
+              <span className="rounded-full bg-[var(--status-warn-bg)] px-2.5 py-1 text-[var(--status-warn-fg)]">Частично {partialCount}</span>
+              <span className="rounded-full bg-[var(--status-critical-bg)] px-2.5 py-1 text-[var(--status-critical-fg)]">Ошибок {wrongCount}</span>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">Средний {averagePercent}%</span>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {remainingSec != null && !stats && (
@@ -711,7 +791,11 @@ export default function PreparationPage() {
               key={item.id}
               type="button"
               onClick={() => setIdx(index)}
-              aria-label={"Вопрос " + (index + 1) + (markedItem ? " (помечен)" : answeredItem ? " (отвечен)" : "")}
+              aria-label={
+                hideNumbers
+                  ? "Вопрос без номера" + (markedItem ? " (помечен)" : answeredItem ? " (отвечен)" : "")
+                  : "Вопрос " + (index + 1) + (markedItem ? " (помечен)" : answeredItem ? " (отвечен)" : "")
+              }
               className={
                 "h-8 min-w-8 rounded-lg px-1.5 text-xs font-bold transition " +
                 (index === idx
@@ -723,7 +807,7 @@ export default function PreparationPage() {
                       : "bg-slate-100 text-slate-500")
               }
             >
-              {index + 1}
+              {hideNumbers ? (markedItem ? "!" : answeredItem ? "✓" : "•") : index + 1}
             </button>
           );
         })}
@@ -744,10 +828,12 @@ export default function PreparationPage() {
       <div className="test-question-card card space-y-4 sm:space-y-5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-indigo-600 px-2 text-sm font-extrabold text-white">
-            {String(idx + 1).padStart(2, "0")}
+            {hideNumbers ? "—" : String(idx + 1).padStart(2, "0")}
           </span>
           <div>
-            <div className="text-sm font-bold text-slate-700">Вопрос {idx + 1} из {questions.length}</div>
+            <div className="text-sm font-bold text-slate-700">
+              {hideNumbers ? "Вопрос" : `Вопрос ${idx + 1} из ${questions.length}`}
+            </div>
             <div className="text-xs text-slate-400">{mode === "sequential" ? "Последовательный проход по всему банку" : "Текущий режим прохождения"}</div>
           </div>
         </div>
@@ -867,15 +953,17 @@ export default function PreparationPage() {
                   as="label"
                   variant="choice"
                   state={
-                    checked[q.id]
-                      ? isCorrectOption
-                        ? "correct"
-                        : selected
-                          ? "wrong"
-                          : "idle"
-                      : selected
+                    !revealAnswers
+                      ? selected
                         ? "selected"
                         : "idle"
+                      : isCorrectOption
+                        ? "correct"
+                        : selected
+                          ? partial
+                            ? "partial"
+                            : "wrong"
+                          : "idle"
                   }
                   badge={position ?? key}
                   badgeVariant="square"
@@ -936,12 +1024,14 @@ export default function PreparationPage() {
         )}
 
         {checked[q.id] && experience === "prepare" && (
-          <div className={unresolved ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : correct ? "rounded-xl bg-[var(--status-ok-bg)] p-4 text-[var(--status-ok-fg)]" : "rounded-xl bg-[var(--status-critical-bg)] p-4 text-[var(--status-critical-fg)]"}>
+          <div className={unresolved ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : correct ? "rounded-xl bg-[var(--status-ok-bg)] p-4 text-[var(--status-ok-fg)]" : partial ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : "rounded-xl bg-[var(--status-critical-bg)] p-4 text-[var(--status-critical-fg)]"}>
             {unresolved
               ? "↻ Ответ сохранён; автоматическая проверка по эталону невозможна"
               : correct
                 ? "✓ Ответ засчитан"
-                : "✗ Ответ не засчитан"}
+                : partial
+                  ? "◐ Частично верно: выбрана часть эталонных вариантов"
+                  : "✗ Ответ не засчитан"}
             {serverGrading?.grading_source === "ai" ? <div className="mt-1 text-xs">Проверка смысла через ИИ</div> : null}
             {serverGrading?.grading_feedback ? <div className="mt-1 text-sm">{String(serverGrading.grading_feedback)}</div> : null}
             {reference ? (
@@ -965,7 +1055,24 @@ export default function PreparationPage() {
                 Для развёрнутых задач учитывается смысл ответа; орфографические ошибки не должны снижать результат.
               </div>
             )}
+            {q.explanation ? (
+              <div className="mt-3 rounded-xl bg-white/70 p-3 text-left">
+                <div className="text-xs font-bold uppercase tracking-wide opacity-70">Пояснение кафедры</div>
+                <ChemRichText text={String(q.explanation)} className="mt-1 space-y-1" />
+              </div>
+            ) : null}
           </div>
+        )}
+
+        {/* Разбор ошибки в один клик: тот же компонент, что в старом раннере. */}
+        {checked[q.id] && experience === "prepare" && !unresolved && !isOpen && !correct && (
+          <ExplainWithAi
+            question={String(q.text || q.body || "")}
+            chosen={answerDisplay(q, answers[q.id])}
+            correct={reference}
+            subjectSlug={subjectSlugForAi || undefined}
+            subjectName={meta?.subject || undefined}
+          />
         )}
 
         <div className="flex flex-wrap justify-between gap-2">

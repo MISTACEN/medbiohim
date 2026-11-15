@@ -174,7 +174,7 @@ async function main() {
     const answerText = `Верный ответ: ${item.keyNumber}) ${item.keyLabel}`;
     if (!opts.length || !newOptions) {
       keyMismatch += 1;
-      if (mismatchSamples.length < 10) mismatchSamples.push({ n: item.n, mdKey: item.keyLabel.slice(0, 34), dbCorrect: (opts.filter((o) => o.correct).map((o) => (o.label || "").slice(0, 22)).join(" | ") || "-"), text: item.text.slice(0, 60) });
+      if (mismatchSamples.length < 200) mismatchSamples.push({ n: item.n, mdKey: item.keyLabel.slice(0, 34), dbCorrect: (opts.filter((o) => o.correct).map((o) => (o.label || "").slice(0, 22)).join(" | ") || "-"), text: item.text.slice(0, 60) });
       matched += 1;
       continue;
     }

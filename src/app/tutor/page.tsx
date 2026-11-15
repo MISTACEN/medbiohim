@@ -91,6 +91,15 @@ const MODULE_LINKS = [
   { href: "__attach__", label: "Конспект из файла/аудио", icon: NotebookPen },
 ];
 
+/**
+ * Модель иногда сама дописывает в конец ответа «Источники: [1] … [N]».
+ * Под ответом уже есть панель сносок AnswerSources — инлайновый дубль убираем,
+ * но только если сервер действительно отдал sources.
+ */
+function stripInlineSourceList(md: string) {
+  return md.replace(/\n+\s*(?:\*\*|__)?Источники(?:\*\*|__)?\s*:[\s\S]*$/i, "").trim();
+}
+
 export default function TutorPage() {
   const [items,setItems]=useState<AiConversation[]>([]);
   const [conversation,setConversation]=useState<AiConversation|null>(null);
@@ -330,7 +339,9 @@ export default function TutorPage() {
   if(booting) return <div className="flex h-[calc(100dvh-6rem)] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]"/></div>;
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-5.5rem)] max-w-6xl flex-col gap-3" style={keyboardInset ? { height: `calc(100dvh - 5.5rem - ${keyboardInset}px)` } : undefined}>
+    // На телефоне/планшете снизу висит MobileNav (~4.5rem) — раньше высота её
+    // не учитывала, и поле ввода уезжало под меню.
+    <div className="mx-auto flex h-[calc(100dvh-10rem)] max-w-6xl flex-col gap-3 lg:h-[calc(100dvh-5.5rem)]" style={keyboardInset ? { height: `calc(100dvh - 10rem - ${keyboardInset}px)` } : undefined}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Bot className="h-7 w-7 text-[var(--primary)]"/>AI-тьютор</h1><p className="mt-1 text-sm text-[var(--muted)]">История сохраняется и восстанавливается после перезагрузки страницы.</p></div>
         <div className="flex items-center gap-1.5 text-xs">
@@ -341,8 +352,12 @@ export default function TutorPage() {
           })}
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm md:grid-cols-[280px_1fr]">
-        <aside className={mobileList?"flex":"hidden md:flex"}><div className="flex h-full min-h-0 flex-col border-r border-[var(--border)] bg-[var(--background)]">
+      {/* grid-rows-[minmax(0,1fr)]: без явного трека auto-строка растёт по контенту
+          (таблица ответа), и поле ввода уезжает за нижнюю границу карточки. */}
+      {/* Двухколонка только с lg: на планшете (768–1023) список чатов
+          раскрывается кнопкой, иначе переписке остаётся <450 px. */}
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm lg:grid-cols-[280px_1fr]">
+        <aside className={"min-w-0 "+(mobileList?"flex":"hidden lg:flex")}><div className="flex h-full min-h-0 w-full min-w-0 flex-col border-r border-[var(--border)] bg-[var(--background)]">
           <div className="flex items-center justify-between border-b border-[var(--border)] p-3"><b className="text-sm">Мои чаты</b><button type="button" onClick={()=>void newChat()} className="rounded-lg bg-[var(--primary)] p-2 text-white" aria-label="Новый чат"><Plus className="h-4 w-4"/></button></div>
           <div className="flex-1 overflow-y-auto p-2">
             {items.map(c=>{
@@ -354,10 +369,10 @@ export default function TutorPage() {
             })}
           </div>
         </div></aside>
-        <section className={mobileList?"hidden md:flex":"flex"}>
-          <div className="flex min-w-0 flex-1 flex-col">
+        <section className={"min-h-0 min-w-0 "+(mobileList?"hidden lg:flex":"flex")}>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] p-3">
-              <button type="button" onClick={()=>setMobileList(true)} className="rounded-lg p-2 hover:bg-[var(--background)] md:hidden" aria-label="К списку чатов"><ChevronLeft className="h-4 w-4"/></button>
+              <button type="button" onClick={()=>setMobileList(true)} className="rounded-lg p-2 hover:bg-[var(--background)] lg:hidden" aria-label="К списку чатов"><ChevronLeft className="h-4 w-4"/></button>
 
               {/* Селектор модели: провайдер + конкретная модель. */}
               <div className="relative" ref={pickerRef}>
@@ -479,8 +494,8 @@ export default function TutorPage() {
               )}
               {messages.map(m=>(
                 <div key={m.id} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}>
-                  <div className={"max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[82%] "+(m.role==="user"?"bg-[var(--primary)] text-white whitespace-pre-wrap":"border border-[var(--border)] bg-[var(--background)]")}>
-                    {m.role==="assistant"?<TutorMarkdown content={m.content}/>:m.content}
+                  <div className={"min-w-0 max-w-[92%] break-words rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[82%] "+(m.role==="user"?"bg-[var(--primary)] text-white whitespace-pre-wrap":"border border-[var(--border)] bg-[var(--background)]")}>
+                    {m.role==="assistant"?<TutorMarkdown content={m.metadata?.sources?stripInlineSourceList(m.content):m.content}/>:m.content}
                     {m.role==="assistant"?<AnswerSources sources={m.metadata?.sources}/>:null}
                     {m.model&&<div className="mt-2 text-[10px] opacity-60">{m.provider} · {m.model}</div>}
                   </div>
@@ -528,9 +543,9 @@ export default function TutorPage() {
                 </div>
               )}
               {/* Инструменты чата: готовые инструкции (таблица/схема/формулы/карточки). */}
-              <div className="mb-2 flex flex-wrap gap-1.5">
+              <div className="mobile-scroll-x mb-2 flex flex-nowrap gap-1.5 overflow-x-auto pb-1 md:flex-wrap">
                 {CHAT_TOOLS.map(({label,prompt})=>(
-                  <button key={label} type="button" onClick={()=>{ setInput(prompt+ (input.trim()? input.trim() : "")); inputRef.current?.focus(); }} className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)]">
+                  <button key={label} type="button" onClick={()=>{ setInput(prompt+ (input.trim()? input.trim() : "")); inputRef.current?.focus(); }} className="shrink-0 rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)]">
                     {label}
                   </button>
                 ))}

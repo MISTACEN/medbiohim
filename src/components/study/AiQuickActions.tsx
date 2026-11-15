@@ -21,14 +21,14 @@ export function AiQuickActions({ topic, onPrompt }: {
   onPrompt: (prompt: string) => void;
 }) {
   return (
-    <div className="mb-2 flex flex-wrap gap-1.5">
+    <div className="mobile-scroll-x mb-2 flex flex-nowrap gap-1.5 overflow-x-auto pb-1 md:flex-wrap">
       {ACTIONS.map((action) => (
         <button
           key={action.id}
           type="button"
           onClick={() => onPrompt(topic.trim() ? action.template + topic.trim() : action.template)}
           title={action.hint}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:border-[var(--primary)]/50 hover:bg-[var(--primary-soft)]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:border-[var(--primary)]/50 hover:bg-[var(--primary-soft)]"
         >
           <action.icon className="h-3.5 w-3.5" /> {action.label}
         </button>

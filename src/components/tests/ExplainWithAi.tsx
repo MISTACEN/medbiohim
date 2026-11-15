@@ -7,11 +7,28 @@
  * (RAG по лекциям предмета) и показывает короткий разбор со сносками [N],
  * ведущими в лекции. Ничего не сохраняет: это разовая подсказка.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
-import { aiChat } from "@/lib/features-api";
+import { aiChat, type AiProvider } from "@/lib/features-api";
 import { describeApiError } from "@/lib/errors";
+import { getAccountSettings } from "@/lib/settings-api";
 import { AnswerSources } from "@/components/ai/AnswerSources";
+
+/** Провайдер из настроек аккаунта; один запрос на страницу. */
+let explainProviderPromise: Promise<AiProvider> | null = null;
+function savedExplainProvider(): Promise<AiProvider> {
+  if (!explainProviderPromise) {
+    explainProviderPromise = getAccountSettings()
+      .then((r) => {
+        const value = String((r.ok ? (r.data.preferences as Record<string, unknown>)?.ai_explain_provider : "auto") || "auto");
+        return (["gigachat", "groq", "mistral", "openai", "openrouter", "custom"].includes(value)
+          ? value
+          : "auto") as AiProvider;
+      })
+      .catch(() => "auto" as AiProvider);
+  }
+  return explainProviderPromise;
+}
 
 export function ExplainWithAi({
   question,
@@ -39,6 +56,13 @@ export function ExplainWithAi({
   const [sources, setSources] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [provider, setProvider] = useState<AiProvider>("auto");
+
+  useEffect(() => {
+    let alive = true;
+    void savedExplainProvider().then((p) => { if (alive) setProvider(p); });
+    return () => { alive = false; };
+  }, []);
 
   async function explain() {
     if (busy) return;
@@ -64,7 +88,7 @@ export function ExplainWithAi({
               + "Дай одну мнемонику. Опирайся на материалы курса и ставь сноску [N] после утверждений из фрагментов.",
         },
       ],
-      "auto",
+      provider,
       { mode: "precise", subjectSlug: subjectSlug || undefined },
     );
     setBusy(false);

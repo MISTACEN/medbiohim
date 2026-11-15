@@ -88,5 +88,9 @@ export function TutorMarkdown({ content }: { content: string }) {
     return mdToHtml(withMermaid);
   }, [content]);
 
-  return <div ref={ref} className="prose prose-sm max-w-none dark:prose-invert [&_table]:my-2 [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_.mermaid]:my-2" dangerouslySetInnerHTML={{ __html: html }} />;
+  // Таблицы ответа шире колонки чата (5 столбцов на телефоне): .lec-table-wrap
+  // приходит из mdToHtml без стилей (они живут внутри LectureRenderer),
+  // поэтому здесь даём ему собственный горизонтальный скролл, а не растягиваем
+  // пузырь сообщения шире экрана.
+  return <div ref={ref} className="prose prose-sm min-w-0 max-w-none break-words dark:prose-invert [&_.lec-table-wrap]:my-2 [&_.lec-table-wrap]:w-full [&_.lec-table-wrap]:max-w-full [&_.lec-table-wrap]:overflow-x-auto [&_table]:my-2 [&_table]:w-max [&_table]:min-w-full [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_.mermaid]:my-2" dangerouslySetInnerHTML={{ __html: html }} />;
 }

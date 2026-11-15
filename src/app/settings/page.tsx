@@ -69,6 +69,8 @@ function SettingsPageInner() {
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [trainerLayout, setTrainerLayout] = useState<TrainerLayout>("top");
+  // Провайдер для «Объяснить · ИИ» в тестах (хранится в preferences).
+  const [aiExplainProvider, setAiExplainProvider] = useState("auto");
   const [telegramStatus, setTelegramStatus] = useState<TelegramLinkStatus | null>(null);
   // Отдельно от «не привязан»: недоступный статус нельзя выдавать за отсутствие привязки.
   const [telegramStatusError, setTelegramStatusError] = useState<string | null>(null);
@@ -96,6 +98,8 @@ function SettingsPageInner() {
       setEmailPending(String(u.email_change_pending || ""));
       const savedLayout = String(r.data.preferences?.trainer_layout || "top");
       if (savedLayout === "sidebar" || savedLayout === "list" || savedLayout === "top") setTrainerLayout(savedLayout);
+      const savedAi = String(r.data.preferences?.ai_explain_provider || "auto");
+      if (["auto", "gigachat", "groq", "mistral", "openai", "openrouter", "custom"].includes(savedAi)) setAiExplainProvider(savedAi);
     } else {
       setErr(describeApiError(r.error));
       setFullName(user?.name || "");
@@ -853,6 +857,54 @@ function SettingsPageInner() {
           <div className="grid gap-4 md:grid-cols-3">{referenceThemes.map(renderTheme)}</div>
         </section>
       )}
+
+      <section className="card space-y-3 p-5">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><Sparkles className="h-5 w-5" /> ИИ-пояснения в тестах</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Какая нейросеть отвечает по кнопке «Объяснить · ИИ» и в разборе ошибок. «Авто» — сервер выбирает сам по доступности ключей.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(([
+            ["auto", "Авто (рекомендуется)"],
+            ["gigachat", "GigaChat"],
+            ["groq", "Groq"],
+            ["mistral", "Mistral"],
+            ["openai", "OpenAI"],
+            ["openrouter", "OpenRouter"],
+            ["custom", "Своя модель"],
+          ]) as [string, string][]).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={async () => {
+                const previous = aiExplainProvider;
+                setAiExplainProvider(id);
+                const saved = await saveAccountPreferences({ ai_explain_provider: id });
+                if (!saved.ok) {
+                  setAiExplainProvider(previous);
+                  setErr(describeApiError(saved.error));
+                  return;
+                }
+                setAccount((prev) => prev ? { ...prev, preferences: { ...prev.preferences, ...saved.data.preferences } } : prev);
+                setMsg("Настройка ИИ-пояснений сохранена");
+              }}
+              className={clsx(
+                "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                aiExplainProvider === id
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-800"
+                  : "border-[var(--border)] text-slate-600 hover:border-indigo-300",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-[var(--muted)]">
+          Настройка применяется к кнопкам в тренировке и в разборе после теста; сами ответы на вопросы она не меняет.
+        </p>
+      </section>
 
       <section className="card space-y-4 p-5">
         <h2 className="text-lg font-semibold">Классические темы</h2>

@@ -17,6 +17,8 @@ const PREF_DEFAULTS = {
   notify_lectures: true,
   media_prefer_ru: true,
   trainer_layout: "top",
+  // Провайдер для «Объяснить · ИИ» в тестах: auto = сервер выбирает сам.
+  ai_explain_provider: "auto",
   updated_at: null,
 };
 const PREF_KEYS = Object.keys(PREF_DEFAULTS).filter((k) => k !== "updated_at");

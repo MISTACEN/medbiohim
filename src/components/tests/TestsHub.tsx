@@ -518,10 +518,23 @@ export function TestsHub({
           seen.add(key);
           return true;
         });
+        // Буквальный «Тест по теме занятия» рядом с содержательным банком того же
+        // объёма — тот же импорт под служебным именем. Осмысленные пары (например,
+        // два разных банка по 374 вопроса) не трогаем.
+        const GENERIC_TITLE = /^(тест по теме занятия|тест по теме|банк тестовых заданий|занятие)$/i;
+        const cleaned = deduped.filter((test) => {
+          if (!GENERIC_TITLE.test((test.title || "").trim())) return true;
+          return !deduped.some(
+            (other) =>
+              other.id !== test.id &&
+              other.questionCount === test.questionCount &&
+              !GENERIC_TITLE.test((other.title || "").trim()),
+          );
+        });
         return {
           ...group,
-          tests: deduped.slice().sort((a, b) => a.orderIndex - b.orderIndex || a.title.localeCompare(b.title, "ru")),
-          questionCount: deduped.reduce((sum, t) => sum + t.questionCount, 0),
+          tests: cleaned.slice().sort((a, b) => a.orderIndex - b.orderIndex || a.title.localeCompare(b.title, "ru")),
+          questionCount: cleaned.reduce((sum, t) => sum + t.questionCount, 0),
         };
       })
       .sort((a, b) => {
@@ -668,9 +681,11 @@ export function TestsHub({
               className="min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-400"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-[var(--muted)]" />
-            <span className="text-sm font-semibold text-slate-700">Свободная подготовка · режим:</span>
+          {/* На телефоне режимы и уровни — две прокручиваемые строки: раньше они
+              переносились в 4 ряда и отодвигали сам список банков. */}
+          <div className="mobile-scroll-x flex items-center gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
+            <SlidersHorizontal className="hidden h-4 w-4 shrink-0 text-[var(--muted)] sm:block" />
+            <span className="hidden shrink-0 text-sm font-semibold text-slate-700 lg:inline">Свободная подготовка · режим:</span>
             {MODES.map((item) => (
               <button
                 key={item.id}
@@ -678,7 +693,7 @@ export function TestsHub({
                 title={item.hint}
                 onClick={() => setMode(item.id)}
                 className={
-                  "rounded-xl border px-3 py-2 text-xs font-bold transition sm:text-sm " +
+                  "shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold transition sm:text-sm " +
                   (mode === item.id
                     ? "border-indigo-500 bg-indigo-50 text-indigo-800"
                     : "border-[var(--border)] bg-[var(--card)] text-slate-600 hover:border-indigo-300")
@@ -689,11 +704,11 @@ export function TestsHub({
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Пирамида:</span>
+          <div className="mobile-scroll-x flex items-center gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
+            <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Пирамида:</span>
             {[null, 1, 2, 3].map((lv) => (
               <button key={String(lv)} type="button" onClick={() => setLevelFilter(lv)}
-                className={"rounded-lg px-2.5 py-1 text-xs font-bold " + (levelFilter === lv ? "bg-indigo-600 text-white" : "border border-[var(--border)] text-slate-600 hover:border-indigo-300")}>
+                className={"shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-bold " + (levelFilter === lv ? "bg-indigo-600 text-white" : "border border-[var(--border)] text-slate-600 hover:border-indigo-300")}>
                 {lv === null ? "Все" : lv === 1 ? "База" : lv === 2 ? "Понимание" : "Применение"}
               </button>
             ))}
@@ -711,20 +726,24 @@ export function TestsHub({
               onChange={(event) => setCount(Math.max(1, Math.min(200, Number(event.target.value) || 1)))}
               className="w-24 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400"
             />
-            <span>случайных вопросов из банка; если вопросов меньше — будут использованы все. <span className="mt-1 block text-xs font-medium text-indigo-700">
-              Это свободная подготовка: результат остаётся у вас и не отправляется преподавателю.
-              Тесты, назначенные преподавателем, — отдельным блоком выше, и они всегда уходят в его ведомость.
-            </span></span>
+            <span className="min-w-0">случайных вопросов из банка; лишние не добавятся.
+              <span className="mt-1 block text-xs font-medium text-indigo-700">
+                Свободная подготовка: результат остаётся у вас и не уходит преподавателю.
+              </span>
+              <span className="mt-1 hidden text-xs text-[var(--muted)] sm:block">
+                Назначенные тесты — отдельным блоком выше и всегда идут в ведомость.
+              </span>
+            </span>
           </label>
         )}
 
         {showModuleFilter && (
-          <div className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-3" aria-label="Раздел">
+          <div className="mobile-scroll-x flex flex-nowrap items-center gap-2 overflow-x-auto border-t border-[var(--border)] pt-3 lg:flex-wrap lg:overflow-visible" aria-label="Раздел">
             <button
               type="button"
               onClick={() => setModuleFilter("all")}
               className={
-                "rounded-full border px-3 py-1.5 text-xs font-bold transition " +
+                "shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition " +
                 (moduleFilter === "all"
                   ? "border-indigo-500 bg-indigo-50 text-indigo-800"
                   : "border-[var(--border)] bg-[var(--card)] text-slate-600 hover:border-indigo-300")
@@ -803,9 +822,26 @@ export function TestsHub({
                 {fullManuals.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {fullManuals.map((test) => (
-                      <Link key={test.id} href={buildHref(test, mode, count)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--muted)] transition hover:border-indigo-300 hover:text-indigo-700">
-                        Полный тест · {test.title.replace(/^Полный тест · /, "")} · {test.questionCount}
-                      </Link>
+                      <div
+                        key={test.id}
+                        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-white py-1 pl-3 pr-1 text-[11px]"
+                      >
+                        <span className="font-semibold text-[var(--muted)]">
+                          {test.title.replace(/^Полный тест · /, "")} · {test.questionCount}
+                        </span>
+                        <Link
+                          href={buildHref(test, mode, count)}
+                          className="rounded-full px-2 py-1 font-bold text-indigo-700 transition hover:bg-indigo-50"
+                        >
+                          {mode === "sequential" ? "Весь банк" : selectedMode.label}
+                        </Link>
+                        <Link
+                          href={buildBankHref(test, mode, count)}
+                          className="rounded-full px-2 py-1 font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]"
+                        >
+                          Банк
+                        </Link>
+                      </div>
                     ))}
                   </div>
                 )}

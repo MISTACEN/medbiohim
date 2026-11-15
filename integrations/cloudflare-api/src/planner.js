@@ -848,25 +848,49 @@ export async function startSupabasePreparation(request, env, testId, input = {},
         topic_name: topicNames.get(String(q.topic_id || "")) ?? null,
       };
     });
+    // Берём не только in_progress, но и abandoned: abandoned появлялась при старте
+    // с другим режимом, и ответы студента в ней целы. Без этого прогресс «слетал»
+    // при заходе по другой ссылке, с другого устройства или после перезагрузки.
     const existingRows = await c.rows("test_preparation_sessions", { select: "*", user_id: "eq." + c.identity.id,
-      test_id: "eq." + testId, status: "eq.in_progress", order: "started_at.desc.nullslast", limit: "1" });
+      test_id: "eq." + testId, status: "in.(in_progress,abandoned)", order: "started_at.desc.nullslast", limit: "5" });
     const existing = existingRows[0];
     if (existing && existing.group_id && String(existing.group_id) !== groupId) return fail(409, "CONTEXT_CHANGED", "Сессия подготовки относится к другой учебной группе");
     // Продолжаем только сессию с реальным прогрессом. Если студент не ответил
     // ни на один вопрос, каждый запуск создаёт новый снимок — с другим
     // порядком вопросов и перемешанными вариантами (shuffleQuestionOptions).
     // Иначе повторный заход на тот же тест выглядел как «рандомизация не работает».
-    let resumeReady = false;
-    if (existing && String(existing.mode || "") === mode) {
-      if (Number(existing.current_index) > 0) {
-        resumeReady = true;
-      } else {
-        const progress = await c.rows("test_preparation_results", { select: "id", session_id: "eq." + String(existing.id), limit: "1" });
-        resumeReady = progress.length > 0;
-      }
+    //
+    // Режим/режим-проверки НЕ сравниваем: студент возвращается по другой ссылке
+    // (из хаба с mode=prepare вместо sequential), с другого устройства или после
+    // перезагрузки — раньше это закрывало сессию и удаляло ответы. Возвращаем
+    // сохранённые mode/experience, клиент переключается на них сам.
+    let resumeRow = null;
+    if (existingRows.length) {
+      const idsList = existingRows.map((row) => String(row.id)).join(",");
+      let results = [];
+      try {
+        results = await c.rows("test_preparation_results", { select: "session_id", session_id: "in.(" + idsList + ")", limit: "1000" });
+      } catch { results = []; }
+      const withProgress = new Set(results.map((row) => String(row.session_id || "")));
+      resumeRow = existingRows.find((row) => Number(row.current_index) > 0 || withProgress.has(String(row.id))) || null;
     }
-    if (resumeReady) {
-      const safe = { ...existing, question_ids: parsePreparationIds(existing.question_ids) };
+    if (resumeRow) {
+      // Возрождаем abandoned → in_progress (закрыв другой in_progress, если он есть):
+      // иначе уникальный ключ (user_id, test_id, status) не даст продолжать.
+      if (String(resumeRow.status) !== "in_progress") {
+        for (const row of existingRows.filter((item) => String(item.status) === "in_progress")) {
+          try {
+            await c.rows("test_preparation_sessions", { id: "eq." + String(row.id), user_id: "eq." + c.identity.id },
+              { method: "PATCH", body: JSON.stringify({ status: "abandoned", last_saved_at: new Date().toISOString() }) });
+          } catch {}
+        }
+        try {
+          await c.rows("test_preparation_sessions", { id: "eq." + String(resumeRow.id), user_id: "eq." + c.identity.id },
+            { method: "PATCH", body: JSON.stringify({ status: "in_progress", last_saved_at: new Date().toISOString() }) });
+        } catch {}
+        resumeRow.status = "in_progress";
+      }
+      const safe = { ...resumeRow, question_ids: parsePreparationIds(resumeRow.question_ids) };
       delete safe.question_snapshot;
       return { ok: true, data: { session: safe, resumed: true } };
     }
