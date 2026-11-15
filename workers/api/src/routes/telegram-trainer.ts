@@ -694,4 +694,96 @@ telegramTrainer.get("/internal/trainer/morning", async (c) => {
   }
 });
 
+/** Ссылка на раздел подготовки — кнопка под утренним отчётом агента. */
+const SITE_STUDY_URL = "https://medbiohim.vercel.app/study";
+
+/**
+ * Утренний отчёт ночного ИИ-агента к экзамену (roadmap фаза 10): агент сам
+ * раскладывает вопросы банка по дням в study_agent_items, Telegram-бот только
+ * доставляет сводку «вопросы на сегодня» связанным студентам. HTML строит
+ * API, бот — курьер (тот же контракт, что /internal/trainer/morning).
+ */
+telegramTrainer.get("/internal/trainer/agent-morning", async (c) => {
+  const rid = requestId();
+  if (!guardInternal(c)) {
+    const { body, status } = fail("UNAUTHORIZED", "Internal call only", 401, rid);
+    return c.json(body, status as 401);
+  }
+  const supabase = createServiceClient(c.env);
+  if (!supabase) {
+    const { body, status } = fail("DB_UNAVAILABLE", "База данных недоступна", 503, rid);
+    return c.json(body, status as 503);
+  }
+  try {
+    const date = isoDate(new Date());
+    const { data: accounts, error: accountsError } = await supabase
+      .from("telegram_accounts")
+      .select("telegram_user_id,user_id,first_name")
+      .limit(TRAINER_LINKED_LIMIT);
+    if (accountsError) throw accountsError;
+
+    const chats: Array<{ chat_id: number; html: string; keyboard: Array<{ text: string; url?: string; callback_data?: string }> }> = [];
+    for (const account of accounts || []) {
+      const telegramUserId = Number((account as any).telegram_user_id);
+      const userId = String((account as any).user_id || "");
+      if (!Number.isSafeInteger(telegramUserId) || telegramUserId <= 0 || !userId) continue;
+
+      const { data: plans, error: plansError } = await supabase
+        .from("study_plans")
+        .select("id,subject_slug,event_date")
+        .eq("user_id", userId)
+        .eq("event_kind", "exam_agent")
+        .eq("status", "active")
+        .gte("event_date", date)
+        .order("event_date", { ascending: true })
+        .limit(5);
+      if (plansError) throw plansError;
+      if (!plans?.length) continue;
+
+      for (const plan of plans) {
+        const { data: items, error: itemsError } = await supabase
+          .from("study_agent_items")
+          .select("question_text,topic,done,position")
+          .eq("plan_id", plan.id)
+          .eq("day", date)
+          .order("position", { ascending: true })
+          .limit(20);
+        if (itemsError) throw itemsError;
+        const open = (items || []).filter((item: any) => !item.done);
+        if (!open.length) continue; // день закрыт — в отчёт не попадает
+
+        const total = (items || []).length;
+        const done = total - open.length;
+        const eventDate = String(plan.event_date || "").slice(0, 10).split("-").reverse().join(".");
+        const lines = open.slice(0, 5).map((item: any, index: number) => {
+          const question = escapeHtml(String(item.question_text || "").slice(0, 110));
+          const topic = escapeHtml(String(item.topic || "").slice(0, 60));
+          return `${index + 1}. ${topic ? `<b>${topic}</b> — ` : ""}${question}`;
+        });
+        const firstName = escapeHtml((account as any).first_name || "");
+        const greeting = firstName ? `🌅 Доброе утро, ${firstName}!` : "🌅 Доброе утро!";
+        const html = [
+          greeting,
+          `🤖 <b>Ночной агент к экзамену</b> подготовил вопросы на сегодня${plan.subject_slug ? ` (${escapeHtml(String(plan.subject_slug))})` : ""} — экзамен ${eventDate}.`,
+          `Сегодня: <b>${open.length}</b> из ${total} (сделано ${done}).`,
+          "",
+          ...lines,
+          open.length > 5 ? `\n…и ещё ${open.length - 5}` : "",
+        ].filter(Boolean).join("\n");
+        chats.push({
+          chat_id: telegramUserId,
+          html,
+          keyboard: [{ text: "📘 Открыть подготовку", url: SITE_STUDY_URL }],
+        });
+      }
+    }
+
+    return c.json(ok({ date, chats }, rid));
+  } catch (error) {
+    console.error("[agent:morning]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Утренний отчёт агента временно недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 export default telegramTrainer;

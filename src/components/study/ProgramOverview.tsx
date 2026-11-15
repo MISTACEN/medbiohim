@@ -121,11 +121,17 @@ export function ProgramOverview({
       </section>
 
       {plan.risks.length > 1 ? (
-        <section className="card p-4">
-          <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
+        // Замечания по срокам — сворачиваемые: пять одинаковых «перенеси пункт»
+        // сверху перекрывали суть плана; в заголовке одна строка-итог.
+        <details className="card p-4">
+          <summary className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold">
             <TriangleAlert className="h-4 w-4 text-[var(--status-warn-fg)]" /> Что учесть по срокам
-          </h2>
-          <ul className="mt-2 space-y-1.5 text-sm">
+            <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--status-warn-fg)]">
+              {plan.risks.length - 1}
+            </span>
+            <span className="text-xs font-normal text-[var(--muted)]">{plan.risks[1]}</span>
+          </summary>
+          <ul className="mt-3 space-y-1.5 text-sm">
             {plan.risks.slice(1).map((risk) => (
               <li key={risk} className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--status-warn-fg)]" />
@@ -133,7 +139,7 @@ export function ProgramOverview({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
 
       {action ? (

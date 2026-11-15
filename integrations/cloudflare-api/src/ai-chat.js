@@ -90,9 +90,43 @@ export function getAiProviderStatus(env = {}) {
       reason: null,
     },
   };
+  // Выбор модели в тьюторе: каждый провайдер публикует свой список моделей.
+  for (const [id, entry] of Object.entries(providers)) {
+    entry.models = PROVIDER_MODELS[id] || [];
+  }
   const configuredDefault = String(env.AI_CHAT_PRIMARY_PROVIDER || "groq").trim().toLowerCase();
   const defaultProvider = ["auto", ...Object.keys(providers)].includes(configuredDefault) ? configuredDefault : "auto";
   return { region, providers, default: defaultProvider };
+}
+
+/**
+ * Известные модели по провайдерам для выбора в тьюторе. Список — подсказка,
+ * не жёсткое ограничение: настроенная в env модель провайдера тоже валидна
+ * (см. resolveProviderModel), чтобы секреты вроде GROQ_MODEL не ломали выбор.
+ */
+export const PROVIDER_MODELS = {
+  openai: ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"],
+  groq: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+  gigachat: ["GigaChat-2-Max", "GigaChat-2-Pro", "GigaChat-2", "GigaChat"],
+  gemini: ["gemini-3.6-flash", "gemini-2.0-flash", "gemini-2.5-flash"],
+  mistral: ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
+  openrouter: ["openrouter/auto", "openai/gpt-4o-mini", "anthropic/claude-3.5-haiku"],
+};
+
+/**
+ * Валидирует выбранную студентом модель: принимает её, если она есть в списке
+ * провайдера или совпадает с настроенной на воркере моделью этого провайдера.
+ * Иначе возвращает null — вызывающий оставит env-дефолт.
+ */
+export function resolveProviderModel(env = {}, providerId, requested) {
+  const provider = String(providerId || "").trim().toLowerCase();
+  const model = String(requested || "").trim();
+  if (!provider || !model || model.length > 80) return null;
+  const allowed = PROVIDER_MODELS[provider] || [];
+  if (allowed.includes(model)) return model;
+  const status = getAiProviderStatus(env).providers?.[provider];
+  if (status && status.model && status.model === model) return model;
+  return null;
 }
 
 function requireCaller(request, env, userId) {
@@ -570,6 +604,16 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
       throw new AiChatApiError(503, "AI_PROVIDER_UNAVAILABLE", known.reason || "Выбранный ИИ-провайдер не настроен");
     }
     throw new AiChatApiError(503, "AI_NOT_CONFIGURED", "Не настроен доступный ИИ-провайдер");
+  }
+
+  // Выбор модели студентом: подменяем модель только у кандидата выбранного
+  // провайдера (preferred === "auto" — без подмены, цепочка сама выбирает).
+  const preferredProviderKey = String(preferredProvider || "auto").trim().toLowerCase();
+  const modelOverride = resolveProviderModel(env, preferredProviderKey, options?.model);
+  if (modelOverride && preferredProviderKey !== "auto") {
+    for (const candidate of candidates) {
+      if (candidate.id === preferredProviderKey) candidate.model = modelOverride;
+    }
   }
 
   const report = typeof options?.onAttempt === "function" ? options.onAttempt : () => {};

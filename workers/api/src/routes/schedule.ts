@@ -118,7 +118,7 @@ schedule.get("/", requireAuth, async (c) => {
     let entryQuery = db
       .from("schedule_entries")
       .select(
-        "id,date,start_time,end_time,subject_id,subject_name,type,building,room,notes,academic_hours,week_parity,is_cancelled,is_makeup,breaks,schedule_id,session_id,subjects(id,name,slug,color_hex)"
+        "id,date,start_time,end_time,subject_id,subject_name,type,event_kind,building,room,notes,academic_hours,week_parity,is_cancelled,is_makeup,breaks,schedule_id,session_id,subjects(id,name,slug,color_hex)"
       )
       .in("schedule_id", scheduleIds)
       .order("date", { ascending: true })

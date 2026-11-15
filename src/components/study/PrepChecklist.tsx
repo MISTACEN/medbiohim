@@ -25,15 +25,23 @@ export function PrepChecklist({ item, onClose }: { item: AgendaItem; onClose: ()
     setAttempted(true);
     void (async () => {
       const when = item.date ? item.date.split("-").reverse().join(".") : "дата неизвестна";
+      // Темы события приходят из /academic/state (prep_topics по curriculum_items)
+      // — это конкретика вместо общих советов.
+      const topics = Array.isArray(item.prepTopics) ? item.prepTopics : [];
+      const topicsText = topics.length
+        ? "\n\nТемы, которые входят в это событие (готовиться по ним):\n" + topics.slice(0, 8).map((t) => `- ${t.title}${typeof t.mastery_pct === "number" ? ` (готовность ${t.mastery_pct}%)` : ""}`).join("\n")
+        : "";
       const response = await aiChat(
         [
           {
             role: "user",
             content:
               `Составь чек-лист подготовки к событию «${item.title}» (${kindLabel}, ${when}). `
-              + "5–8 пунктов: какие темы/лекции повторить, что сдать заранее, что взять. "
-              + "Опирайся только на учебный контекст ниже — не придумывай темы и даты. "
-              + "Формат: нумерованный список, без вступлений.",
+              + "5–8 пунктов «что готовить»: темы/лекции из плана предмета и учебного контекста, "
+              + "что сдать заранее (ДЗ с описанием), какие тесты/карточки прогнать, что взять с собой. "
+              + "Пункты вида «посетить/присутствовать» запрещены. "
+              + "Опирайся только на темы события и учебный контекст ниже — не придумывай темы и даты. "
+              + "Формат: нумерованный список, без вступлений." + topicsText,
           },
         ],
         "auto",

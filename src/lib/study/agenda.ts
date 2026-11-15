@@ -51,6 +51,8 @@ export type AgendaItem = {
   masteryPct?: number | null;
   /** Дней до события — для карточки «Готовность 62% · через 9 дней». */
   daysLeft?: number | null;
+  /** Темы события из curriculum_items (/academic/state) — контекст чек-листа. */
+  prepTopics?: Array<{ topic_id?: string | null; title?: string; mastery_pct?: number | null }>;
 };
 
 export type PlannerHomework = {
@@ -109,6 +111,7 @@ export function buildAgenda(
       subjectSlug: event.subject_slug ? String(event.subject_slug) : null,
       masteryPct: typeof event.mastery_pct === "number" ? event.mastery_pct : null,
       daysLeft: typeof event.days_left === "number" ? event.days_left : null,
+      prepTopics: Array.isArray(event.prep_topics) ? event.prep_topics : undefined,
     });
   }
 

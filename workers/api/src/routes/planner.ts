@@ -99,7 +99,7 @@ planner.get("/", requireAuth, async (c) => {
     let scheduleEntries: any[] = [];
     if (scheduleIds.length) {
       let entryQuery = db.from("schedule_entries")
-        .select("id,date,start_time,end_time,subject_id,subject_name,type,is_makeup,session_id,schedule_id,subjects(name,slug,color_hex)")
+        .select("id,date,start_time,end_time,subject_id,subject_name,type,event_kind,is_makeup,session_id,schedule_id,subjects(name,slug,color_hex)")
         .in("schedule_id", scheduleIds).order("date", { ascending: true }).order("start_time", { ascending: true }).limit(1000);
       if (from) entryQuery = entryQuery.gte("date", from);
       const { data: entries, error: entriesError } = await entryQuery;

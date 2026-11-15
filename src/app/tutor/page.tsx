@@ -1,13 +1,70 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiChatMode, type AiConversation, type AiMessage, type AiProvider } from "@/lib/features-api";
+/**
+ * AI-тьютор: чат с историей на сервере, выбором нейросети (провайдер +
+ * конкретная модель) и панелью модулей подготовки.
+ *
+ * Выбор модели: кастомный дропдаун вместо <select> — по провайдеру видны
+ * статус (доступность/причина) и чипы моделей из /ai/providers (models[]).
+ * Выбор сохраняется в чате (ai_conversations.provider + model), при отправке
+ * уходит в /ai/conversations/:id/messages.
+ *
+ * Панель модулей: быстрые переходы в план подготовки, карточки/SRS, устный
+ * экзамен, конспект из файла/аудио; блок «Подготовка ЦНС» включает предмет
+ * physiology и стартовые вопросы из корпуса знаний ЦНС (RAG тьютора).
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft, ChevronDown,
+  Check, BookOpenCheck, ListChecks, Mic, NotebookPen, GraduationCap, BrainCircuit,
+} from "lucide-react";
+import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiChatMode, type AiConversation, type AiMessage, type AiProvider, type AiProviderMeta } from "@/lib/features-api";
 import { AnswerSources } from "@/components/ai/AnswerSources";
 import { listSubjectsCatalog } from "@/lib/api";
-import { Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { AiQuickActions } from "@/components/study/AiQuickActions";
+
+const PROVIDER_LABEL: Record<AiProvider, string> = {
+  auto: "Авто — лучший доступный",
+  openai: "OpenAI",
+  groq: "Groq",
+  gigachat: "GigaChat",
+  gemini: "Gemini",
+  mistral: "Mistral",
+  openrouter: "OpenRouter",
+  custom: "Своя модель",
+};
+
+/** Порядок в дропдауне: авто, российский контур, глобальные, своя модель. */
+const PROVIDER_ORDER: AiProvider[] = ["auto", "gigachat", "gemini", "groq", "mistral", "openai", "openrouter", "custom"];
+
+/** Резервный список моделей, пока /ai/providers не отдал свой. */
+const FALLBACK_MODELS: Partial<Record<AiProvider, string[]>> = {
+  gigachat: ["GigaChat-2-Max", "GigaChat-2-Pro", "GigaChat-2", "GigaChat"],
+  groq: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+  gemini: ["gemini-3.6-flash", "gemini-2.0-flash"],
+  mistral: ["mistral-small-latest", "mistral-medium-latest"],
+  openai: ["gpt-4.1-mini", "gpt-4o-mini"],
+};
+
+/** Стартовые вопросы блока «Подготовка ЦНС» — темы корпуса знаний ЦНС. */
+const CNS_STARTERS = [
+  "Объясни типы торможения в ЦНС и их медиаторы — по методичке",
+  "ЭЭГ-ритмы: когда какой ритм и почему это любят спрашивать в тестах",
+  "Проведи через ситуационную задачу по синаптической передаче",
+  "Кратко: спинной мозг — проводящие пути и рефлексы",
+  "ВНС: отличия симпатической и парасимпатической на уровне медиаторов",
+];
+
+const MODULE_LINKS = [
+  { href: "/study#подготовка", label: "План подготовки", icon: ListChecks },
+  { href: "/cards", label: "Карточки SRS", icon: BookOpenCheck },
+  { href: "/cards?tab=packs", label: "Пак карточек по теме", icon: Sparkles },
+  { href: "/tests/preparation", label: "Устный экзамен", icon: GraduationCap },
+  { href: "/study/import", label: "Конспект из файла/аудио", icon: NotebookPen },
+];
 
 export default function TutorPage() {
   const [items,setItems]=useState<AiConversation[]>([]);
@@ -18,18 +75,26 @@ export default function TutorPage() {
   const [booting,setBooting]=useState(true);
   const [error,setError]=useState<string|null>(null);
   const [provider,setProvider]=useState<AiProvider>("auto");
-  const [available,setAvailable]=useState<Record<AiProvider,boolean>>({auto:true,groq:false,gigachat:false,gemini:false,mistral:false,openrouter:false,custom:false});
+  const [model,setModel]=useState<string>("");
+  const [meta,setMeta]=useState<Partial<Record<AiProvider,AiProviderMeta>>>({});
   const [subjects,setSubjects]=useState<Array<{name:string;slug:string}>>([]);
   const [psRegionHint,setPsRegionHint]=useState(false);
-  // «Точный» держит ответ на лекциях предмета и ставит сноски [N]; «Быстрый» — без RAG.
-  const [mode,setMode]=useState<AiChatMode>("precise");
-
-  const [subjectSlug,setSubjectSlug]=useState("");
+  const [pickerOpen,setPickerOpen]=useState(false);
   const [mobileList,setMobileList]=useState(true);
   const bottomRef=useRef<HTMLDivElement>(null);
+  const pickerRef=useRef<HTMLDivElement>(null);
   const inputRef=useRef<HTMLTextAreaElement>(null);
+  // «Точный» держит ответ на лекциях предмета и корпусе ЦНС со сносками [N]; «Быстрый» — без RAG.
+  const [mode,setMode]=useState<AiChatMode>("precise");
+  const [subjectSlug,setSubjectSlug]=useState("");
   // iOS: клавиатура накрывает ввод — приподнимаем контейнер на её инсент.
   const keyboardInset = useKeyboardInset();
+
+  const modelsFor = useCallback((p: AiProvider): string[] => {
+    const fromApi = meta[p]?.models;
+    if (fromApi?.length) return fromApi;
+    return FALLBACK_MODELS[p] || [];
+  }, [meta]);
 
   const loadConversation = useCallback(async (id:string)=>{
     setLoading(true); setError(null);
@@ -38,6 +103,7 @@ export default function TutorPage() {
     if(!r.ok){setError(describeApiError(r.error));return;}
     setConversation(r.data.conversation);
     setProvider(r.data.conversation.provider);
+    setModel(r.data.conversation.model||"");
     setSubjectSlug(r.data.conversation.subject_slug||"");
     setMessages(r.data.messages.filter(m=>m.role!=="system"));
     setMobileList(false);
@@ -59,7 +125,11 @@ export default function TutorPage() {
   const boot = useCallback(async ()=>{
     setBooting(true);
     const [cs,ps,ss]=await Promise.all([aiConversations(),aiProviders(),listSubjectsCatalog()]);
-    if(ps.ok) { setAvailable({auto:true,groq:!!ps.data.providers.groq?.available,gigachat:!!ps.data.providers.gigachat?.available,gemini:!!ps.data.providers.gemini?.available,mistral:!!ps.data.providers.mistral?.available,openrouter:!!ps.data.providers.openrouter?.available,custom:!!ps.data.providers.custom?.available}); if (ps.data.providers.custom?.prefer_own) setProvider("custom"); }
+    if(ps.ok){
+      setMeta(ps.data.providers);
+      if (ps.data.providers.gemini?.available === false && ps.data.providers.gemini?.reason) setPsRegionHint(true);
+      if (ps.data.providers.custom?.prefer_own) setProvider("custom");
+    }
     if(ss.ok) {
       // В БД предмет может занимать несколько активных строк под одним слагом
       // (курсы/семестры) — в селекторе нужен один пункт на слаг, иначе React
@@ -84,9 +154,22 @@ export default function TutorPage() {
 
   useEffect(()=>{void boot();},[boot]);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[messages,loading]);
+  // Дропдаун модели закрывается кликом вне.
+  useEffect(()=>{
+    if(!pickerOpen) return;
+    function onDocClick(e:MouseEvent){
+      if(pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false);
+    }
+    document.addEventListener("mousedown",onDocClick);
+    return ()=>document.removeEventListener("mousedown",onDocClick);
+  },[pickerOpen]);
 
   async function newChat(){
-    const r=await aiCreateConversation({provider,subject_slug:subjectSlug||undefined});
+    const r=await aiCreateConversation({
+      provider,
+      ...(provider!=="auto"&&provider!=="custom"&&model?{model}:{}) as {model?:string},
+      subject_slug:subjectSlug||undefined,
+    });
     if(!r.ok){setError(describeApiError(r.error));return;}
     setItems(x=>[r.data.conversation,...x]);setConversation(r.data.conversation);setMessages([]);setMobileList(false);setError(null);
     setTimeout(()=>inputRef.current?.focus(),50);
@@ -107,7 +190,7 @@ export default function TutorPage() {
     if(!q||loading||!conversation)return;
     setInput("");setError(null);setLoading(true);
     setMessages(m=>[...m,{id:"local-"+Date.now(),role:"user",content:q,created_at:new Date().toISOString()}]);
-    const r=await aiSendMessage(conversation.id,q,provider,subjectSlug||undefined,mode);
+    const r=await aiSendMessage(conversation.id,q,provider,subjectSlug||undefined,mode,provider!=="auto"&&provider!=="custom"&&model?model:undefined);
     setLoading(false);
     if(!r.ok){setError(describeApiError(r.error));return;}
     setConversation(r.data.conversation);
@@ -119,62 +202,172 @@ export default function TutorPage() {
     if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}
   }
 
+  function chooseProvider(p: AiProvider){
+    setProvider(p);
+    // Смена провайдера сбрасывает модель, если она из списка другого провайдера.
+    if(p==="auto"||p==="custom") setModel("");
+    else if(model && !modelsFor(p).includes(model)) setModel("");
+  }
+
+  function applyCnsStarter(question: string){
+    setSubjectSlug("physiology");
+    setInput(question);
+    setMobileList(false);
+    setTimeout(()=>inputRef.current?.focus(),50);
+  }
+
+  const anyPlatformAvailable = useMemo(
+    () => ["gigachat","gemini","groq","mistral","openai","openrouter"].some((p) => meta[p as AiProvider]?.available),
+    [meta],
+  );
+  const currentModels = provider!=="auto"&&provider!=="custom" ? modelsFor(provider) : [];
+
   if(booting) return <div className="flex h-[calc(100dvh-6rem)] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]"/></div>;
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-5.5rem)] max-w-6xl flex-col gap-3" style={keyboardInset ? { height: `calc(100dvh - 5.5rem - ${keyboardInset}px)` } : undefined}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="flex items-center gap-2 text-2xl font-bold"><Bot className="h-7 w-7 text-[var(--primary)]"/>AI-тьютор</h1><p className="mt-1 text-sm text-[var(--muted)]">История сохраняется и восстанавливается после перезагрузки страницы.</p></div>
-        <div className="flex items-center gap-2 text-xs">
-          {(["groq","gigachat","gemini","mistral","openrouter"] as const).map(p=><span key={p} className={available[p]?"rounded-full bg-[var(--status-ok-bg)] px-2.5 py-1 text-[var(--status-ok-fg)]":"rounded-full bg-slate-100 px-2.5 py-1 text-slate-500"}>{p==="groq"?"Groq":p==="gigachat"?"GigaChat":p==="gemini"?"Gemini":p==="mistral"?"Mistral":"OpenRouter"} {available[p]?"●":"○"}</span>)}
+        <div className="flex items-center gap-1.5 text-xs">
+          {PROVIDER_ORDER.filter(p=>p!=="auto"&&p!=="custom").map(p=>{
+            const m=meta[p];
+            const on=!!m?.available;
+            return <span key={p} title={m?.reason||undefined} className={on?"rounded-full bg-[var(--status-ok-bg)] px-2.5 py-1 font-semibold text-[var(--status-ok-fg)]":"rounded-full bg-[var(--muted)]/20 px-2.5 py-1 text-[var(--muted)]"}>{PROVIDER_LABEL[p].split(" ")[0]} {on?"●":"○"}</span>;
+          })}
         </div>
       </div>
       <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm md:grid-cols-[280px_1fr]">
         <aside className={mobileList?"flex":"hidden md:flex"}><div className="flex h-full min-h-0 flex-col border-r border-[var(--border)] bg-[var(--background)]">
-          <div className="flex items-center justify-between border-b border-[var(--border)] p-3"><b className="text-sm">Мои чаты</b><button type="button" onClick={()=>void newChat()} className="rounded-lg bg-[var(--primary)] p-2 text-white"><Plus className="h-4 w-4"/></button></div>
+          <div className="flex items-center justify-between border-b border-[var(--border)] p-3"><b className="text-sm">Мои чаты</b><button type="button" onClick={()=>void newChat()} className="rounded-lg bg-[var(--primary)] p-2 text-white" aria-label="Новый чат"><Plus className="h-4 w-4"/></button></div>
           <div className="flex-1 overflow-y-auto p-2">
-            {items.map(c=><div key={c.id} className={"group mb-1 flex items-center gap-1 rounded-xl "+(conversation?.id===c.id?"bg-[var(--primary-soft)]":"hover:bg-[var(--card)]")}>
-              <button type="button" onClick={()=>void loadConversation(c.id)} className="min-w-0 flex-1 px-3 py-2.5 text-left"><div className="truncate text-sm font-medium">{c.title}</div><div className="mt-0.5 text-[10px] text-[var(--muted)]">{c.provider==="auto"?"Авто":c.provider==="gigachat"?"GigaChat":c.provider==="custom"?"Своя модель":"Gemini"}{c.model?" · "+c.model:""}</div></button>
-              <button type="button" onClick={()=>void removeChat(c.id)} className="mr-1 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5"/></button>
-            </div>)}
+            {items.map(c=>{
+              const providerLabel=c.provider==="auto"?"Авто":PROVIDER_LABEL[c.provider]||c.provider;
+              return <div key={c.id} className={"group mb-1 flex items-center gap-1 rounded-xl "+(conversation?.id===c.id?"bg-[var(--primary-soft)]":"hover:bg-[var(--card)]")}>
+                <button type="button" onClick={()=>void loadConversation(c.id)} className="min-w-0 flex-1 px-3 py-2.5 text-left"><div className="truncate text-sm font-medium">{c.title}</div><div className="mt-0.5 truncate text-[10px] text-[var(--muted)]">{providerLabel}{c.model?" · "+c.model:""}</div></button>
+                <button type="button" onClick={()=>void removeChat(c.id)} className="mr-1 rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--status-critical-bg)] hover:text-[var(--status-critical-fg)]" aria-label={`Удалить чат ${c.title}`}><Trash2 className="h-3.5 w-3.5"/></button>
+              </div>;
+            })}
           </div>
         </div></aside>
         <section className={mobileList?"hidden md:flex":"flex"}>
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] p-3">
-              <button type="button" onClick={()=>setMobileList(true)} className="rounded-lg p-2 hover:bg-[var(--background)] md:hidden"><ChevronLeft className="h-4 w-4"/></button>
-              {/*
-                * В списке только то, что бэкенд умеет СОХРАНИТЬ: колонка
-                * ai_conversations.provider допускает auto/gemini/gigachat. Groq,
-                * Mistral и OpenRouter раньше стояли в списке и молча сбрасывались на
-                * «Авто» — лучше не предлагать выбор, который не сохранится.
-                */}
-              <select value={provider} onChange={e=>setProvider(e.target.value as AiProvider)} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" aria-label="Модель ответа">
-                <option value="auto">Авто — лучший доступный</option>
-                <option value="gigachat" disabled={!available.gigachat}>GigaChat{available.gigachat ? "" : " — не настроен"}</option>
-                <option value="gemini" disabled={!available.gemini}>Gemini{psRegionHint ? " — недоступен из RU backend" : available.gemini ? "" : " — не настроен"}</option>
-                <option value="custom" disabled={!available.custom}>Своя модель{available.custom ? " ✓" : " — не подключена (Настройки → Своя ИИ-модель)"}</option>
-              </select>
+              <button type="button" onClick={()=>setMobileList(true)} className="rounded-lg p-2 hover:bg-[var(--background)] md:hidden" aria-label="К списку чатов"><ChevronLeft className="h-4 w-4"/></button>
+
+              {/* Селектор модели: провайдер + конкретная модель. */}
+              <div className="relative" ref={pickerRef}>
+                <button
+                  type="button"
+                  onClick={()=>setPickerOpen(v=>!v)}
+                  aria-expanded={pickerOpen}
+                  aria-haspopup="listbox"
+                  className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-semibold transition hover:border-[var(--primary)]/50"
+                >
+                  <BrainCircuit className="h-4 w-4 text-[var(--primary)]" />
+                  <span className="max-w-[220px] truncate">{provider==="auto"?"Авто":PROVIDER_LABEL[provider]}{model&&provider!=="auto"&&provider!=="custom"?` · ${model}`:""}</span>
+                  <ChevronDown className={"h-3.5 w-3.5 text-[var(--muted)] transition "+(pickerOpen?"rotate-180":"")} />
+                </button>
+                {pickerOpen && (
+                  <div className="absolute left-0 top-full z-40 mt-1.5 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-2 shadow-xl" role="listbox" aria-label="Выбор нейросети">
+                    {PROVIDER_ORDER.map(p=>{
+                      const m=p==="auto"||p==="custom"?null:meta[p];
+                      const on=p==="auto"?true:p==="custom"?!!m?.available:!!m?.available;
+                      const models=p==="auto"||p==="custom"?[]:modelsFor(p);
+                      const reason=m?.reason||null;
+                      return (
+                        <div key={p} className="rounded-xl px-1 py-1">
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={provider===p}
+                            disabled={!on}
+                            onClick={()=>{chooseProvider(p);setPickerOpen(false);}}
+                            className={"flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition disabled:opacity-40 "+(provider===p?"bg-[var(--primary-soft)] font-semibold text-[var(--primary)]":"hover:bg-[var(--background)]")}
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-1.5">
+                                {PROVIDER_LABEL[p]}
+                                {provider===p?<Check className="h-3.5 w-3.5"/>:null}
+                              </span>
+                              <span className="block truncate text-[11px] font-normal text-[var(--muted)]">
+                                {p==="auto"?"платформа сама выберет доступную модель"
+                                  :p==="custom"?(m?.reason||"подключается в Настройках")
+                                  :reason?reason
+                                  :m?.model?`по умолчанию: ${m.model}`:"не настроен на сервере"}
+                              </span>
+                            </span>
+                            <span className={"h-2 w-2 shrink-0 rounded-full "+(on?"bg-[var(--status-ok-fg)]":"bg-[var(--muted)]")}/>
+                          </button>
+                          {provider===p&&models.length>0&&(
+                            <div className="mt-1 flex flex-wrap gap-1 px-2.5 pb-1.5">
+                              {models.map(mm=>(
+                                <button
+                                  key={mm}
+                                  type="button"
+                                  onClick={()=>setModel(mm)}
+                                  className={"rounded-full border px-2 py-0.5 text-[11px] font-semibold transition "+(model===mm?"border-[var(--primary)] bg-[var(--primary)] text-white":"border-[var(--border)] text-[var(--muted)] hover:border-[var(--primary)]/60 hover:text-[var(--primary)]")}
+                                >
+                                  {mm}
+                                </button>
+                              ))}
+                              {!model&&<span className="rounded-full px-2 py-0.5 text-[11px] text-[var(--muted)]">модель по умолчанию</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] p-0.5 text-xs" role="group" aria-label="Режим ответа">
                 {([["precise","Точный"],["fast","Быстрый"]] as const).map(([value,label])=>(
-                  <button key={value} type="button" onClick={()=>setMode(value)} aria-pressed={mode===value} title={value==="precise"?"Ответ по лекциям предмета, со сносками [N]":"Быстрее, без поиска по лекциям"} className={"rounded-lg px-2.5 py-1.5 font-semibold transition "+(mode===value?"bg-[var(--primary)] text-white":"text-[var(--muted)] hover:text-[var(--primary)]")}>{label}</button>
+                  <button key={value} type="button" onClick={()=>setMode(value)} aria-pressed={mode===value} title={value==="precise"?"Ответ по лекциям предмета и материалам ЦНС, со сносками [N]":"Быстрее, без поиска по лекциям"} className={"rounded-lg px-2.5 py-1.5 font-semibold transition "+(mode===value?"bg-[var(--primary)] text-white":"text-[var(--muted)] hover:text-[var(--primary)]")}>{label}</button>
                 ))}
               </div>
-              {(!available.gigachat && !available.gemini) && (
+              {!anyPlatformAvailable && (
                 <span className="text-xs text-[var(--muted)]">Доступен только режим «Авто»: остальные модели не настроены на сервере.</span>
               )}
-              <select value={subjectSlug} onChange={e=>setSubjectSlug(e.target.value)} className="min-w-[170px] rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"><option value="">Все предметы</option>{subjects.map(s=><option key={s.slug} value={s.slug}>{s.name}</option>)}</select>
+              <select value={subjectSlug} onChange={e=>setSubjectSlug(e.target.value)} className="min-w-[170px] rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" aria-label="Предмет"><option value="">Все предметы</option>{subjects.map(s=><option key={s.slug} value={s.slug}>{s.name}</option>)}</select>
               <span className="ml-auto truncate text-xs text-[var(--muted)]">{conversation?.title}</span>
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
-              {messages.length===0&&<div className="flex h-full flex-col items-center justify-center py-16 text-center"><div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary-soft)]"><Sparkles className="h-8 w-8 text-[var(--primary)]"/></div><b>Начните диалог</b><p className="mt-2 max-w-md text-sm text-[var(--muted)]">Сообщения будут сохранены. Можно закрыть страницу и продолжить позже.</p></div>}
+              {messages.length===0&&(
+                <div className="flex h-full flex-col items-center justify-center py-10 text-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary-soft)]"><Sparkles className="h-8 w-8 text-[var(--primary)]"/></div>
+                  <b>Начните диалог</b>
+                  <p className="mt-2 max-w-md text-sm text-[var(--muted)]">Сообщения будут сохранены. Можно закрыть страницу и продолжить позже.</p>
+
+                  {/* Модули подготовки — переходы без выхода из тьютора. */}
+                  <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3">
+                    {MODULE_LINKS.map(({href,label,icon:Icon})=>(
+                      <Link key={href} href={href} className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-left text-xs font-semibold transition hover:border-[var(--primary)]/50 hover:text-[var(--primary)]">
+                        <Icon className="h-4 w-4 shrink-0 text-[var(--primary)]" /> {label}
+                      </Link>
+                    ))}
+                  </div>
+
+                  {/* Подготовка ЦНС: включает предмет physiology — RAG подтянет корпус знаний ЦНС. */}
+                  <div className="mt-4 w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 text-left">
+                    <p className="flex items-center gap-2 text-sm font-bold"><BrainCircuit className="h-4 w-4 text-[var(--primary)]" /> Подготовка к ЦНС</p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">Конспекты, шпаргалка и задачи из методички — тьютор отвечает со сносками на них. Нажмите тему:</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {CNS_STARTERS.map(q=>(
+                        <button key={q} type="button" onClick={()=>applyCnsStarter(q)} className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)]">
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               {messages.map(m=><div key={m.id} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}><div className={"max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[82%] "+(m.role==="user"?"bg-[var(--primary)] text-white":"border border-[var(--border)] bg-[var(--background)]")}>{m.content}{m.role==="assistant"?<AnswerSources sources={m.metadata?.sources}/>:null}{m.model&&<div className="mt-2 text-[10px] opacity-60">{m.provider} · {m.model}</div>}</div></div>)}
               {loading&&<div className="flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin"/>AI формирует ответ…</div>}<div ref={bottomRef}/>
             </div>
             <div className="border-t border-[var(--border)] p-3 sm:p-4">
-              {error&&<div className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+              {error&&<div className="mb-2 rounded-lg bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
               <AiQuickActions topic={input} onPrompt={(p) => { setInput(p); inputRef.current?.focus(); }} />
-              <div className="flex gap-2"><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
+              <div className="flex gap-2"><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} aria-label="Отправить" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
             </div>
           </div>
         </section>

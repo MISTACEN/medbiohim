@@ -1,6 +1,6 @@
 import { constantTimeEqual, validateTelegramInitData } from "./initdata.js";
 import { validateTelegramLoginWidget } from "./loginwidget.js";
-import { TRAINER_COMMANDS, handleTrainerCommand, handleTrainerCallback, runTrainerMorning } from "./trainer.js";
+import { TRAINER_COMMANDS, handleTrainerCommand, handleTrainerCallback, runTrainerMorning, runAgentMorning } from "./trainer.js";
 
 const MAX_BODY_BYTES = 256 * 1024;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -833,7 +833,14 @@ export async function runScheduledDigest(env) {
     return { ok: false, error: "TRAINER_MORNING_FAILED", sent: 0, skipped: 0 };
   });
   console.log("[telegram:trainer-morning]", JSON.stringify({ ok: trainer.ok, sent: trainer.sent, skipped: trainer.skipped }));
-  return { ...result, trainer };
+
+  // Агент к экзамену: утренний отчёт «вопросы на сегодня» (фаза 10 роадмапа).
+  const agent = await runAgentMorning(env).catch((error) => {
+    console.error("[telegram:agent-morning]", String(error));
+    return { ok: false, error: "AGENT_MORNING_FAILED", sent: 0, skipped: 0 };
+  });
+  console.log("[telegram:agent-morning]", JSON.stringify({ ok: agent.ok, sent: agent.sent, skipped: agent.skipped }));
+  return { ...result, trainer, agent };
 }
 
 export { handleNotify, handleDigest };

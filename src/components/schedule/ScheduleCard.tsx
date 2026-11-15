@@ -1,9 +1,10 @@
 /**
  * Карточка занятия в сетке дня (ЗАДАЧА A4): вынесена из монолита
- * app/schedule/page.tsx.
+ * app/schedule/page.tsx. Показывает важные дни (event_kind: коллоквиум,
+ * контрольная, зачёт, экзамен) и ДЗ, привязанные к занятию.
  */
 "use client";
-import { Clock, MapPin } from "lucide-react";
+import { CheckCircle2, Clock, MapPin } from "lucide-react";
 import type { ScheduleItem } from "@/lib/api";
 import {
   GRID_START_MIN,
@@ -20,11 +21,29 @@ import {
 import type { ScheduleMeta } from "@/lib/api";
 import type { SemesterRange } from "./utils";
 
+/** Подписи важных видов события (совместимо с EVENT_LABEL из study/agenda). */
+const EVENT_KIND_LABEL: Record<string, string> = {
+  exam: "экзамен",
+  credit: "зачёт",
+  colloquium: "коллоквиум",
+  control_work: "контрольная",
+  assessment: "аттестация",
+  retake: "пересдача",
+};
+
+/** Вид события, который подсвечиваем как важный день. */
+export function importantEventKind(kind: unknown): string | null {
+  const key = String(kind || "");
+  return EVENT_KIND_LABEL[key] ? key : null;
+}
+
 
 export default function ScheduleCard({
-  item, onOpen, col = 0, cols = 1,
+  item, homeworks, onOpen, col = 0, cols = 1,
 }: {
   item: ScheduleItem;
+  /** ДЗ, привязанные к занятию (planner lessons[].homeworks). */
+  homeworks?: any[];
   onOpen: (item: ScheduleItem) => void;
   col?: number;
   cols?: number;
@@ -47,6 +66,10 @@ export default function ScheduleCard({
   const gap = 3;
   const widthPct = 100 / cols;
   const leftPct = col * widthPct;
+  // Важный день: коллоквиум/контрольная/зачёт/экзамен подсвечиваем бейджем.
+  const eventKind = importantEventKind((item as { event_kind?: unknown }).event_kind);
+  const eventLabel = eventKind ? EVENT_KIND_LABEL[eventKind] : null;
+  const hwList = (homeworks || []).slice(0, 2);
 
   return (
     <article
@@ -143,6 +166,23 @@ export default function ScheduleCard({
                       {location}
                     </div>
                   )}
+                  {hwList.length > 0 && height >= 96 && (
+                    <div className="space-y-0.5 pt-0.5">
+                      {hwList.map((hw) => (
+                        <div
+                          key={String(hw.id)}
+                          className="truncate rounded bg-white/70 px-1 py-0.5 text-[8px] font-bold text-slate-700"
+                          title={String(hw.title || "")}
+                        >
+                          ДЗ: {String(hw.title || "")}
+                          {hw.my_status === "done" ? " ✓" : ""}
+                        </div>
+                      ))}
+                      {(homeworks || []).length > hwList.length && (
+                        <div className="text-[8px] opacity-60">+ ещё {(homeworks || []).length - hwList.length} ДЗ</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -150,6 +190,7 @@ export default function ScheduleCard({
         });
       })()}
 
+      {eventLabel && <div className="absolute left-2 top-1 z-20 rounded bg-[var(--status-warn-bg)] px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-[var(--status-warn-fg)]">{eventLabel}</div>}
       {item.is_makeup && <div className="absolute right-2 top-1 z-20 rounded bg-white/80 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide" style={{color:accent}}>Отработка</div>}
       {attendance && <div className="absolute bottom-1 right-1 z-20 rounded-full bg-white/85 px-1.5 py-0.5 text-[8px] font-bold">{attendanceLabel(attendance)}</div>}
       {item.is_cancelled && <div className="absolute right-2 top-1 z-20 text-[9px] font-bold">ОТМЕНЕНО</div>}
@@ -167,6 +208,8 @@ export type ScheduleBundle = {
   meta: ScheduleMeta;
   homeworks: any[];
   recovery: any[];
+  /** ДЗ по занятиям (planner lessons[].homeworks): id записи → задания. */
+  homeworkByEntry?: Record<string, any[]>;
   message: string | null;
   range: SemesterRange;
 };

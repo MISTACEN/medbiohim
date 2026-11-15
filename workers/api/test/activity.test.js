@@ -22,7 +22,8 @@ test("event writes use the service client and never break the main action", asyn
   assert.match(lib, /createServiceClient/);
   assert.match(lib, /KNOWN\.has\(String\(input\.kind\)\)\) return false;/);
   // Любая ошибка записи — предупреждение, а не исключение наружу.
-  assert.match(lib, /catch \(error\) \{\n    console\.warn\("\[activity:log\]"/);
+  // \r?\n — исходники могут быть проверены с CRLF-автоконвертацией на Windows.
+  assert.match(lib, /catch \(error\) \{\r?\n    console\.warn\("\[activity:log\]"/);
   assert.match(lib, /"test_finished"/);
   assert.match(lib, /"homework_marked"/);
 });
@@ -49,7 +50,7 @@ test("repeated lecture opens are debounced for half an hour", async () => {
   assert.match(lib, /input\.kind === "lecture_opened" && \(await recentlyLogged\(/);
   assert.match(lib, /\.eq\("ref_id", refId\)/);
   // Сбой проверки не теряет событие: пишем как обычно.
-  assert.match(lib, /if \(error\) return false;\n    return Array\.isArray\(data\)/);
+  assert.match(lib, /if \(error\) return false;\r?\n    return Array\.isArray\(data\)/);
 });
 
 test("retention is 180 days and runs in the existing cron", async () => {

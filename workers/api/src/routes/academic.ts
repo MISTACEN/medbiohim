@@ -105,16 +105,33 @@ academic.get("/state", requireAuth, async (c) => {
     } catch (prepError) {
       console.warn("[academic:state:prep]", prepError instanceof Error ? prepError.message : "unavailable");
     }
+    // Рекомендации — только по тому, к чему есть подготовка. Раньше здесь
+    // было по строке на каждое занятие («Физиология — class / Ближайшее
+    // событие из расписания» ×12) — шум вместо смысла. Рядовые пары не
+    // рекомендация, а расписание: они остаются в upcoming, но не в советах.
     const recommendations: any[] = [];
     for (const debt of debts) recommendations.push({ priority: "high", action_type: "close_debt",
       title: (debt.subject_name || "Предмет") + " — закрыть академический долг",
       reason: "Академическое требование не закрыто.", subject_id: debt.subject_id ?? null,
       topic_id: debt.target_type === "topic" ? debt.target_id : null });
-    for (const event of upcoming) recommendations.push({ priority: ["exam", "credit"].includes(String(event.event_kind)) ? "urgent" : "normal",
-      action_type: event.event_kind === "exam" ? "prepare_exam" : event.event_kind === "credit" ? "close_debt" : "review",
-      title: (event.subject_name || "Предмет") + " — " + (event.event_kind || "занятие"),
-      reason: "Ближайшее событие из расписания.", due_at: event.date + (event.start_time ? "T" + event.start_time : ""),
-      subject_id: event.subject_id ?? null, schedule_entry_id: event.id, event });
+    for (const event of upcoming as Array<Record<string, any>>) {
+      const kind = String(event.event_kind || "class");
+      const prepTopics = Array.isArray(event.prep_topics) ? event.prep_topics : [];
+      const isPrepEvent = PREP_KINDS.has(kind) || prepTopics.length > 0;
+      if (!isPrepEvent) continue;
+      const kindLabel = kind === "exam" ? "экзамен" : kind === "credit" ? "зачёт"
+        : kind === "colloquium" ? "коллоквиум" : kind === "control_work" ? "контрольная"
+        : kind === "retake" ? "пересдача" : kind === "makeup" ? "отработка" : "аттестация";
+      const firstTopic = prepTopics[0]?.title ? ` Начать с темы «${prepTopics[0].title}».` : "";
+      const readiness = Number.isFinite(Number(event.mastery_pct)) ? ` Готовность ${event.mastery_pct}%.` : "";
+      recommendations.push({
+        priority: ["exam", "credit"].includes(kind) ? "urgent" : "normal",
+        action_type: kind === "exam" ? "prepare_exam" : kind === "credit" ? "close_debt" : "review",
+        title: (event.subject_name || "Предмет") + " — готовиться к " + kindLabel,
+        reason: (prepTopics.length ? `Тем в подготовке: ${prepTopics.length}.` : "Аттестация из расписания.") + readiness + firstTopic,
+        due_at: event.date + (event.start_time ? "T" + event.start_time : ""),
+        subject_id: event.subject_id ?? null, schedule_entry_id: event.id, event });
+    }
     for (const p of weak) recommendations.push({ priority: Number(p.percent) < 40 ? "high" : "normal",
       action_type: "study", title: "Повторить: " + (p.subject_name || "Предмет") + " — " + (p.topic_name || "тема"),
       reason: "Учебный прогресс ниже 70%.", subject_id: p.subject_id ?? null, topic_id: p.topic_id });

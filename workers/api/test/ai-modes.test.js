@@ -88,5 +88,6 @@ test("frontend renders sources and the explain-after-error button", async () => 
 
   const tutor = await source("../../../src/app/tutor/page.tsx");
   assert.match(tutor, /\[\["precise","Точный"\],\["fast","Быстрый"\]\]/);
-  assert.match(tutor, /aiSendMessage\(conversation\.id,q,provider,subjectSlug\|\|undefined,mode\)/);
+  // Выбор модели: модель уходит в сообщение только для конкретного провайдера.
+  assert.match(tutor, /aiSendMessage\(conversation\.id,q,provider,subjectSlug\|\|undefined,mode,/);
 });

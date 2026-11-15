@@ -188,17 +188,19 @@ export async function srsDeleteCard(id: string) {
   return api<{ deleted: boolean }>(`/srs/cards/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 /* —— Persistent AI chat —— */
-export type AiProvider = "auto" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter" | "custom";
+export type AiProvider = "auto" | "openai" | "groq" | "gigachat" | "gemini" | "mistral" | "openrouter" | "custom";
+/** Список моделей провайдера с бэкенда (/ai/providers → providers[id].models). */
+export type AiProviderMeta = { configured:boolean;available:boolean;model?:string;models?:string[];reason?:string|null;prefer_own?:boolean };
 export type AiConversation = { id:string; title:string; provider:AiProvider; model?:string|null; subject_slug?:string|null; created_at:string; updated_at:string };
 /** Сноска-источник под ответом тьютора: номер [N] и лекция. */
 export type AiSource = { n: number; title: string; lecture_id: string | null; subject_slug?: string | null };
 export type AiMessage = { id:string; role:"system"|"user"|"assistant"; content:string; provider?:string|null; model?:string|null; created_at:string; metadata?:{sources?:AiSource[]|string[]|null; answer_mode?:string|null; mode?:string|null}|null };
-export async function aiProviders(){ return api<{region:string;providers:Record<Exclude<AiProvider,"auto">,{configured:boolean;available:boolean;model?:string;reason?:string|null;prefer_own?:boolean}>;default:AiProvider} >("/ai/providers"); }
+export async function aiProviders(){ return api<{region:string;providers:Record<Exclude<AiProvider,"auto">,AiProviderMeta>;default:AiProvider} >("/ai/providers"); }
 export async function aiConversations(){ return api<{items:AiConversation[]}>("/ai/conversations"); }
-export async function aiCreateConversation(payload?:{title?:string;provider?:AiProvider;subject_slug?:string}){ return api<{conversation:AiConversation}>("/ai/conversations",{method:"POST",body:JSON.stringify(payload||{})}); }
+export async function aiCreateConversation(payload?:{title?:string;provider?:AiProvider;model?:string;subject_slug?:string}){ return api<{conversation:AiConversation}>("/ai/conversations",{method:"POST",body:JSON.stringify(payload||{})}); }
 export async function aiGetConversation(id:string){ return api<{conversation:AiConversation;messages:AiMessage[]}>(`/ai/conversations/${encodeURIComponent(id)}`); }
 export async function aiDeleteConversation(id:string){ return api<{deleted:boolean}>(`/ai/conversations/${encodeURIComponent(id)}`,{method:"DELETE"}); }
-export async function aiSendMessage(id:string,content:string,provider?:AiProvider,subject_slug?:string,mode?:AiChatMode){ return api<{conversation:AiConversation;user_message:AiMessage;assistant_message:AiMessage}>(`/ai/conversations/${encodeURIComponent(id)}/messages`,{method:"POST",body:JSON.stringify({content,provider,subject_slug,mode}),timeoutMs:60000}); }
+export async function aiSendMessage(id:string,content:string,provider?:AiProvider,subject_slug?:string,mode?:AiChatMode,model?:string){ return api<{conversation:AiConversation;user_message:AiMessage;assistant_message:AiMessage}>(`/ai/conversations/${encodeURIComponent(id)}/messages`,{method:"POST",body:JSON.stringify({content,provider,subject_slug,mode,model}),timeoutMs:60000}); }
 /** One-shot completion without chat history/RAG — для генерации плана подготовки. */
 /** Режим ответа: «точный» — с RAG и сносками, «быстрый» — без контекста. */
 export type AiChatMode = "precise" | "fast";

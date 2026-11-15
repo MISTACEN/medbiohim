@@ -62,7 +62,12 @@ export function AcademicSection() {
   if(!state) return <div className="rounded-2xl border bg-[var(--card)] p-6 text-[var(--status-critical-fg)]">{error || "Не удалось загрузить академическое состояние"}</div>;
 
   const session=state.session;
-  const events=state.upcoming.slice(0,12);
+  // В сводке академического состояния — только аттестационные события:
+  // рядовые пары видны в «Ближайшем» и в расписании, дублировать их здесь шум.
+  const events=state.upcoming.filter((e)=>{
+    const kind=String(e.event_kind||"");
+    return ["exam","credit","colloquium","control_work","assessment","retake","makeup"].includes(kind);
+  }).slice(0,12);
   const weak=state.weak_topics.slice(0,12);
   const recs=state.recommendations.slice(0,12);
 

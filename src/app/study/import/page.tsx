@@ -15,7 +15,14 @@ import { createMyLecture } from "@/lib/api/myLectures";
 import { describeApiError } from "@/lib/errors";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
-const ACCEPT = "image/jpeg,image/png,image/webp,application/pdf,.txt,.md";
+// Аудио ограничено жёстче: тело идёт через Vercel-прокси (~4.5 МБ), Whisper на
+// Groq принимает mp3/m4a/ogg/wav/webm — 4 МБ mp3 64 кбит/с ≈ 8 минут речи.
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
+const ACCEPT = "image/jpeg,image/png,image/webp,application/pdf,.txt,.md,audio/mpeg,audio/mp4,audio/ogg,audio/webm,audio/wav,.mp3,.m4a,.ogg,.wav,.webm";
+
+function isAudioFile(file: File): boolean {
+  return /^audio\//.test(file.type) || /\.(mp3|m4a|ogg|wav|webm)$/i.test(file.name);
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -58,8 +65,11 @@ export default function ImportNotesPage() {
     setNotes("");
     setError(null);
     if (!next) { setFile(null); return; }
-    if (next.size > MAX_FILE_BYTES) {
-      setError("Файл больше 8 МБ — уменьшите фото или разберите PDF по частям.");
+    const limit = isAudioFile(next) ? MAX_AUDIO_BYTES : MAX_FILE_BYTES;
+    if (next.size > limit) {
+      setError(isAudioFile(next)
+        ? "Аудио больше 4 МБ — сожмите запись (mp3 64 кбит/с вмещает ~8 минут речи в 4 МБ) и попробуйте снова."
+        : "Файл больше 8 МБ — уменьшите фото или разберите PDF по частям.");
       return;
     }
     setFile(next);
@@ -118,7 +128,7 @@ export default function ImportNotesPage() {
           <FileText className="h-5 w-5 text-[var(--primary)]" /> Конспект из файла
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Фото страницы конспекта или слайда, PDF с текстовым слоем, txt/md — ИИ соберёт структурный конспект, который можно сохранить как личную лекцию.
+          Фото страницы конспекта или слайда, PDF с текстовым слоем, txt/md или аудиозапись лекции (mp3/m4a/wav до 4 МБ) — ИИ соберёт структурный конспект, который можно сохранить как личную лекцию.
         </p>
       </header>
 

@@ -170,6 +170,8 @@ export type ScheduleEntry = ScheduleRow & {
   start_time: string;
   end_time: string;
   type?: string | null;
+  /** Вид события (коллоквиум/контрольная/зачёт/экзамен) — для подсветки важных дней. */
+  event_kind?: string | null;
   room?: string | null;
   building?: string | null;
   teacher?: string | null;

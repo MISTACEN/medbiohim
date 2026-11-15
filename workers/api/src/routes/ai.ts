@@ -19,7 +19,10 @@ import { formatAnswer } from "../lib/ai-citations";
 import { WorkersAiError, workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
-import { generateAiCompletion, getAiProviderStatus } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
+import { generateAiCompletion, getAiProviderStatus, resolveProviderModel } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
+// Корпус «Подготовка к ЦНС» для RAG тьютора (только physiology, вне лекций).
+// @ts-expect-error The knowledge module is plain JavaScript without type declarations.
+import { getCnsKnowledgeEntries } from "../../../../integrations/cloudflare-api/src/knowledge/cns.js";
 
 const ai = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -53,6 +56,42 @@ function decodeBase64Text(base64: string): string {
 }
 
 type ImageExtract = { text: string; code: string; message: string };
+
+/**
+ * Расшифровка аудио в текст (roadmap 2.5.2 «конспект из записи»): Groq Whisper.
+ * Расшифровка идёт в тот же конспект-промпт, что и PDF/фото. Groq выбран потому,
+ * что whisper-large-v3 у него быстрый (×200 realtime) и ключ уже есть у воркера.
+ * Без GROQ_API_KEY — честный 503 AUDIO_NOT_CONFIGURED.
+ */
+async function transcribeAudio(env: Env, base64: string, mime: string, filename: string): Promise<ImageExtract> {
+  const key = String(env.GROQ_API_KEY || "").trim();
+  if (!key) {
+    return { text: "", code: "AUDIO_NOT_CONFIGURED", message: "Расшифровка аудио не настроена на сервере" };
+  }
+  const bytes = decodeBase64Url(base64);
+  const form = new FormData();
+  form.append("file", new Blob([bytes as never], { type: mime || "audio/mpeg" }), filename || "audio.mp3");
+  form.append("model", "whisper-large-v3");
+  form.append("language", "ru");
+  form.append("response_format", "json");
+  form.append("temperature", "0");
+  const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}` },
+    body: form,
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    console.error("[ai:transcribe]", res.status, detail);
+    if (res.status === 401 || res.status === 403) {
+      return { text: "", code: "AUDIO_NOT_CONFIGURED", message: "Расшифровка аудио недоступна (ключ отклонён)" };
+    }
+    return { text: "", code: "TRANSCRIBE_FAILED", message: "Не удалось расшифровать аудио — попробуйте другой формат (mp3/m4a/wav)" };
+  }
+  const payload = await res.json().catch(() => null) as { text?: string } | null;
+  return { text: String(payload?.text || "").trim(), code: "ok", message: "" };
+}
 
 /**
  * Текст с фото: сначала мультимодальный Gemini (читает фото сам), при его
@@ -144,13 +183,18 @@ async function generate(
   temperature = 0.25,
   onAttempt?: (attempt: Record<string, unknown>) => void,
   userOverride?: unknown,
+  model?: string,
 ): Promise<ProviderResult> {
   const system = messages.find((message) => message.role === "system");
   const context = [...(system ? [system] : []), ...messages.filter((message) => message.role !== "system").slice(-23)];
   const result = await generateAiCompletion(env, context.map((message) => ({
     role: message.role,
     content: message.content.slice(0, 12000),
-  })), requested || "auto", fetch, { temperature, ...(onAttempt ? { onAttempt } : {}), ...(userOverride ? { userOverride } : {}) });
+  })), requested || "auto", fetch, { temperature,
+    ...(onAttempt ? { onAttempt } : {}),
+    ...(userOverride ? { userOverride } : {}),
+    ...(model ? { model } : {}),
+  });
   return { text: result.content, provider: result.provider, model: result.model };
 }
 
@@ -181,9 +225,10 @@ async function generateWithFallback(
   temperature = 0.25,
   onAttempt?: (attempt: Record<string, unknown>) => void,
   userOverride?: unknown,
+  model?: string,
 ): Promise<ProviderResult> {
   try {
-    return await generate(env, messages, requested, temperature, onAttempt, userOverride);
+    return await generate(env, messages, requested, temperature, onAttempt, userOverride, model);
   } catch (error) {
     if (!workersAiConfigured(env)) throw error;
     console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
@@ -223,6 +268,7 @@ function trackedGeneration(
   temperature: number,
   usage: AiUsageContext,
   userOverride?: unknown,
+  model?: string,
 ): Promise<ProviderResult> {
   return withAiCall(env, usage, () =>
     generateWithFallback(env, messages, requested, temperature, (attempt) => {
@@ -233,12 +279,20 @@ function trackedGeneration(
       if (id && id !== "custom") {
         void recordProviderProbe(env, id, attempt?.outcome === "ok", `${attempt?.outcome || "error"} ${attempt?.status || ""}`.trim());
       }
-    }, userOverride));
+    }, userOverride, model));
 }
 
-function normalizeConversationProvider(value: unknown): "auto" | "gemini" | "gigachat" | "custom" {
-  // CHECK-констрейнт ai_conversations.provider допускает custom (20261115_user_ai_configs).
-  return value === "gemini" || value === "gigachat" || value === "custom" ? value : "auto";
+/**
+ * Провайдеры, которые можно СОХРАНИТЬ в ai_conversations.provider: после
+ * миграции 20261115_ai_conversations_provider_expand CHECK пропускает весь
+ * список SUPPORTED_PROVIDERS. Значение вне списка честно трактуем как «auto» —
+ * прежнее поведение для старых клиентов.
+ */
+const CONVERSATION_PROVIDERS = ["auto", "openai", "groq", "gigachat", "gemini", "mistral", "openrouter", "custom"] as const;
+type ConversationProvider = (typeof CONVERSATION_PROVIDERS)[number];
+function normalizeConversationProvider(value: unknown): ConversationProvider {
+  const key = String(value || "auto").trim().toLowerCase();
+  return (CONVERSATION_PROVIDERS as readonly string[]).includes(key) ? key as ConversationProvider : "auto";
 }
 
 function systemPrompt(subjectSlug?: string | null): string {
@@ -274,19 +328,23 @@ export async function buildLectureContext(
       .limit(40);
     if (subjectSlug) lectureQuery = lectureQuery.eq("subject_slug", subjectSlug);
     const { data: lectures, error } = await lectureQuery;
-    if (error || !lectures?.length) return { block: "", sources: [], citations: [] };
+    if (error) return { block: "", sources: [], citations: [] };
+
+    // Корпус «Подготовка к ЦНС» (шпаргалка/конспекты/задачи/банк тестов из
+    // методички) живёт вне таблицы лекций и подмешивается только к физиологии —
+    // скоринг lib/lecture-rag сам отберёт релевантные записи наравне с лекциями.
+    const cnsEntries = String(subjectSlug).toLowerCase() === "physiology" ? getCnsKnowledgeEntries() : [];
+    const docs = (lectures ?? []).map((lecture: any) => ({
+      id: String(lecture.id || ""),
+      title: String(lecture.title || ""),
+      body: String(lecture.body_markdown || ""),
+      subjectSlug: lecture.subject_slug ?? null,
+    })).concat(cnsEntries);
+    if (!docs.length) return { block: "", sources: [], citations: [] };
 
     // Отбор — в lib/lecture-rag.ts: основы слов, редкость в корпусе, порог
     // релевантности и приоритет совпадений в названии темы.
-    const scored = selectLectureExcerpts(
-      (lectures as any[]).map((lecture) => ({
-        id: String(lecture.id || ""),
-        title: String(lecture.title || ""),
-        body: String(lecture.body_markdown || ""),
-        subjectSlug: lecture.subject_slug ?? null,
-      })),
-      query,
-    );
+    const scored = selectLectureExcerpts(docs, query);
     if (!scored.length) return { block: "", sources: [], citations: [] };
 
     const FRAGMENT = 600;
@@ -380,6 +438,7 @@ ai.get("/providers", requireAuth, async (c) => {
         configured: true,
         available: true,
         model: String(config.model || ""),
+        models: [String(config.model || "")].filter(Boolean),
         reason: `своя модель (${config.provider === "anthropic" ? "Claude" : "OpenAI-compatible"})${config.key_hint ? " · ···" + config.key_hint : ""}`,
         prefer_own: config.prefer_own === true,
       };
@@ -469,16 +528,27 @@ ai.get("/conversations", requireAuth, async (c) => {
 
 ai.post("/conversations", requireAuth, async (c) => {
   const rid = requestId();
-  let payload: { title?: string; provider?: string; subject_slug?: string | null } = {};
+  let payload: { title?: string; provider?: string; model?: string; subject_slug?: string | null } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
     return c.json(body, status as 400);
   }
   const title = String(payload.title || "Новый чат").replace(/\s+/g, " ").trim().slice(0, 80) || "Новый чат";
   const provider = normalizeConversationProvider(payload.provider);
+  // Выбор модели сохраняем только для конкретного провайдера и только из его
+  // списка (или настроенной на воркере модели) — иначе env-дефолт.
+  const requestedModel = provider !== "auto" && provider !== "custom"
+    ? resolveProviderModel(c.env, provider, payload.model)
+    : null;
   const { data, error } = await c.get("supabase")
     .from("ai_conversations")
-    .insert({ user_id: c.get("user").id, title, provider, subject_slug: payload.subject_slug || null })
+    .insert({
+      user_id: c.get("user").id,
+      title,
+      provider,
+      ...(requestedModel ? { model: requestedModel } : {}),
+      subject_slug: payload.subject_slug || null,
+    })
     .select("id,title,provider,model,subject_slug,created_at,updated_at")
     .single();
   if (error || !data) {
@@ -551,7 +621,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     return c.json(body, status as 429);
   }
 
-  let payload: { content?: string; provider?: string; subject_slug?: string; mode?: string } = {};
+  let payload: { content?: string; provider?: string; model?: string; subject_slug?: string; mode?: string } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
     return c.json(body, status as 400);
@@ -612,13 +682,16 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     const userOverride = await loadUserAiOverride(c.env, supabase, user.id);
     const requestedProvider = payload.provider === "custom"
       ? "custom"
-      : payload.provider || (conversation.provider === "auto"
-        ? (userOverride?.preferOwn ? "custom" : undefined)
-        : conversation.provider);
+      : normalizeConversationProvider(payload.provider || conversation.provider);
+    const effectiveProvider = requestedProvider === "auto" && userOverride?.preferOwn ? "custom" : requestedProvider;
+    // Выбранная студентом модель валидна только внутри списка своего провайдера.
+    const requestedModel = effectiveProvider !== "auto" && effectiveProvider !== "custom"
+      ? resolveProviderModel(c.env, effectiveProvider, payload.model)
+      : null;
     generated = await trackedGeneration(
       c.env,
       messages,
-      requestedProvider,
+      effectiveProvider,
       temperature,
       {
         route: "POST /ai/conversations/:id/messages",
@@ -629,6 +702,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
         metadata: { mode },
       },
       userOverride ?? undefined,
+      requestedModel ?? undefined,
     );
     // Модель не поставила сносок — гарантируем их сами (см. lib/ai-citations.ts).
     generated = { ...generated, text: formatAnswer(generated.text, rag.citations) };
@@ -693,10 +767,11 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
   const title = conversation.title === "Новый чат"
     ? content.replace(/\s+/g, " ").trim().slice(0, 80)
     : conversation.title;
-  // Database currently only permits auto/gemini/gigachat for the conversation provider field.
+  // Провайдер чата обновляется выбранным в сообщении (после расширения CHECK
+  // он сохраняется честно, без сброса на «Авто»), модель — фактически ответившей.
   await supabase.from("ai_conversations").update({
     title,
-    provider: normalizeConversationProvider(conversation.provider),
+    provider: normalizeConversationProvider(payload.provider || conversation.provider),
     model: generated.model,
     subject_slug: payload.subject_slug || conversation.subject_slug,
     updated_at: new Date().toISOString(),
@@ -715,38 +790,125 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
  * (context_scope) из пользовательского клиента (RLS) и НЕ сохраняется
  * в историю чата. Компактный текст — чтобы не съедать бюджет токенов.
  */
+/** Человекочитаемые подписи event_kind для контекста ИИ (см. study/agenda.ts). */
+const STUDY_KIND_LABELS: Record<string, string> = {
+  class: "занятие",
+  assessment: "аттестация",
+  credit: "зачёт",
+  exam: "экзамен",
+  retake: "пересдача",
+  makeup: "отработка",
+  colloquium: "коллоквиум",
+  control_work: "контрольная",
+  consultation: "консультация",
+  other: "событие",
+};
+
+function prepLabel(p: unknown): string {
+  if (!p) return "";
+  if (typeof p === "string") return p;
+  const rec = p as { name?: string; title?: string };
+  return String(rec.name || rec.title || "");
+}
+
+/**
+ * Темы предметов из департаментских планов (site_content subject_plan:<slug>)
+ * на ближайшие даты — чтобы ИИ-план говорил «что готовить», а не «посетить».
+ * Возвращает сгруппированные по предмету строки вида «DD.MM — Лекция: …».
+ */
+function subjectPlanLines(planPayload: any, from: string, to: string, limit = 8): string[] {
+  const weeks = Array.isArray(planPayload?.weeks) ? planPayload.weeks : [];
+  const lines: string[] = [];
+  for (const week of weeks) {
+    if (lines.length >= limit) break;
+    const date = String(week?.date || week?.planned_date || "").slice(0, 10);
+    if (!date || date < from || date > to) continue;
+    const bits: string[] = [];
+    const lecture = String(week?.lecture || "").trim();
+    const practice = String(week?.practice || "").trim();
+    const lab = String(week?.laboratory || week?.lab || "").trim();
+    if (lecture) bits.push(`Лекция: ${lecture}`);
+    if (practice) bits.push(`Практика: ${practice}`);
+    if (lab) bits.push(`Лабораторная: ${lab}`);
+    const preps = (Array.isArray(week?.preparations) ? week.preparations : [])
+      .map(prepLabel).filter(Boolean).slice(0, 4);
+    if (preps.length) bits.push(`Подготовить: ${preps.join("; ")}`);
+    if (!bits.length) continue;
+    lines.push(`- ${date}: ${bits.join(" · ")}`);
+  }
+  return lines;
+}
+
 async function buildStudyContext(supabase: any, userId: string): Promise<string | null> {
   const today = new Date().toISOString().slice(0, 10);
   const horizon = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);
   const parts: string[] = [];
 
-  try {
-    const { data: events } = await supabase
-      .from("schedule_entries")
-      .select("date,start_time,event_kind,subject_name,room,schedules!inner(group_id,is_active)")
-      .gte("date", today).lte("date", horizon)
-      .order("date", { ascending: true }).limit(10);
-    const rows = (events || []).filter((e: any) => {
-      const sch = Array.isArray(e.schedules) ? e.schedules[0] : e.schedules;
-      return sch?.is_active !== false;
-    });
-    if (rows.length) {
-      parts.push("Ближайшие события расписания:");
-      for (const e of rows) {
-        parts.push(`- ${e.date}${e.start_time ? " " + String(e.start_time).slice(0, 5) : ""}: ${e.subject_name || "Предмет"} — ${e.event_kind || "занятие"}${e.room ? ", ауд. " + e.room : ""}`);
-      }
-    }
-  } catch { /* расписание необязательно для ответа */ }
-
+  // Группы студента — и для расписания, и для ДЗ (раньше расписание не
+  // фильтровалось по группе вовсе).
+  let groupIds: string[] = [];
   try {
     const { data: memberships } = await supabase
       .from("group_memberships")
       .select("group_id").eq("user_id", userId).eq("is_active", true).limit(10);
-    const groupIds = (memberships || []).map((m: any) => m.group_id).filter(Boolean);
+    groupIds = (memberships || []).map((m: any) => m.group_id).filter(Boolean);
+  } catch { /* без групп — как раньше */ }
+
+  const eventRows: any[] = [];
+  const subjectSlugs = new Set<string>();
+  try {
+    let query = supabase
+      .from("schedule_entries")
+      .select("date,start_time,event_kind,subject_name,notes,room,subjects(slug),schedules!inner(group_id,is_active)")
+      .gte("date", today).lte("date", horizon)
+      .order("date", { ascending: true }).limit(24);
+    if (groupIds.length) query = query.in("schedules.group_id", groupIds);
+    const { data: events } = await query;
+    for (const e of (events || [])) {
+      const sch = Array.isArray(e.schedules) ? e.schedules[0] : e.schedules;
+      if (sch?.is_active === false) continue;
+      eventRows.push(e);
+      const subj = Array.isArray(e.subjects) ? e.subjects[0] : e.subjects;
+      if (subj?.slug) subjectSlugs.add(String(subj.slug));
+    }
+  } catch { /* расписание необязательно для ответа */ }
+
+  // Планы предметов: темы занятий на горизонт. Ключевые события (коллоквиум,
+  // контрольная, зачёт, экзамен) важнее рядовых занятий — их темы поднимаем.
+  const planLines: string[] = [];
+  if (subjectSlugs.size) {
+    try {
+      const keys = [...subjectSlugs].map((slug) => `subject_plan:${slug}`);
+      const { data: plans } = await supabase
+        .from("site_content")
+        .select("key,payload").in("key", keys).limit(20);
+      for (const row of (plans || [])) {
+        const slug = String(row.key || "").replace("subject_plan:", "");
+        const lines = subjectPlanLines(row.payload, today, horizon);
+        if (lines.length) planLines.push(`Предмет «${slug}»:` + "\n" + lines.join("\n"));
+      }
+    } catch { /* планы предметов — украшение контекста */ }
+  }
+
+  if (eventRows.length) {
+    parts.push("Ближайшие события расписания (готовиться к каждому занятию заранее, «просто прийти» — не задача):");
+    for (const e of eventRows.slice(0, 14)) {
+      const subj = Array.isArray(e.subjects) ? e.subjects[0] : e.subjects;
+      const kind = STUDY_KIND_LABELS[String(e.event_kind || "class")] || "занятие";
+      const note = String(e.notes || "").trim();
+      parts.push(`- ${e.date}${e.start_time ? " " + String(e.start_time).slice(0, 5) : ""}: ${e.subject_name || "Предмет"} — ${kind}${e.room ? ", ауд. " + e.room : ""}${note ? ` · заметка: ${note.slice(0, 120)}` : ""}${subj?.slug ? ` [${subj.slug}]` : ""}`);
+    }
+  }
+  if (planLines.length) {
+    parts.push("Темы из планов предметов на ближайшие даты (источник тем для подготовки):");
+    parts.push(...planLines);
+  }
+
+  try {
     if (groupIds.length) {
       const { data: homeworks } = await supabase
         .from("homeworks")
-        .select("id,title,due_date,subject_id,subjects(name)")
+        .select("id,title,description,due_date,schedule_entry_id,subject_id,subjects(name)")
         .or(groupIds.map((id: string) => `group_id.eq.${id}`).join(",") + ",group_id.is.null")
         .order("due_date", { ascending: true }).limit(40);
       const hwIds = (homeworks || []).map((h: any) => h.id).filter(Boolean);
@@ -761,10 +923,11 @@ async function buildStudyContext(supabase: any, userId: string): Promise<string 
         .filter((h: any) => !doneIds.has(String(h.id)) && (!h.due_date || h.due_date <= horizon))
         .slice(0, 10);
       if (pending.length) {
-        parts.push("Несданные ДЗ (по сроку):");
+        parts.push("Несданные ДЗ (по сроку, с описанием задания):");
         for (const h of pending) {
           const subject = Array.isArray(h.subjects) ? h.subjects[0] : h.subjects;
-          parts.push(`- ${h.due_date || "без срока"}: ${subject?.name || ""} — ${h.title || "задание"}${h.due_date && h.due_date < today ? " (ПРОСРОЧЕНО)" : ""}`);
+          const desc = String(h.description || "").trim().slice(0, 240);
+          parts.push(`- ${h.due_date || "без срока"}: ${subject?.name || ""} — ${h.title || "задание"}${desc ? ` · что нужно: ${desc}` : ""}${h.due_date && h.due_date < today ? " (ПРОСРОЧЕНО)" : ""}`);
         }
       }
     }
@@ -847,9 +1010,11 @@ ai.post("/chat", requireAuth, async (c) => {
       if (snapshot) {
         systemSections.push(
           "Ты — учебный ассистент студента. Ниже — актуальный срез его учебного состояния"
-            + " (расписание, ДЗ, слабые темы, очереди повторения). Используй его для конкретных"
-            + " советов: что делать сегодня, к чему готовиться и в каком порядке. Не выдумывай"
-            + " события, которых нет в данных.\n\n=== УЧЕБНЫЙ КОНТЕКСТ ===\n" + snapshot,
+            + " (расписание, темы из планов предметов, ДЗ, слабые темы, очереди повторения). Используй его"
+            + " для конкретных советов: что делать сегодня, к чему готовиться и в каком порядке."
+            + " Посещение пары само собой — в планах нужны подготовительные действия: тема лекции"
+            + " из плана предмета, ДЗ с описанием, повторение перед коллоквиумом или контрольной."
+            + " Не выдумывай события, которых нет в данных.\n\n=== УЧЕБНЫЙ КОНТЕКСТ ===\n" + snapshot,
         );
       }
     } catch (contextError) {
@@ -979,6 +1144,11 @@ ai.post("/oral-evaluate", requireAuth, async (c) => {
  * студент сам сохраняет конспект как личную лекцию.
  */
 const NOTES_MAX_BASE64 = 12_000_000;
+// Аудио ограничено жёстче: тело идёт через Vercel-прокси (лимит ~4.5 МБ),
+// поэтому принимаем до ~4 МБ бинарно ≈ 5.6 МБ base64.
+const NOTES_AUDIO_MAX_BASE64 = 5_600_000;
+/** Аудио-запись превращается в конспект (Groq Whisper) — квота в день. */
+const NOTES_AUDIO_DAILY_LIMIT = 5;
 
 ai.post("/notes-from-file", requireAuth, async (c) => {
   const rid = requestId();
@@ -998,12 +1168,32 @@ ai.post("/notes-from-file", requireAuth, async (c) => {
     const { body, status } = fail("VALIDATION", "Передайте файл в content_base64", 400, rid);
     return c.json(body, status as 400);
   }
-  if (base64.length > NOTES_MAX_BASE64) {
-    const { body, status } = fail("PAYLOAD_TOO_LARGE", "Файл больше 8 МБ — разбейте его на части", 413, rid);
-    return c.json(body, status as 413);
-  }
   const mime = String(payload.mime || "").trim().toLowerCase();
   const filename = String(payload.filename || "").slice(0, 120);
+  const isAudio = /^audio\//.test(mime) || /\.(mp3|m4a|ogg|wav|webm|mpga|flac)$/i.test(filename) || mime === "video/webm";
+  if (base64.length > (isAudio ? NOTES_AUDIO_MAX_BASE64 : NOTES_MAX_BASE64)) {
+    const { body, status } = fail(
+      "PAYLOAD_TOO_LARGE",
+      isAudio ? "Аудио больше 4 МБ — сожмите запись (mp3 64 кбит/с ≈ 8 минут в 4 МБ) и попробуйте снова" : "Файл больше 8 МБ — разбейте его на части",
+      413,
+      rid,
+    );
+    return c.json(body, status as 413);
+  }
+  if (isAudio) {
+    // Отдельная дневная квота: расшифровка дороже чтения PDF.
+    const audioQuota = await aiDailyQuota(c.env, "notes_audio", user.id);
+    if (!audioQuota.allowed) {
+      await logAiQuotaRejection(c.env, {
+        route: "POST /ai/notes-from-file",
+        feature: "notes_audio",
+        userId: user.id,
+        requestId: rid,
+      });
+      const { body, status } = fail("AI_DAILY_LIMIT", aiQuotaMessage(audioQuota, "notes_audio"), 429, rid);
+      return c.json(body, status as 429);
+    }
+  }
 
   // 1) Извлечь текст источника.
   let sourceText = "";
@@ -1026,11 +1216,19 @@ ai.post("/notes-from-file", requireAuth, async (c) => {
         const { body, status } = fail(extracted.code, extracted.message, 503, rid);
         return c.json(body, status as 503);
       }
+    } else if (isAudio) {
+      const extracted = await transcribeAudio(c.env, base64, mime, filename);
+      sourceText = extracted.text;
+      sourceKind = "audio";
+      if (!sourceText) {
+        const { body, status } = fail(extracted.code, extracted.message, 503, rid);
+        return c.json(body, status as 503);
+      }
     } else if (/^text\//.test(mime) || /\.(txt|md|markdown)$/i.test(filename)) {
       sourceText = decodeBase64Text(base64).trim();
       sourceKind = "text";
     } else {
-      const { body, status } = fail("UNSUPPORTED_TYPE", "Поддерживаются PDF, изображения (JPG/PNG/WebP) и текстовые файлы", 422, rid);
+      const { body, status } = fail("UNSUPPORTED_TYPE", "Поддерживаются PDF, изображения (JPG/PNG/WebP), аудио (mp3/m4a/ogg/wav) и текстовые файлы", 422, rid);
       return c.json(body, status as 422);
     }
   } catch (error) {

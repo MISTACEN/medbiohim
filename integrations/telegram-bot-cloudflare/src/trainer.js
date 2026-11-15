@@ -451,8 +451,45 @@ export async function runTrainerMorning(env) {
     }
     const keyboard = Array.isArray(chat.keyboard) && chat.keyboard.length
       ? chat.keyboard
-        .filter((button) => button && typeof button.text === "string" && typeof button.callback_data === "string")
-        .map((button) => [{ text: button.text, callback_data: button.callback_data }])
+        // Кнопки двух видов: callback (тренажёр/челлендж) и url (ссылка на /study).
+        .filter((button) => button && typeof button.text === "string"
+          && (typeof button.callback_data === "string" || typeof button.url === "string"))
+        .map((button) => typeof button.callback_data === "string"
+          ? [{ text: button.text, callback_data: button.callback_data }]
+          : [{ text: button.text, url: button.url }])
+      : [];
+    const result = await sendMessage(env, chatId, {
+      text: html,
+      reply_markup: keyboard.length ? { inline_keyboard: keyboard } : undefined,
+    });
+    if (result) sent += 1;
+    else skipped += 1;
+  }
+  return { ok: true, date: data.date || null, sent, skipped, chats: data.chats.length };
+}
+
+/**
+ * Утренний отчёт ночного агента к экзамену (фаза 10): API собирает вопросы
+ * дня по связанным студентам, бот доставляет сводку с кнопкой на /study.
+ */
+export async function runAgentMorning(env) {
+  const data = await trainerApi(env, "/agent-morning");
+  if (!data || !Array.isArray(data.chats)) {
+    return { ok: false, error: "AGENT_DATA_UNAVAILABLE", sent: 0, skipped: 0 };
+  }
+  let sent = 0;
+  let skipped = 0;
+  for (const chat of data.chats) {
+    const html = typeof chat.html === "string" ? chat.html : "";
+    const chatId = Number(chat.chat_id);
+    if (!html.trim() || !Number.isSafeInteger(chatId)) {
+      skipped += 1;
+      continue;
+    }
+    const keyboard = Array.isArray(chat.keyboard) && chat.keyboard.length
+      ? chat.keyboard
+        .filter((button) => button && typeof button.text === "string" && typeof button.url === "string")
+        .map((button) => [{ text: button.text, url: button.url }])
       : [];
     const result = await sendMessage(env, chatId, {
       text: html,

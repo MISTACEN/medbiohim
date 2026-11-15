@@ -13,9 +13,19 @@ import { nowParts as sharedNowParts } from "@/lib/now-parts";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCards, SkeletonText } from "@/components/ui/Skeleton";
 import IcalImportCard from "@/components/schedule/IcalImportCard";
-import ScheduleCard from "@/components/schedule/ScheduleCard";
+import ScheduleCard, { importantEventKind } from "@/components/schedule/ScheduleCard";
 import { HomeworkGrade, HomeworkText } from "@/components/schedule/HomeworkBits";
 import type { ScheduleBundle } from "@/components/schedule/ScheduleCard";
+
+/** Подписи важных видов события — как в ScheduleCard. */
+const EVENT_KIND_LABELS: Record<string, string> = {
+  exam: "экзамен",
+  credit: "зачёт",
+  colloquium: "коллоквиум",
+  control_work: "контрольная",
+  assessment: "аттестация",
+  retake: "пересдача",
+};
 import {
   FALLBACK_SEMESTER,
   addDaysYmd,
@@ -74,6 +84,8 @@ export default function SchedulePage() {
   const [monthStart, setMonthStart] = useState(() => monthStartYmd(nowParts().date));
   const [allItems, setAllItems] = useState<ScheduleItem[]>([]);
   const [homeworks, setHomeworks] = useState<any[]>([]);
+  /** ДЗ конкретного занятия (id записи расписания → задания) — для карточек. */
+  const [homeworkByEntry, setHomeworkByEntry] = useState<Record<string, any[]>>({});
   const [recovery, setRecovery] = useState<any[]>([]);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const [source, setSource] = useState("db");
@@ -152,14 +164,27 @@ export default function SchedulePage() {
       }
       let homeworks: any[] = [];
       let recovery: any[] = [];
+      const homeworkByEntry: Record<string, any[]> = {};
       if (plannerRes.ok) {
         homeworks = Array.isArray(plannerRes.data.homeworks) ? plannerRes.data.homeworks : [];
         recovery = Array.isArray(plannerRes.data.recovery) ? plannerRes.data.recovery : [];
         const byEntry = new Map<string, string>();
         for (const a of (plannerRes.data.attendance || [])) byEntry.set(String(a.schedule_entry_id), String(a.status));
         items = items.map((it) => ({ ...it, attendance_status: byEntry.get(String(it.id)) || it.attendance_status }));
+        // ДЗ уже привязаны к занятиям на бэкенде (lessons[].homeworks) —
+        // используем эту связку, чтобы показать ДЗ прямо на карточке занятия.
+        const lessons = Array.isArray(plannerRes.data.lessons) ? plannerRes.data.lessons : [];
+        const kindByEntry = new Map<string, string>();
+        for (const lesson of lessons) {
+          if (lesson?.id == null) continue;
+          kindByEntry.set(String(lesson.id), String(lesson.event_kind || "class"));
+          const linked = Array.isArray(lesson.homeworks) ? lesson.homeworks : [];
+          if (linked.length) homeworkByEntry[String(lesson.id)] = linked;
+        }
+        // event_kind приходит из planner (schedule_entries) — merge по id.
+        items = items.map((it) => ({ ...it, event_kind: kindByEntry.get(String(it.id)) || (it as any).event_kind || null }));
       }
-      return { items, source, meta, homeworks, recovery, message, range };
+      return { items, source, meta, homeworks, recovery, homeworkByEntry, message, range };
     },
     [user?.groupId, user?.course, user?.semester]
   );
@@ -170,6 +195,7 @@ export default function SchedulePage() {
     setSource(scheduleBundle.source);
     setMeta(scheduleBundle.meta);
     setHomeworks(scheduleBundle.homeworks);
+    setHomeworkByEntry(scheduleBundle.homeworkByEntry || {});
     setRecovery(scheduleBundle.recovery);
     setError(scheduleBundle.message);
     setSemesterRange(scheduleBundle.range);
@@ -493,17 +519,18 @@ export default function SchedulePage() {
         {activePeriod && <div className="w-full rounded-xl border px-3 py-2 text-xs font-semibold" style={{ background:"color-mix(in srgb,var(--primary) 7%,transparent)", color:"var(--primary)" }}>{activePeriod.title}: {activePeriod.start_date}{activePeriod.end_date ? ` — ${activePeriod.end_date}` : ""}</div>}
       </div>
 
-      {/* Планировщик: все задания семестра одним списком — поиск, фильтры, перенос. */}
+      {/* Планировщик: полный список ДЗ семестра свёрнут — ДЗ видны прямо на
+          занятиях (карточки/день), планировщик нужен для поиска и переноса. */}
       {!loading && homeworks.length > 0 && (
-        <section className="rounded-2xl border p-4" aria-label="Планировщик заданий">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <details className="rounded-2xl border p-4" aria-label="Планировщик заданий">
+          <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
             <div>
               <b>Планировщик заданий</b>
-              <p className="text-xs opacity-60">Все ДЗ семестра: поиск по тексту, фильтры по предмету и статусу, перенос сроков.</p>
+              <p className="text-xs opacity-60">Все ДЗ семестра: поиск, фильтры по предмету и статусу, перенос сроков.</p>
             </div>
             <span className="rounded-full px-2 py-1 text-xs font-bold">{filteredHomeworks.length} / {homeworks.length}</span>
-          </div>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+          </summary>
+          <div className="mb-3 mt-3 flex flex-wrap items-center gap-2">
             <label className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50" />
               <input
@@ -568,18 +595,19 @@ export default function SchedulePage() {
               })}
             </ul>
           )}
-        </section>
+        </details>
       )}
 
       {recovery.length>0 && (
         <section className="rounded-2xl border p-4" style={{background:"color-mix(in srgb,var(--primary) 4%,var(--card))"}}>
-          <div className="mb-3 flex items-center justify-between gap-3"><div><b>Что нужно подтянуть</b><p className="text-xs opacity-60">Учитываются пропуски и невыполненные ДЗ по предметам.</p></div><span className="rounded-full px-2 py-1 text-xs font-bold">{recovery.length} предмета</span></div>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {recovery.slice(0,6).map((r:any)=><div key={r.subject_name} className="rounded-xl border bg-white/60 p-3">
-              <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{background:subjectColor(r)}}/><b>{r.subject_name}</b></div>
-              <div className="mt-1 text-xs opacity-70">{r.unexcused||0} неуваж. · {(r.excused||0)+(r.sick||0)} уваж. · {r.homeworks_pending||0} ДЗ не закрыто</div>
-            </div>)}
-          </div>
+          <div className="mb-2 flex items-center justify-between gap-3"><div><b>Что нужно подтянуть</b><p className="text-xs opacity-60">Пропуски и невыполненные ДЗ по предметам.</p></div><span className="rounded-full px-2 py-1 text-xs font-bold">{recovery.length} предмета</span></div>
+          {/* Одна строка на предмет вместо сетки карточек — быстрее сканируется. */}
+          <ul className="space-y-1 text-sm">
+            {recovery.slice(0,6).map((r:any)=><li key={r.subject_name} className="flex flex-wrap items-center gap-2 rounded-lg px-2 py-1.5" style={{background:"color-mix(in srgb,var(--primary) 4%,transparent)"}}>
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{background:subjectColor(r)}}/><b className="min-w-0 flex-1 truncate">{r.subject_name}</b>
+              <span className="text-xs opacity-70">{r.unexcused||0} неуваж. · {(r.excused||0)+(r.sick||0)} уваж. · {r.homeworks_pending||0} ДЗ не закрыто</span>
+            </li>)}
+          </ul>
         </section>
       )}
 
@@ -618,6 +646,7 @@ export default function SchedulePage() {
                           item={item}
                           col={col}
                           cols={cols}
+                          homeworks={homeworkByEntry[String(item.id ?? "")] || []}
                           onOpen={openLesson}
                         />
                       ))}
@@ -662,9 +691,25 @@ export default function SchedulePage() {
                 ) : currentDayItems.map((item)=>(
                   <button key={item.id||item.start_time} type="button" className="flex w-full gap-4 p-4 text-left hover:bg-black/5" onClick={()=>openLesson(item)}>
                     <div className="w-24 shrink-0 text-sm font-semibold" style={{ color: "var(--primary)" }}>{item.start_time.slice(0,5)}–{item.end_time.slice(0,5)}</div>
-                    <div>
-                      <div className="font-bold" style={{borderLeft:`3px solid ${subjectColor(item)}`,paddingLeft:8}}>{item.subject_name||"Занятие"}</div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <b className="font-bold" style={{borderLeft:`3px solid ${subjectColor(item)}`,paddingLeft:8}}>{item.subject_name||"Занятие"}</b>
+                        {importantEventKind((item as {event_kind?:unknown}).event_kind) && (
+                          <span className="rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--status-warn-fg)]">
+                            {EVENT_KIND_LABELS[importantEventKind((item as {event_kind?:unknown}).event_kind) as string]}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs" style={{ color: "var(--muted)" }}>{item.is_makeup?"ОТРАБОТКА":TYPE_LABELS[item.type || ""]||item.type} · {attendanceLabel(item.attendance_status) || "отметьте посещение"}</div>
+                      {(homeworkByEntry[String(item.id ?? "")] || []).length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {(homeworkByEntry[String(item.id ?? "")] || []).map((hw: any) => (
+                            <span key={String(hw.id)} className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--primary)]" title={String(hw.description || hw.title || "")}>
+                              <ClipboardList className="h-3 w-3" /> ДЗ: {String(hw.title || "")}{hw.my_status === "done" ? " ✓" : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -694,9 +739,11 @@ export default function SchedulePage() {
                     const dayItems=allItems.filter((it)=>it.date===day).sort((a,b)=>a.start_time.localeCompare(b.start_time));
                     const isToday=day===today;
                     const isSelected=day===selectedDay;
+                    // Важный день в месяце: коллоквиум/КР/зачёт/экзамен — метка в шапке ячейки.
+                    const importantDay = dayItems.map((it)=>importantEventKind((it as {event_kind?:unknown}).event_kind)).find(Boolean) as string | undefined;
                     return (
                       <button key={day} type="button" onClick={()=>setSelectedDay(day)} className={`schedule-month-cell ${inMonth?"":"schedule-month-cell-muted"} ${isToday?"schedule-month-cell-today":""} ${isSelected?"schedule-month-cell-selected":""}`}>
-                        <div className="schedule-month-cell-head"><span className="schedule-month-day-number">{parseYmd(day).d}</span>{dayItems.length>0&&<span className="schedule-month-count">{dayItems.length}</span>}</div>
+                        <div className="schedule-month-cell-head"><span className="schedule-month-day-number">{parseYmd(day).d}</span>{importantDay&&<span className="rounded bg-[var(--status-warn-bg)] px-1 text-[8px] font-extrabold uppercase text-[var(--status-warn-fg)]">{EVENT_KIND_LABELS[importantDay]}</span>}{dayItems.length>0&&<span className="schedule-month-count">{dayItems.length}</span>}</div>
                         <div className="schedule-month-events">
                           {dayItems.slice(0,3).map((it)=><span key={it.id||`${day}-${it.start_time}-${it.subject_name}`} className={`schedule-mini-event schedule-mini-${subjectColorKey(it.type)}`}><b>{it.start_time.slice(0,5)}</b> <span>{it.subject_name||"Занятие"}</span></span>)}
                           {dayItems.length>3&&<span className="schedule-more">+ ещё {dayItems.length-3}</span>}

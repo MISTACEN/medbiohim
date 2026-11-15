@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * Лента «Ближайшее» — общий таймлайн /study и /schedule (buildAgenda):
- * аттестации, ДЗ, отработки одним списком с чипами типов. Для аттестационных
- * событий — кнопка «Готовиться» (ИИ-чеклист).
+ * Лента «Ближайшее» — общий таймлайн /study и /schedule (buildAgenda).
+ *
+ * Два блока вместо простыни «всё подряд»:
+ *  1. «Дедлайны и аттестации» — ДЗ, отработки и аттестационные события,
+ *     к которым есть что готовить: полные карточки с кнопками «План»/«Готовиться».
+ *  2. «Занятия по дням» — рядовые пары компактными строками, сгруппированные
+ *     по дате: посещение само собой, поэтому без кнопок на каждом занятии.
  */
 import Link from "next/link";
 import {
@@ -41,6 +45,25 @@ const KIND_TONE: Record<string, string> = {
   lesson: "bg-slate-100 text-slate-600",
 };
 
+/** Компактная строка рядового занятия — время, предмет, тема. */
+function LessonRow({ item }: { item: AgendaItem }) {
+  const Icon = KIND_ICON[item.kind] || CalendarDays;
+  return (
+    <li className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition hover:bg-[var(--card)]">
+      <span className="w-10 shrink-0 tabular-nums text-[var(--muted)]">{item.time || "—"}</span>
+      <span className={"grid h-6 w-6 shrink-0 place-items-center rounded-lg " + (KIND_TONE[item.kind] || "bg-slate-100 text-slate-600")} aria-hidden>
+        <Icon className="h-3 w-3" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="font-medium">{item.subject || "Предмет"}</span>
+        {item.title && item.subject && !item.title.startsWith(item.subject) ? (
+          <span className="text-[var(--muted)]"> · {item.title}</span>
+        ) : null}
+      </span>
+    </li>
+  );
+}
+
 export function AgendaTimeline({ agenda, loading, onPrep, onPlan }: {
   agenda: AgendaItem[];
   loading: boolean;
@@ -50,11 +73,22 @@ export function AgendaTimeline({ agenda, loading, onPrep, onPlan }: {
 }) {
   const open = agenda.filter((item) => item.done !== true);
   const todayIso = new Date().toISOString().slice(0, 10);
-  const today = open.filter((item) => item.date === todayIso);
-  const upcoming = open.filter((item) => item.date !== todayIso);
-  // Аттестации в окне ленты не прячутся за парами: коллоквиум через две недели
-  // обязан попасть в «Ближайшее».
-  const visibleUpcoming = limitAgendaItems(upcoming);
+
+  // Важное: всё, к чему есть подготовка или что нужно сдать. Рядовые занятия
+  // («lesson») уходят в компактную группировку по дням — на каждом занятии
+  // раньше висели одинаковые кнопки «План/Готовиться», которые никому не нужны.
+  const important = open.filter((item) => item.kind !== "lesson" || isPrepTarget(item));
+  const lessons = open.filter((item) => item.kind === "lesson" && !isPrepTarget(item));
+
+  // Занятия по дням (ближайшие ~2 недели) — в порядке даты и времени.
+  const lessonsByDay = new Map<string, AgendaItem[]>();
+  for (const item of lessons.slice(0, 40)) {
+    const key = item.date || "без даты";
+    const bucket = lessonsByDay.get(key) || [];
+    bucket.push(item);
+    lessonsByDay.set(key, bucket);
+  }
+  const lessonDays = [...lessonsByDay.entries()].slice(0, 14);
 
   if (loading && !agenda.length) {
     return (
@@ -136,30 +170,65 @@ export function AgendaTimeline({ agenda, loading, onPrep, onPlan }: {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h2 className="text-base font-bold tracking-tight">Ближайшее</h2>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">расписание + ДЗ + отработки — одним списком</p>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">что сдать и к чему готовиться; занятия — списком по дням</p>
         </div>
-        {open.length ? <span className="text-xs font-semibold text-[var(--muted)]">{open.length} открытых</span> : null}
+        {open.length ? (
+          <span className="text-xs font-semibold text-[var(--muted)]">
+            {important.length} важных{lessons.length ? ` · ${lessons.length} занятий` : ""}
+          </span>
+        ) : null}
       </div>
       {open.length === 0 ? (
         <p className="mt-3 text-sm text-[var(--status-ok-fg)]">Открытых дел нет: аттестаций не назначено, ДЗ сданы.</p>
       ) : (
         <>
-          {today.length ? (
+          {important.length ? (
             <>
               <p className="mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--primary)]">
-                Сегодня <span className="rounded-full bg-[var(--primary-soft)] px-1.5 py-0.5 text-[10px] font-bold tabular-nums">{today.length}</span>
+                Дедлайны и аттестации
+                <span className="rounded-full bg-[var(--primary-soft)] px-1.5 py-0.5 text-[10px] font-bold tabular-nums">{important.length}</span>
               </p>
-              <ol className="mt-2 space-y-2">{today.map(renderItem)}</ol>
+              <ol className="mt-2 space-y-2">
+                {important
+                  .slice()
+                  .sort((a, b) => {
+                    // Сначала срочные и близкие по дате: аттестации и просроченное
+                    // не должны тонуть под парами на следующей неделе.
+                    const rank = (x: AgendaItem) => (x.urgent ? 0 : x.date === todayIso ? 1 : 2);
+                    const r = rank(a) - rank(b);
+                    if (r !== 0) return r;
+                    return String(a.date || "").localeCompare(String(b.date || ""));
+                  })
+                  .slice(0, 12)
+                  .map(renderItem)}
+              </ol>
             </>
           ) : null}
-          {upcoming.length ? (
+          {lessonDays.length ? (
             <>
               <p className="mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                Дальше <span className="rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
-                  {visibleUpcoming.length === upcoming.length ? upcoming.length : `${visibleUpcoming.length} из ${upcoming.length}`}
-                </span>
+                Занятия по дням
               </p>
-              <ol className="mt-2 space-y-2">{visibleUpcoming.map(renderItem)}</ol>
+              <div className="mt-2 space-y-2">
+                {lessonDays.map(([day, dayItems]) => (
+                  <div key={day} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                      {day === todayIso ? "Сегодня" : fmtDate(day)}
+                    </p>
+                    <ol className="mt-1 divide-y divide-[var(--border)]/60">
+                      {dayItems
+                        .slice()
+                        .sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")))
+                        .map((item) => <LessonRow key={item.id} item={item} />)}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-right">
+                <Link href="/schedule" className="text-xs font-semibold text-[var(--primary)] hover:underline">
+                  Полное расписание →
+                </Link>
+              </p>
             </>
           ) : null}
         </>

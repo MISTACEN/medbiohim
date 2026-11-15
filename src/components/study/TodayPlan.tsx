@@ -36,13 +36,20 @@ function writeCache(today: string, items: string[]) {
   } catch { /* приватный режим — просто без кэша */ }
 }
 
-/** Фолбэк-план: ближайшие срочные дела ленты без ИИ. */
+/** Фолбэк-план: «что готовить» по открытым делам ленты, без ИИ. */
 export function fallbackPlan(agenda: AgendaItem[]): string[] {
   const open = agenda.filter((item) => item.done !== true);
   if (!open.length) return [];
-  return open.slice(0, 5).map((item) => {
+  // Аттестации и ДЗ важнее рядовых занятий; сами занятия не «посещать», а
+  // готовиться к ним — поэтому попадают в план только с подготовительным смыслом.
+  const priority = (item: AgendaItem) =>
+    ["exam", "credit", "colloquium", "control_work"].includes(item.kind)
+      || item.label === "ДЗ"
+      || item.urgent ? 0 : 1;
+  const sorted = [...open].sort((a, b) => priority(a) - priority(b));
+  return sorted.slice(0, 5).map((item) => {
     const when = item.date ? ` (${item.date.split("-").reverse().join(".")}${item.time ? " " + item.time : ""})` : "";
-    return `${item.title}${when} — ${item.label.toLowerCase()}`;
+    return `${item.title}${when} — ${item.kind === "homework" || item.label === "ДЗ" ? "сдать задание" : "подготовиться"}`;
   });
 }
 
@@ -81,16 +88,19 @@ export function TodayPlan({ agenda }: { agenda: AgendaItem[] }) {
     setError(null);
     const open = agenda.filter((item) => item.done !== true).slice(0, 12);
     const agendaText = open.length
-      ? open.map((item) => `- [${item.label}] ${item.title}${item.date ? `, срок ${item.date}` : ""}${item.meta ? ` (${item.meta})` : ""}`).join("\n")
+      ? open.map((item) => `- [${item.label}] ${item.title}${item.date ? `, дата ${item.date}` : ""}${item.meta ? ` (${item.meta})` : ""}`).join("\n")
       : "(открытых дел нет)";
     const response = await aiChat(
       [
         {
           role: "user",
           content:
-            "Составь план на сегодня для студента: нумерованный список из 3–6 коротких пунктов. "
-            + "Опирайся только на приведённые ниже дела — не придумывай новых событий. "
-            + "Порядок: сначала близкие по сроку аттестации и просроченное, потом остальное. "
+            "Составь план подготовки на сегодня: нумерованный список из 3–6 коротких пунктов «что готовить». "
+            + "Для каждого ближайшего занятия укажи тему лекции/практики из плана предмета (см. учебный контекст) "
+            + "и что конкретно сделать: прочитать тему, пройти тест темы, собрать карточки, закрыть ДЗ с описанием. "
+            + "Пункты вида «посетить занятие», «присутствовать на паре» запрещены — посещение само собой, "
+            + "в плане только подготовка. Опирайся только на приведённые дела и учебный контекст — не придумывай событий и тем. "
+            + "Порядок: сначала близкие аттестации (коллоквиум, контрольная, зачёт) и просроченное, потом остальное. "
             + "Без вступлений и заключений — только список.\n\nОткрытые дела:\n" + agendaText,
         },
       ],
