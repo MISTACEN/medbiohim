@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "skills": {
+    "layero": {
+      "source": "LayeroInfra/layero-agents",
+      "sourceType": "github",
+      "skillPath": "skills/layero/SKILL.md",
+      "computedHash": "015eab2d36f587749bdaf9531013d6df32fff43833bf6e079c685865a361cb17"
+    },
+    "layero-content-rules": {
+      "source": "LayeroInfra/layero-agents",
+      "sourceType": "github",
+      "skillPath": "skills/layero-content-rules/SKILL.md",
+      "computedHash": "28b946d098f6213e3ecb052d7d9f7152ad8662de7a8b7d43c2134e136e048d21"
+    }
+  }
+}
