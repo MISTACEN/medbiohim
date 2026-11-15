@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiChatMode, type AiConversation, type AiMessage, type AiProvider, type AiProviderMeta } from "@/lib/features-api";
 import { AnswerSources } from "@/components/ai/AnswerSources";
+import { TutorMarkdown } from "@/components/ai/TutorMarkdown";
 import { listSubjectsCatalog } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
@@ -48,6 +49,29 @@ const FALLBACK_MODELS: Partial<Record<AiProvider, string[]>> = {
   mistral: ["mistral-small-latest", "mistral-medium-latest"],
   openai: ["gpt-4.1-mini", "gpt-4o-mini"],
 };
+
+/**
+ * Что модель умеет в рамках нашего чата (честно и без маркетинга):
+ * все — текст/таблицы/схемы mermaid в ответе; мультимодальность и рассуждения —
+ * только у отдельных моделей. Изображения не генерирует никто из подключённых.
+ */
+const PROVIDER_CAPABILITIES: Partial<Record<AiProvider, string>> = {
+  gigachat: "Русский язык, нормативка РФ · таблицы · без картинок",
+  gemini: "Видит изображения · длинный контекст · из RU недоступен",
+  groq: "Самый быстрый · reasoning-модель gpt-oss",
+  mistral: "Быстрый, Европа · таблицы",
+  openai: "Сильная универсальная · таблицы",
+  openrouter: "Шлюз к сотням моделей",
+  custom: "Ваша модель · возможности зависят от неё",
+};
+
+/** Инструменты чата: подставляют готовую инструкцию в поле ввода. */
+const CHAT_TOOLS = [
+  { label: "Таблица", prompt: "Оформи ответ таблицей в markdown: " },
+  { label: "Схема", prompt: "Покажи схему/алгоритм mermaid-диаграммой: " },
+  { label: "Формулы", prompt: "Объясни с формулами (LaTeX в $...$): " },
+  { label: "Карточки", prompt: "Составь 5 пар вопрос–ответ для карточек по теме: " },
+];
 
 /** Стартовые вопросы блока «Подготовка ЦНС» — темы корпуса знаний ЦНС. */
 const CNS_STARTERS = [
@@ -301,7 +325,7 @@ export default function TutorPage() {
                                 {p==="auto"?"платформа сама выберет доступную модель"
                                   :p==="custom"?(m?.reason||"подключается в Настройках")
                                   :reason?reason
-                                  :m?.model?`по умолчанию: ${m.model}`:"не настроен на сервере"}
+                                  :PROVIDER_CAPABILITIES[p]||(m?.model?`по умолчанию: ${m.model}`:"не настроен на сервере")}
                               </span>
                             </span>
                             <span className={"h-2 w-2 shrink-0 rounded-full "+(on?"bg-[var(--status-ok-fg)]":"bg-[var(--muted)]")}/>
@@ -367,13 +391,40 @@ export default function TutorPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Возможности моделей — честная сводка, чтобы знать, что спрашивать. */}
+                  <div className="mt-4 w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 text-left">
+                    <p className="text-sm font-bold">Что умеют модели в этом чате</p>
+                    <ul className="mt-1.5 space-y-1 text-xs text-[var(--muted)]">
+                      <li>• <b className="text-[var(--foreground)]">Все модели</b>: текст, таблицы, списки, схемы mermaid и формулы — отрисовываются прямо в чате.</li>
+                      <li>• <b className="text-[var(--foreground)]">GigaChat</b>: лучший русский, нормативная база РФ. <b className="text-[var(--foreground)]">Groq</b>: самый быстрый, reasoning. <b className="text-[var(--foreground)]">Gemini</b>: видит картинки (из RU недоступен).</li>
+                      <li>• «Точный» режим отвечает по лекциям предмета и материалам ЦНС со сносками [N]; «Быстрый» — без базы.</li>
+                      <li>• Изображения не генерирует ни одна подключённая модель; свои ключи — Настройки → Своя ИИ-модель.</li>
+                    </ul>
+                  </div>
                 </div>
               )}
-              {messages.map(m=><div key={m.id} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}><div className={"max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[82%] "+(m.role==="user"?"bg-[var(--primary)] text-white":"border border-[var(--border)] bg-[var(--background)]")}>{m.content}{m.role==="assistant"?<AnswerSources sources={m.metadata?.sources}/>:null}{m.model&&<div className="mt-2 text-[10px] opacity-60">{m.provider} · {m.model}</div>}</div></div>)}
+              {messages.map(m=>(
+                <div key={m.id} className={"flex "+(m.role==="user"?"justify-end":"justify-start")}>
+                  <div className={"max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[82%] "+(m.role==="user"?"bg-[var(--primary)] text-white whitespace-pre-wrap":"border border-[var(--border)] bg-[var(--background)]")}>
+                    {m.role==="assistant"?<TutorMarkdown content={m.content}/>:m.content}
+                    {m.role==="assistant"?<AnswerSources sources={m.metadata?.sources}/>:null}
+                    {m.model&&<div className="mt-2 text-[10px] opacity-60">{m.provider} · {m.model}</div>}
+                  </div>
+                </div>
+              ))}
               {loading&&<div className="flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin"/>AI формирует ответ…</div>}<div ref={bottomRef}/>
             </div>
             <div className="border-t border-[var(--border)] p-3 sm:p-4">
               {error&&<div className="mb-2 rounded-lg bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+              {/* Инструменты чата: готовые инструкции (таблица/схема/формулы/карточки). */}
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {CHAT_TOOLS.map(({label,prompt})=>(
+                  <button key={label} type="button" onClick={()=>{ setInput(prompt+ (input.trim()? input.trim() : "")); inputRef.current?.focus(); }} className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)]">
+                    {label}
+                  </button>
+                ))}
+              </div>
               <AiQuickActions topic={input} onPrompt={(p) => { setInput(p); inputRef.current?.focus(); }} />
               <div className="flex gap-2"><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} aria-label="Отправить" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
             </div>

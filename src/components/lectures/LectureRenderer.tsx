@@ -91,7 +91,8 @@ function parseBlocks(md: string) {
   return parts;
 }
 
-function mdToHtml(md: string): string {
+/** Рендер Markdown → HTML (общий с AI-тьютором: TutorMarkdown). */
+export function mdToHtml(md: string): string {
   // Lecture bodies are stored as Markdown. Keep the renderer deterministic and
   // safe, while also tolerating older imports that contain literal HTML tags.
   let s = escapeHtml(String(md || "").replace(/\r\n?/g, "\n"));
