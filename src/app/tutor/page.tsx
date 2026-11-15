@@ -19,7 +19,8 @@ import {
   Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft, ChevronDown,
   Check, BookOpenCheck, ListChecks, Mic, NotebookPen, GraduationCap, BrainCircuit, Paperclip, X,
 } from "lucide-react";
-import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiChatMode, type AiConversation, type AiMessage, type AiProvider, type AiProviderMeta } from "@/lib/features-api";
+import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiNotesFromFile, aiProviders, aiSendMessage, type AiChatMode, type AiConversation, type AiMessage, type AiProvider, type AiProviderMeta } from "@/lib/features-api";
+import { createMyLecture } from "@/lib/api/myLectures";
 import { AnswerSources } from "@/components/ai/AnswerSources";
 import { TutorMarkdown } from "@/components/ai/TutorMarkdown";
 import { listSubjectsCatalog } from "@/lib/api";
@@ -87,7 +88,7 @@ const MODULE_LINKS = [
   { href: "/cards", label: "Карточки SRS", icon: BookOpenCheck },
   { href: "/cards?tab=packs", label: "Пак карточек по теме", icon: Sparkles },
   { href: "/tests/preparation", label: "Устный экзамен", icon: GraduationCap },
-  { href: "/study/import", label: "Конспект из файла/аудио", icon: NotebookPen },
+  { href: "__attach__", label: "Конспект из файла/аудио", icon: NotebookPen },
 ];
 
 export default function TutorPage() {
@@ -107,6 +108,10 @@ export default function TutorPage() {
   // Фото (vision): data URL'ы — видят Gemini, OpenAI, Groq (vision-модели), BYOM.
   const [images,setImages]=useState<string[]>([]);
   const fileRef=useRef<HTMLInputElement>(null);
+  // Файл-вложение (pdf/фото/аудио/текст) → конспект прямо в чате (без перехода на /study/import).
+  const [attachFile,setAttachFile]=useState<File|null>(null);
+  const [notesBusy,setNotesBusy]=useState(false);
+  const [notesResult,setNotesResult]=useState<{ filename:string; notes:string; provider:string; model:string; savedId:string|null }|null>(null);
   const VISION_PROVIDERS=new Set<AiProvider>(["gemini","openai","groq","openrouter","custom"]);
   const [mobileList,setMobileList]=useState(true);
   const bottomRef=useRef<HTMLDivElement>(null);
@@ -213,8 +218,44 @@ export default function TutorPage() {
     }
   }
 
+  /** Файл → конспект прямо в чате: расшифровка/OCR/текст → markdown. Результат
+   * локальный (в истории чата не сохраняется), кнопки: сохранить как личную
+   * лекцию или отправить в чат для обсуждения. */
+  async function sendNotes(file: File){
+    if(!conversation) return;
+    setNotesBusy(true); setError(null); setNotesResult(null);
+    setMessages(m=>[...m,{id:"local-"+Date.now(),role:"user",content:"📎 Конспект из файла: "+file.name,created_at:new Date().toISOString()}]);
+    try{
+      const content_base64=await fileToBase64(file);
+      const r=await aiNotesFromFile({ content_base64, mime: file.type||"application/octet-stream", filename: file.name });
+      if(!r.ok){ setError(describeApiError(r.error)); }
+      else setNotesResult({ filename:file.name, notes:r.data.notes_markdown, provider:r.data.provider, model:r.data.model, savedId:null });
+    }catch{ setError("Не удалось прочитать файл."); }
+    setNotesBusy(false);
+  }
+
+  async function saveNotesAsLecture(){
+    if(!notesResult) return;
+    setNotesBusy(true);
+    const slug=subjectSlug||undefined;
+    const r=await createMyLecture({ title: "Конспект: "+notesResult.filename.replace(/\.[^.]+$/,""), subject_slug: slug, body_md: notesResult.notes, lesson_type: "lecture" });
+    setNotesBusy(false);
+    if(!r.ok){ setError(describeApiError(r.error)); return; }
+    const id=String(r.data?.id || r.data?.lecture?.id || "");
+    setNotesResult({ ...notesResult, savedId: id });
+  }
+
+  /** Отправить конспект в чат — он попадёт в историю, и его можно обсудить. */
+  async function discussNotes(){
+    if(!notesResult||!conversation) return;
+    setInput(notesResult.notes.slice(0,12000));
+    setNotesResult(null);
+    inputRef.current?.focus();
+  }
+
   async function send(){
     const q=input.trim();
+    if(attachFile&&notesBusy===false){ const f=attachFile; setAttachFile(null); setInput(""); await sendNotes(f); return; }
     if(!q||loading||!conversation)return;
     setInput("");setError(null);setLoading(true);
     setMessages(m=>[...m,{id:"local-"+Date.now(),role:"user",content:q,created_at:new Date().toISOString()}]);
@@ -231,22 +272,31 @@ export default function TutorPage() {
     setMessages(m=>[...m.filter(x=>!x.id.startsWith("local-")),r.data.user_message,r.data.assistant_message]);
   }
 
-  function pickImages(files: FileList | null){
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").replace(/^data:[^,]+,/, ""));
+      reader.onerror = () => reject(new Error("read failed"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function pickAttachment(files: FileList | null){
     if(!files||!files.length) return;
-    void (async()=>{
-      const next: string[]=[];
-      for(const f of Array.from(files).slice(0,4)){
-        if(!f.type.startsWith("image/")) continue;
-        if(f.size>4*1024*1024) { setError("Фото больше 4 МБ — сожмите и прикрепите снова."); continue; }
-        next.push(await new Promise<string>((resolve,reject)=>{
-          const reader=new FileReader();
-          reader.onload=()=>resolve(String(reader.result||""));
-          reader.onerror=()=>reject(new Error("read failed"));
-          reader.readAsDataURL(f);
-        }));
-      }
-      setImages((cur)=>[...cur,...next].slice(0,4));
-    })();
+    const f=files[0];
+    setError(null);
+    const isImage=f.type.startsWith("image/");
+    const isAudio=/^audio\//.test(f.type)||/\.(mp3|m4a|ogg|wav|webm)$/i.test(f.name);
+    const limit=isAudio?4*1024*1024:8*1024*1024;
+    if(f.size>limit){ setError(isAudio?"Аудио больше 4 МБ — сожмите запись (mp3 64 кбит/с ≈ 8 минут в 4 МБ).":"Файл больше 8 МБ — уменьшите фото или разберите PDF по частям."); return; }
+    if(isImage&&VISION_PROVIDERS.has(provider)){ // фото → vision-режим (модель видит картинку)
+      void (async()=>{
+        const dataUrl=await fileToBase64(f);
+        setImages((cur)=>[...cur,dataUrl].slice(0,4));
+      })();
+      return;
+    }
+    setImages([]); setAttachFile(f); setNotesResult(null); // pdf/фото/аудио/текст → конспект в чате
   }
 
   function onKeyDown(e:React.KeyboardEvent<HTMLTextAreaElement>){
@@ -436,10 +486,36 @@ export default function TutorPage() {
                   </div>
                 </div>
               ))}
+              {notesBusy&&<div className="flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin"/>Читаю файл (фото → OCR, аудио → расшифровка, PDF → текст) и собираю конспект…</div>}
+              {notesResult&&(
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <b className="text-sm">📋 Конспект: {notesResult.filename}</b>
+                    <span className="text-[10px] text-[var(--muted)]">{notesResult.provider} · {notesResult.model} · локально (в историю чата не пишется)</span>
+                  </div>
+                  <div className="mt-2 max-h-[360px] overflow-y-auto rounded-xl border border-[var(--border)] p-3"><TutorMarkdown content={notesResult.notes}/></div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {notesResult.savedId
+                      ? <a href={"/lectures/"+encodeURIComponent(notesResult.savedId)} className="rounded-full bg-[var(--status-ok-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--status-ok-fg)]">Сохранено как личная лекция — открыть →</a>
+                      : <button type="button" onClick={()=>void saveNotesAsLecture()} disabled={notesBusy} className="rounded-full border border-[var(--primary)]/40 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] disabled:opacity-40">Сохранить как личную лекцию</button>}
+                    <button type="button" onClick={()=>void discussNotes()} className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)]">Обсудить в чате ↓</button>
+                  </div>
+                </div>
+              )}
               {loading&&<div className="flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin"/>AI формирует ответ…</div>}<div ref={bottomRef}/>
             </div>
             <div className="border-t border-[var(--border)] p-3 sm:p-4">
               {error&&<div className="mb-2 rounded-lg bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+              {attachFile&&(
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--primary-soft)] px-3 py-1 font-semibold text-[var(--primary)]">
+                    📄 {attachFile.name} · {(attachFile.size/1024/1024).toFixed(1)} МБ
+                    {/^audio\//.test(attachFile.type)||/\.(mp3|m4a|ogg|wav|webm)$/i.test(attachFile.name)?" · аудио→расшифровка":attachFile.type==="application/pdf"?" · PDF":/^image\//.test(attachFile.type)?" · фото→OCR":" · текст"}
+                  </span>
+                  <span className="text-[var(--muted)]">Enter/отправить — сделаю конспект прямо здесь</span>
+                  <button type="button" onClick={()=>setAttachFile(null)} className="rounded-full border border-[var(--border)] px-2 py-0.5 font-semibold text-[var(--muted)] hover:text-[var(--status-critical-fg)]" aria-label="Убрать файл">убрать</button>
+                </div>
+              )}
               {images.length>0&&(
                 <div className="mb-2 flex flex-wrap gap-2">
                   {images.map((img,i)=>(
@@ -460,7 +536,7 @@ export default function TutorPage() {
                 ))}
               </div>
               <AiQuickActions topic={input} onPrompt={(p) => { setInput(p); inputRef.current?.focus(); }} />
-              <div className="flex gap-2"><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e)=>{pickImages(e.target.files); e.currentTarget.value="";}}/><button type="button" onClick={()=>fileRef.current?.click()} disabled={loading||!conversation} aria-label="Прикрепить фото" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)] disabled:opacity-40"><Paperclip className="h-5 w-5"/></button><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} aria-label="Отправить" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
+              <div className="flex gap-2"><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.txt,.md,audio/mpeg,audio/mp4,audio/ogg,audio/webm,audio/wav,.mp3,.m4a,.ogg,.wav,.webm,.pdf" className="hidden" onChange={(e)=>{pickAttachment(e.target.files); e.currentTarget.value="";}}/><button type="button" onClick={()=>fileRef.current?.click()} disabled={loading||!conversation} aria-label="Прикрепить фото" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)] disabled:opacity-40"><Paperclip className="h-5 w-5"/></button><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} aria-label="Отправить" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
             </div>
           </div>
         </section>
