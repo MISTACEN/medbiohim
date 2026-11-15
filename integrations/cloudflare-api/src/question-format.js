@@ -396,6 +396,7 @@ export function extractOptionsFromText(text) {
  */
 export function normalizeQuestion(input, settings = {}) {
   let type = String(input?.type || "open").toLowerCase();
+  const explanation = input?.explanation == null ? null : String(input.explanation);
   let text = String(input?.text ?? input?.body ?? "");
   const answer = input?.answer == null ? "" : String(input.answer);
   let options = withKeys(parseOptions(input?.options));
@@ -450,6 +451,7 @@ export function normalizeQuestion(input, settings = {}) {
     type,
     text,
     answer,
+    explanation: explanation || null,
     is_closed: isClosed,
     options: normalizedOptions,
     correct_keys: correctKeys,

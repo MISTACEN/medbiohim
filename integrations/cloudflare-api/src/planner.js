@@ -752,6 +752,8 @@ function publicPreparationQuestion(snapshot, completed) {
     out.correct_keys = question.correct_keys;
     out.answer_resolution = question.resolution;
   }
+  // Официальное пояснение кафедры — всегда, когда есть (не раскрывает ключ).
+  if (question.explanation) out.explanation = question.explanation;
   return out;
 }
 async function getPreparationSession(c, sessionId) {
@@ -800,7 +802,7 @@ export async function startSupabasePreparation(request, env, testId, input = {},
     }
     if (questionLimit != null) ids = ids.slice(0, questionLimit);
     if (!ids.length) return fail(422, "NO_QUESTIONS", "В тесте нет опубликованных вопросов");
-    const questions = await c.rows("questions", { select: "id,subject_id,module_id,topic_id,type,text,answer,options", id: "in.(" + ids.join(",") + ")", is_published: "eq.true", archived_at: "is.null", limit: "1000" });
+    const questions = await c.rows("questions", { select: "id,subject_id,module_id,topic_id,type,text,answer,options,explanation", id: "in.(" + ids.join(",") + ")", is_published: "eq.true", archived_at: "is.null", limit: "1000" });
     const questionById = new Map(questions.map((q) => [String(q.id), q]));
     ids = ids.filter((id) => questionById.has(id));
     if (!ids.length) return fail(422, "NO_QUESTIONS", "В тесте нет доступных опубликованных вопросов");
@@ -826,6 +828,7 @@ export async function startSupabasePreparation(request, env, testId, input = {},
         text: q.text ?? "",
         answer: q.answer ?? null,
         options: parsePreparationJson(q.options, []),
+        explanation: q.explanation ?? null,
       }, { extractTextOptions: true }));
       return {
         id,
@@ -838,6 +841,7 @@ export async function startSupabasePreparation(request, env, testId, input = {},
         options: normalized.options,
         is_closed: normalized.is_closed,
         answer_display: normalized.answer_display,
+        explanation: normalized.explanation ?? null,
         answer_resolution: normalized.resolution,
         order_indexes: normalized.order_indexes,
         module_name: moduleNames.get(String(q.module_id || "")) ?? null,
