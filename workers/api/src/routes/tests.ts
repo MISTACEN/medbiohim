@@ -185,6 +185,9 @@ tests.get("/", requireAuth, async (c) => {
     const items = initialItems.filter((item: any) => !item.subject_id || allowedSubjectIds.has(String(item.subject_id)));
     const ids = items.map((item: any) => item.id).filter(Boolean);
     const counts = new Map<string, number>();
+    // Состав каждого теста нужен, чтобы скрыть в меню полные дубли банков:
+    // после импорта один и тот же набор публиковался под 2–3 названиями.
+    const questionSets = new Map<string, Set<string>>();
     if (ids.length) {
       // PostgREST отдаёт не больше max-rows (обычно 1000) строк за запрос, а связей
       // у предмета тысячи: без постраничного чтения последние банки выглядели как
@@ -192,7 +195,7 @@ tests.get("/", requireAuth, async (c) => {
       const PAGE = 900;
       for (let from = 0; ; from += PAGE) {
         const { data: links, error: linkError } = await db.from("test_questions")
-          .select("test_id,questions!inner(id,is_published,archived_at)")
+          .select("test_id,question_id,questions!inner(id,is_published,archived_at)")
           .in("test_id", ids)
           .eq("questions.is_published", true)
           .is("questions.archived_at", null)
@@ -203,7 +206,13 @@ tests.get("/", requireAuth, async (c) => {
           const { body, status } = fail("DB_UNAVAILABLE", "Состав тестов недоступен", 503, rid);
           return c.json(body, status as 503);
         }
-        for (const link of links || []) counts.set(String(link.test_id), (counts.get(String(link.test_id)) || 0) + 1);
+        for (const link of links || []) {
+          const tid = String(link.test_id);
+          counts.set(tid, (counts.get(tid) || 0) + 1);
+          let set = questionSets.get(tid);
+          if (!set) { set = new Set<string>(); questionSets.set(tid, set); }
+          set.add(String((link as any).question_id));
+        }
         if (!links || links.length < PAGE) break;
       }
     }
@@ -235,6 +244,36 @@ tests.get("/", requireAuth, async (c) => {
         if (fallback) counts.set(String(item.id), fallback);
       }
     }
+    // Дубли: тест, который на ≥90% состоит из вопросов более крупного теста,
+    // считается его копией и не показывается отдельной карточкой.
+    const duplicateOf = new Map<string, string>();
+    const kept: { id: string; set: Set<string> }[] = [];
+    const sourceKeyById = new Map(items.map((item: any) => [String(item.id), String(item.source_key || "")]));
+    const bySize = items
+      .map((item: any) => String(item.id))
+      // Подразделы — намеренные срезы полного теста, это не дубли.
+      .filter((id: string) => !(sourceKeyById.get(id) || "").startsWith("phys_sub:"))
+      .filter((id: string) => (questionSets.get(id)?.size || 0) > 0)
+      .sort((a: string, b: string) => {
+        const bySize = questionSets.get(b)!.size - questionSets.get(a)!.size;
+        if (bySize !== 0) return bySize;
+        // При равном составе оставляем канонический «Полный тест» с подразделами.
+        const rank = (id: string) => ((sourceKeyById.get(id) || "").startsWith("phys_full:") ? 0 : 1);
+        return rank(a) - rank(b);
+      });
+    for (const id of bySize) {
+      const set = questionSets.get(id)!;
+      // Мега-микс содержит все банки, но это не дубль: копией считаем только
+      // тест, который больше лишь на 30% (переизданный тот же банк).
+      const container = kept.find((k) => {
+        if (k.set.size > set.size * 1.3) return false;
+        let inter = 0;
+        for (const q of set) if (k.set.has(q)) inter++;
+        return inter / set.size >= 0.9;
+      });
+      if (container) duplicateOf.set(id, container.id);
+      else kept.push({ id, set });
+    }
     return c.json(ok({ items: items.map((item: any) => {
       const subject = Array.isArray(item.subjects) ? item.subjects[0] : item.subjects;
       return {
@@ -245,6 +284,7 @@ tests.get("/", requireAuth, async (c) => {
         semester: semester || subject?.semester || null,
         duration_sec: item.time_limit_sec,
         questions_count: counts.get(String(item.id)) || 0,
+        duplicate_of: duplicateOf.get(String(item.id)) || null,
       };
     }) }, rid));
   } catch {

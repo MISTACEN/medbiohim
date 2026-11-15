@@ -167,7 +167,13 @@ export default function PreparationPage() {
     setMode(m);
     setLoading(true);
     setError("");
-    const s = await startPreparation(id, m, m === "count" ? (n ?? limit) : undefined, user?.groupId, experience);
+    // Раздел/подраздел из хаба: позиции 1-based в порядке банка (?from=1&to=144).
+    const rawFrom = Number.parseInt(search.get("from") || "", 10);
+    const rawTo = Number.parseInt(search.get("to") || "", 10);
+    const range = Number.isFinite(rawFrom) && Number.isFinite(rawTo) && rawFrom >= 1 && rawTo >= rawFrom
+      ? { from: rawFrom, to: rawTo }
+      : null;
+    const s = await startPreparation(id, m, m === "count" ? (n ?? limit) : undefined, user?.groupId, experience, m === "sequential" ? range : null);
     if (!s.ok) {
       setError(describeApiError(s.error));
       setLoading(false);

@@ -74,6 +74,8 @@ type TestItem = {
   orderIndex: number;
   timeLimitSec: number | null;
   maxAttempts: number | null;
+  /** id более крупного теста с тем же составом: такую копию не показываем. */
+  duplicateOf: string | null;
 };
 
 type TopicGroup = {
@@ -167,6 +169,24 @@ function buildHref(test: TestItem, mode: Mode, count: number) {
     params.set("mode", mode);
     params.set("count", String(count));
   }
+  const subject = subjectLabel(test.subjectSlug, test.subjectName);
+  if (subject) params.set("subject", subject);
+  return `/tests/preparation/${encodeURIComponent(test.id)}?${params.toString()}`;
+}
+
+type ManualSection = {
+  title: string;
+  count: number;
+  subsections: { title: string; from: number; to: number; count: number }[];
+};
+
+/** Пройти только часть банка: позиции 1-based в порядке методички. */
+function buildRangeHref(test: TestItem, from: number, to: number) {
+  const params = new URLSearchParams();
+  params.set("mode", "prepare");
+  params.set("flow", "sequential");
+  params.set("from", String(from));
+  params.set("to", String(to));
   const subject = subjectLabel(test.subjectSlug, test.subjectName);
   if (subject) params.set("subject", subject);
   return `/tests/preparation/${encodeURIComponent(test.id)}?${params.toString()}`;
@@ -271,8 +291,9 @@ export function TestsHub({
             orderIndex: Number(raw?.order_index ?? index),
             timeLimitSec: raw?.time_limit_sec != null && Number(raw.time_limit_sec) > 0 ? Number(raw.time_limit_sec) : null,
             maxAttempts: raw?.max_attempts != null && Number(raw.max_attempts) > 0 ? Number(raw.max_attempts) : null,
+            duplicateOf: raw?.duplicate_of ? String(raw.duplicate_of) : null,
           };
-        }).filter((item) => item.id);
+        }).filter((item) => item.id && !item.duplicateOf);
         return {
           ready: true,
           tests: mapped,
@@ -476,15 +497,68 @@ export function TestsHub({
   // Полные тесты (phys_full:* — перенос фич PhysiologyTests): мега-микс +
   // по методичкам. Рендерятся отдельной секцией ПЕРВОЙ, из обычных групп исключены.
   const fullTests = useMemo(() => levelFiltered.filter((test) => (test.source || "").startsWith("phys_full:")), [levelFiltered]);
+  // Подразделы — сгенерированные тесты (phys_sub:slug:from-to): их не показываем
+  // отдельными карточками, только ссылками внутри «Полных тестов».
+  const subTests = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const test of tests) {
+      const source = test.source || "";
+      if (source.startsWith("phys_sub:")) map.set(source, test.id);
+    }
+    return map;
+  }, [tests]);
   const fullMega = fullTests.find((t) => (t.source || "") === "phys_full:physiology") || null;
   const fullManuals = fullTests
     .filter((t) => (t.source || "") !== "phys_full:physiology")
     .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
 
+  // Разделы и подразделы методички: те же диапазоны вопросов, что в пособии.
+  const [manualSections, setManualSections] = useState<Record<string, ManualSection[]>>({});
+  const manualSlugsKey = Array.from(new Set(fullManuals.map((test) => (test.source || "").replace(/^phys_full:/, ""))))
+    .filter((slug) => slug && slug !== "physiology")
+    .sort()
+    .join(",");
+  useEffect(() => {
+    const slugs = manualSlugsKey ? manualSlugsKey.split(",") : [];
+    if (!slugs.length) return;
+    let cancelled = false;
+    (async () => {
+      const out: Record<string, ManualSection[]> = {};
+      await Promise.all(
+        slugs.map(async (slug) => {
+          try {
+            const res = await fetch(`/content/physiology/${slug}.json`);
+            if (!res.ok) return;
+            const json = await res.json();
+            const questions = (bank: any) => (Array.isArray(bank?.questions) ? bank.questions : []);
+            out[slug] = (Array.isArray(json?.banks) ? json.banks : []).map((bank: any) => ({
+              title: String(bank?.title || ""),
+              count: questions(bank).length,
+              subsections: (Array.isArray(bank?.subsections) ? bank.subsections : [])
+                .map((sub: any) => {
+                  const from = Number(sub?.from);
+                  const to = Number(sub?.to);
+                  const count = questions(bank).filter((q: any) => Number(q?.number) >= from && Number(q?.number) <= to).length;
+                  return { title: String(sub?.title || ""), from, to, count };
+                })
+                .filter((sub: any) => Number.isFinite(sub.from) && Number.isFinite(sub.to) && sub.to >= sub.from),
+            }));
+          } catch {
+            /* нет файла методички — просто без подразделов */
+          }
+        })
+      );
+      if (!cancelled) setManualSections(out);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [manualSlugsKey]);
+
   const groups = useMemo<TopicGroup[]>(() => {
     const map = new Map<string, TopicGroup>();
     for (const test of levelFiltered) {
-      if ((test.source || "").startsWith("phys_full:")) continue;
+      if ((test.source || "").startsWith("phys_full:") || (test.source || "").startsWith("phys_sub:")) continue;
       if (moduleFilter !== "all" && test.moduleKey !== moduleFilter) continue;
       const key = test.topicKey;
       const meta = topicMeta.get(test.topicId);
@@ -546,7 +620,7 @@ export function TestsHub({
       });
   }, [levelFiltered, moduleFilter, topicMeta]);
 
-  const totalQuestions = levelFiltered.filter((t) => !(t.source || "").startsWith("phys_full:")).reduce((sum, test) => sum + test.questionCount, 0);
+  const totalQuestions = levelFiltered.filter((t) => !(t.source || "").startsWith("phys_full:") && !(t.source || "").startsWith("phys_sub:")).reduce((sum, test) => sum + test.questionCount, 0);
   const selectedMode = MODES.find((item) => item.id === mode) || MODES[0];
   const showModuleFilter = modules.length > 1 && modules.some((module) => !module.fallback);
   const hasActiveFilters = Boolean(search.trim()) || moduleFilter !== "all" || (!scoped && subjectFilter !== "all");
@@ -820,29 +894,84 @@ export function TestsHub({
                   </article>
                 )}
                 {fullManuals.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {fullManuals.map((test) => (
-                      <div
-                        key={test.id}
-                        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-white py-1 pl-3 pr-1 text-[11px]"
-                      >
-                        <span className="font-semibold text-[var(--muted)]">
-                          {test.title.replace(/^Полный тест · /, "")} · {test.questionCount}
-                        </span>
-                        <Link
-                          href={buildHref(test, mode, count)}
-                          className="rounded-full px-2 py-1 font-bold text-indigo-700 transition hover:bg-indigo-50"
-                        >
-                          {mode === "sequential" ? "Весь банк" : selectedMode.label}
-                        </Link>
-                        <Link
-                          href={buildBankHref(test, mode, count)}
-                          className="rounded-full px-2 py-1 font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]"
-                        >
-                          Банк
-                        </Link>
-                      </div>
-                    ))}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {fullManuals.map((test) => {
+                      const slug = (test.source || "").replace(/^phys_full:/, "");
+                      const sections = manualSections[slug] || [];
+                      const hrefFor = (from: number, to: number) => {
+                        const subId = subTests.get(`phys_sub:${slug}:${from}-${to}`);
+                        return subId ? buildHref({ ...test, id: subId }, "sequential", count) : buildRangeHref(test, from, to);
+                      };
+                      return (
+                        <article key={test.id} className="rounded-xl border border-indigo-200 bg-white p-3 sm:p-4">
+                          <h3 className="text-sm font-extrabold leading-snug text-slate-900">
+                            {test.title.replace(/^Полный тест · /, "")}
+                          </h3>
+                          <p className="mt-0.5 text-xs text-[var(--muted)]">
+                            {test.questionCount} {plural(test.questionCount, "вопрос", "вопроса", "вопросов")}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Link
+                              href={buildHref(test, mode, count)}
+                              className="btn-primary inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 text-sm sm:flex-none"
+                            >
+                              <Play className="h-4 w-4" /> {mode === "sequential" ? "Весь банк" : selectedMode.label}
+                            </Link>
+                            <Link
+                              href={buildBankHref(test, mode, count)}
+                              className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-3 py-2 text-sm font-bold text-[var(--status-ok-fg)] sm:flex-none"
+                            >
+                              <BookOpenCheck className="h-4 w-4" /> Банк
+                            </Link>
+                          </div>
+                          {sections.length > 0 && (
+                            <details className="group mt-2">
+                              <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg px-1 text-xs font-bold text-indigo-700 marker:hidden">
+                                <span className="transition group-open:rotate-90">▸</span>
+                                По разделам и подразделам
+                              </summary>
+                              <div className="mt-2 space-y-2">
+                                {sections.map((section) => {
+                                  const first = section.subsections[0];
+                                  const last = section.subsections[section.subsections.length - 1];
+                                  return (
+                                    <div key={section.title} className="rounded-lg border border-[var(--border)] bg-slate-50/50 p-2">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0 text-[11px] font-semibold leading-snug text-slate-700">
+                                          {section.title}
+                                          <span className="ml-1 font-normal text-[var(--muted)]">· {section.count}</span>
+                                        </div>
+                                        {first && last && (
+                                          <Link
+                                            href={hrefFor(first.from, last.to)}
+                                            className="shrink-0 rounded-full bg-indigo-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-indigo-700"
+                                          >
+                                            Весь раздел
+                                          </Link>
+                                        )}
+                                      </div>
+                                      {section.subsections.length > 0 && (
+                                        <div className="mt-1.5 flex flex-wrap gap-1">
+                                          {section.subsections.map((sub) => (
+                                            <Link
+                                              key={sub.title}
+                                              href={hrefFor(sub.from, sub.to)}
+                                              className="inline-flex min-h-[34px] items-center rounded-full border border-[var(--border)] bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
+                                            >
+                                              {sub.title} · {sub.count}
+                                            </Link>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </details>
+                          )}
+                        </article>
+                      );
+                    })}
                   </div>
                 )}
               </div>

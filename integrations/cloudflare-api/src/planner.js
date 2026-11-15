@@ -797,6 +797,13 @@ export async function startSupabasePreparation(request, env, testId, input = {},
         if (ids.length) break;
       }
     }
+    // Прохождение по разделу/подразделу: позиции 1-based в порядке банка.
+    // Режем ДО перемешивания, иначе «вопросы 1–20» станут случайными.
+    const rangeFrom = Number.parseInt(String(body.from ?? ""), 10);
+    const rangeTo = Number.parseInt(String(body.to ?? ""), 10);
+    if (Number.isFinite(rangeFrom) && Number.isFinite(rangeTo) && rangeFrom >= 1 && rangeTo >= rangeFrom) {
+      ids = ids.slice(rangeFrom - 1, rangeTo);
+    }
     if (mode !== "sequential") {
       for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     }
