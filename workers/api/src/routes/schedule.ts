@@ -35,6 +35,7 @@ function mapEntry(row: any) {
     subject_slug: subject?.slug ?? row.subject_slug ?? null,
     color_hex: subject?.color_hex ?? row.color_hex ?? null,
     type: row.type || "other",
+    event_kind: row.event_kind ?? null,
     building: row.building ?? null,
     room: row.room ?? null,
     notes: row.notes ?? null,
