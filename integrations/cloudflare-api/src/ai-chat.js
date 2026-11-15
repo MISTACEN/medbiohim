@@ -312,7 +312,11 @@ function getAiCompletionCandidates(env, preferredProvider, userOverride) {
       // Резервный контур: прокси Layero на случай недоступности sberbank
       // (контракт эндпоинтов — docs/DEPLOY-LAYERO.md).
       ...(String(env.GIGACHAT_FALLBACK_BASE_URL || "").trim()
-        ? { fallback_base: String(env.GIGACHAT_FALLBACK_BASE_URL).trim() }
+        ? {
+            fallback_base: String(env.GIGACHAT_FALLBACK_BASE_URL).trim(),
+            // Релей на RU-хостинге пускает только воркер (общий секрет).
+            relay_secret: String(env.GIGACHAT_RELAY_SECRET || "").trim(),
+          }
         : {}),
       model: env.GIGACHAT_MODEL || "GigaChat",
       scope: env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS",
@@ -481,8 +485,10 @@ async function gigachatAttempt(cfg, messages, fetcher, temperature, report, star
         headers: {
           authorization: "Basic " + String(cfg.credentials).trim(),
           "content-type": "application/x-www-form-urlencoded",
-          "RqUID": crypto.randomUUID(),
+          RqUID: crypto.randomUUID(),
           accept: "application/json",
+          // Релей на Layero требует общий секрет (когда настроен).
+          ...(cfg.relay_secret ? { "x-medbiohim-internal": String(cfg.relay_secret) } : {}),
         },
         body: new URLSearchParams({ scope: cfg.scope || "GIGACHAT_API_PERS" }),
         redirect: "manual",
@@ -505,7 +511,12 @@ async function gigachatAttempt(cfg, messages, fetcher, temperature, report, star
   try {
     response = await callFetch(fetcher, base.replace(/\/$/, "") + "/chat/completions", {
       method: "POST",
-      headers: { authorization: "Bearer " + accessToken, "content-type": "application/json", accept: "application/json" },
+      headers: {
+        authorization: "Bearer " + accessToken,
+        "content-type": "application/json",
+        accept: "application/json",
+        ...(cfg.relay_secret ? { "x-medbiohim-internal": String(cfg.relay_secret) } : {}),
+      },
       body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
       redirect: "manual",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),

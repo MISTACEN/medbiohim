@@ -62,9 +62,13 @@ jobs:
           echo "$GIGACHAT_CREDENTIALS" | npx wrangler secret put GIGACHAT_CREDENTIALS
           echo "$GIGACHAT_SCOPE" | npx wrangler secret put GIGACHAT_SCOPE
           echo "$GIGACHAT_MODEL" | npx wrangler secret put GIGACHAT_MODEL
+          echo "$GIGACHAT_FALLBACK_BASE_URL" | npx wrangler secret put GIGACHAT_FALLBACK_BASE_URL
+          echo "$GIGACHAT_RELAY_SECRET" | npx wrangler secret put GIGACHAT_RELAY_SECRET
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: a7556b4deb0cc2bad2c6d6b1a7381601
           GIGACHAT_CREDENTIALS: ${{ secrets.GIGACHAT_CREDENTIALS }}
           GIGACHAT_SCOPE: ${{ secrets.GIGACHAT_SCOPE }}
           GIGACHAT_MODEL: ${{ secrets.GIGACHAT_MODEL }}
+          GIGACHAT_FALLBACK_BASE_URL: ${{ secrets.GIGACHAT_FALLBACK_BASE_URL }}
+          GIGACHAT_RELAY_SECRET: ${{ secrets.GIGACHAT_RELAY_SECRET }}
