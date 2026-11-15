@@ -659,6 +659,9 @@ export default function PreparationPage() {
   // В банке бывает не задан ни один верный вариант (импортированный вопрос без
   // эталона): такой вопрос нельзя показывать как ошибку студента.
   const noKey = q.is_closed !== false && correctKeysList.length === 0;
+  // Ответ из старой версии вопроса: его вариант больше не существует в банке
+  // (мы чинили склеенные варианты), поэтому показывать вердикт нельзя.
+  const staleAnswer = Boolean(checked[q.id]) && q.is_closed !== false && selectedOptionKeys.length === 0;
   const correct = serverGrading?.is_correct === true && !partial && !noKey;
   const unresolved = noKey || (serverGrading && serverGrading.is_correct == null);
   const answeredCount = Object.keys(checked).length;
@@ -1024,8 +1027,10 @@ export default function PreparationPage() {
         )}
 
         {checked[q.id] && experience === "prepare" && (
-          <div className={unresolved ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : correct ? "rounded-xl bg-[var(--status-ok-bg)] p-4 text-[var(--status-ok-fg)]" : partial ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : "rounded-xl bg-[var(--status-critical-bg)] p-4 text-[var(--status-critical-fg)]"}>
-            {unresolved
+          <div className={staleAnswer ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : unresolved ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : correct ? "rounded-xl bg-[var(--status-ok-bg)] p-4 text-[var(--status-ok-fg)]" : partial ? "rounded-xl bg-[var(--status-warn-bg)] p-4 text-[var(--status-warn-fg)]" : "rounded-xl bg-[var(--status-critical-bg)] p-4 text-[var(--status-critical-fg)]"}>
+            {staleAnswer
+              ? "↻ Ответ сохранён до исправления банка: варианты изменились, перепроверьте вопрос"
+              : unresolved
               ? "↻ Ответ сохранён; автоматическая проверка по эталону невозможна"
               : correct
                 ? "✓ Ответ засчитан"
