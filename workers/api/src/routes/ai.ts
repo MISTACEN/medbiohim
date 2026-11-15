@@ -19,7 +19,7 @@ import { formatAnswer } from "../lib/ai-citations";
 import { WorkersAiError, workersAiComplete, workersAiConfigured } from "../lib/workers-ai";
 // Shared JavaScript AI provider implementation bundled by Wrangler.
 // @ts-expect-error The integration module is plain JavaScript without type declarations.
-import { generateAiCompletion, getAiProviderStatus, resolveProviderModel } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
+import { generateAiCompletion, getAiProviderStatus, resolveProviderModel, listProviderModels } from "../../../../integrations/cloudflare-api/src/ai-chat.js";
 // Корпус «Подготовка к ЦНС» для RAG тьютора (только physiology, вне лекций).
 // @ts-expect-error The knowledge module is plain JavaScript without type declarations.
 import { getCnsKnowledgeEntries } from "../../../../integrations/cloudflare-api/src/knowledge/cns.js";
@@ -425,6 +425,27 @@ ai.get("/providers", requireAuth, async (c) => {
       meta.reason = `degraded: ${probe.detail} — проверьте /ai/diagnostics`;
     }
   }
+  // Живые списки моделей (GET /models провайдера): статический список протухает,
+  // когда Groq удаляет старые модели — выбранная в тьюторе модель падала в фолбэк.
+  // Кэш в Redis на 6 часов: /providers вызывается на каждый вход в тьютор.
+  try {
+    const redis = await getRedis(c.env);
+    const liveIds = Object.keys(status.providers).filter((id) => status.providers[id]?.configured);
+    await Promise.all(liveIds.map(async (id) => {
+      try {
+        const cached = redis ? await redis.get(`ai:models:${id}`) : null;
+        if (cached) {
+          const parsed = JSON.parse(String(cached));
+          if (Array.isArray(parsed) && parsed.length) { status.providers[id].models = parsed; return; }
+        }
+        const live = await listProviderModels(c.env as any, id, fetch);
+        if (Array.isArray(live) && live.length) {
+          status.providers[id].models = live;
+          if (redis) void redis.set(`ai:models:${id}`, JSON.stringify(live), { ex: 6 * 3600 });
+        }
+      } catch { /* нет живого списка — остаётся статический */ }
+    }));
+  } catch { /* без Redis — статические списки */ }
   // BYOM: пользовательская модель появляется в списке, если настроена.
   try {
     const { data: config } = await c.get("supabase")
@@ -526,6 +547,26 @@ ai.get("/conversations", requireAuth, async (c) => {
   return c.json(ok({ items: data || [] }, requestId()));
 });
 
+/**
+ * Валидация выбранной студентом модели: живой список из кэша Redis
+ * (ai:models:<id>, пишет /ai/providers), затем статический список провайдера.
+ * Модель вне обоих списков → null (остаётся env-дефолт провайдера).
+ */
+async function validateConversationModel(c: any, providerId: string, requested: unknown): Promise<string | null> {
+  if (!requested) return null;
+  try {
+    const redis = await getRedis(c.env);
+    const cached = redis ? await redis.get(`ai:models:${providerId}`) : null;
+    if (cached) {
+      const parsed = JSON.parse(String(cached));
+      if (Array.isArray(parsed) && parsed.length) {
+        return parsed.includes(String(requested)) ? String(requested) : null;
+      }
+    }
+  } catch { /* без кэша — статика */ }
+  return resolveProviderModel(c.env, providerId, requested);
+}
+
 ai.post("/conversations", requireAuth, async (c) => {
   const rid = requestId();
   let payload: { title?: string; provider?: string; model?: string; subject_slug?: string | null } = {};
@@ -538,7 +579,7 @@ ai.post("/conversations", requireAuth, async (c) => {
   // Выбор модели сохраняем только для конкретного провайдера и только из его
   // списка (или настроенной на воркере модели) — иначе env-дефолт.
   const requestedModel = provider !== "auto" && provider !== "custom"
-    ? resolveProviderModel(c.env, provider, payload.model)
+    ? await validateConversationModel(c, provider, payload.model)
     : null;
   const { data, error } = await c.get("supabase")
     .from("ai_conversations")
@@ -686,7 +727,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     const effectiveProvider = requestedProvider === "auto" && userOverride?.preferOwn ? "custom" : requestedProvider;
     // Выбранная студентом модель валидна только внутри списка своего провайдера.
     const requestedModel = effectiveProvider !== "auto" && effectiveProvider !== "custom"
-      ? resolveProviderModel(c.env, effectiveProvider, payload.model)
+      ? await validateConversationModel(c, effectiveProvider, payload.model)
       : null;
     generated = await trackedGeneration(
       c.env,

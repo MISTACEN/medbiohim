@@ -91,6 +91,8 @@ export function getAiProviderStatus(env = {}) {
     },
   };
   // Выбор модели в тьюторе: каждый провайдер публикует свой список моделей.
+  // Живой список (listProviderModels из /ai/providers) подменяет статический,
+  // поэтому resolveProviderModel должен принимать и живые имена моделей.
   for (const [id, entry] of Object.entries(providers)) {
     entry.models = PROVIDER_MODELS[id] || [];
   }
@@ -115,15 +117,17 @@ export const PROVIDER_MODELS = {
 
 /**
  * Валидирует выбранную студентом модель: принимает её, если она есть в списке
- * провайдера или совпадает с настроенной на воркере моделью этого провайдера.
- * Иначе возвращает null — вызывающий оставит env-дефолт.
+ * провайдера, в живом списке (allowed) или совпадает с настроенной на воркере
+ * моделью этого провайдера. Иначе возвращает null — вызывающий оставит
+ * env-дефолт.
  */
-export function resolveProviderModel(env = {}, providerId, requested) {
+export function resolveProviderModel(env = {}, providerId, requested, allowed) {
   const provider = String(providerId || "").trim().toLowerCase();
   const model = String(requested || "").trim();
   if (!provider || !model || model.length > 80) return null;
-  const allowed = PROVIDER_MODELS[provider] || [];
-  if (allowed.includes(model)) return model;
+  if (Array.isArray(allowed) && allowed.includes(model)) return model;
+  const staticAllowed = PROVIDER_MODELS[provider] || [];
+  if (staticAllowed.includes(model)) return model;
   const status = getAiProviderStatus(env).providers?.[provider];
   if (status && status.model && status.model === model) return model;
   return null;
@@ -390,6 +394,71 @@ async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25, 
   const text = (payload?.candidates?.[0]?.content?.parts || []).map((part) => String(part.text || "")).join("").trim();
   if (!text) throw new AiChatApiError(502, "AI_EMPTY_RESPONSE", "ИИ-провайдер вернул пустой ответ");
   return { content: text, provider: cfg.id, model: cfg.model };
+}
+
+/**
+ * Живой список моделей провайдера из его API (GET /models). Статический
+ * PROVIDER_MODELS протухает — Groq удаляет старые модели (llama-3.3/3.1 к
+ * ноябрю 2026 уже не отвечают), из-за чего выбранная в тьюторе модель падала
+ * в фолбэк. Возвращает массив id или null, если провайдер не поддерживается
+ * / не настроен / не ответил — вызывающий оставляет статический список.
+ */
+export async function listProviderModels(env = {}, providerId, fetcher = fetch) {
+  const id = String(providerId || "").trim().toLowerCase();
+  try {
+    if (id === "groq" && env.GROQ_API_KEY) {
+      const res = await callFetch(fetcher, "https://api.groq.com/openai/v1/models", {
+        headers: { authorization: "Bearer " + String(env.GROQ_API_KEY).trim(), accept: "application/json" },
+        signal: AbortSignal.timeout(3500),
+      });
+      if (!res.ok) return null;
+      const payload = await res.json().catch(() => null);
+      const ids = (Array.isArray(payload?.data) ? payload.data : []).map((m) => m?.id).filter((x) => typeof x === "string");
+      // whisper/guard/tts/embed — не чат-модели тьютора.
+      return ids.filter((x) => !/whisper|guard|tts|embed|distil|prompt-|playit/i.test(x));
+    }
+    if (id === "openai" && env.OPENAI_API_KEY) {
+      const res = await callFetch(fetcher, "https://api.openai.com/v1/models", {
+        headers: { authorization: "Bearer " + String(env.OPENAI_API_KEY).trim(), accept: "application/json" },
+        signal: AbortSignal.timeout(3500),
+      });
+      if (!res.ok) return null;
+      const payload = await res.json().catch(() => null);
+      const ids = (Array.isArray(payload?.data) ? payload.data : []).map((m) => m?.id).filter((x) => typeof x === "string");
+      return ids.filter((x) => /^gpt-/.test(x) && !/audio|realtime|image|transcribe/i.test(x));
+    }
+    if (id === "gigachat" && (env.GIGACHAT_CREDENTIALS || env.GIGACHAT_ACCESS_TOKEN)) {
+      const credentials = String(env.GIGACHAT_CREDENTIALS || "").trim();
+      let token = String(env.GIGACHAT_ACCESS_TOKEN || "").trim();
+      if (!token && credentials) {
+        const tr = await callFetch(fetcher, "https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
+          method: "POST",
+          headers: {
+            authorization: "Basic " + credentials,
+            "content-type": "application/x-www-form-urlencoded",
+            RqUID: crypto.randomUUID(),
+            accept: "application/json",
+          },
+          body: new URLSearchParams({ scope: env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS" }),
+          redirect: "manual",
+          signal: AbortSignal.timeout(3500),
+        });
+        const tp = await tr.json().catch(() => null);
+        if (!tr.ok || typeof tp?.access_token !== "string") return null;
+        token = tp.access_token;
+      }
+      const res = await callFetch(fetcher, "https://gigachat.devices.sberbank.ru/api/v1/models", {
+        headers: { authorization: "Bearer " + token, accept: "application/json" },
+        signal: AbortSignal.timeout(3500),
+      });
+      if (!res.ok) return null;
+      const payload = await res.json().catch(() => null);
+      return (Array.isArray(payload?.data) ? payload.data : []).map((m) => m?.id).filter((x) => typeof x === "string");
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 /**

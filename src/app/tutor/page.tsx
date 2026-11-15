@@ -194,6 +194,10 @@ export default function TutorPage() {
     setLoading(false);
     if(!r.ok){setError(describeApiError(r.error));return;}
     setConversation(r.data.conversation);
+    // Фактический провайдер/модель ответа могут отличаться от выбранных
+    // (фолбэк) — синхронизируем селектор с тем, что реально ответило.
+    setProvider(r.data.conversation.provider);
+    setModel(r.data.conversation.model||"");
     setItems(x=>x.map(c=>c.id===conversation.id?r.data.conversation:c));
     setMessages(m=>[...m.filter(x=>!x.id.startsWith("local-")),r.data.user_message,r.data.assistant_message]);
   }
@@ -207,6 +211,10 @@ export default function TutorPage() {
     // Смена провайдера сбрасывает модель, если она из списка другого провайдера.
     if(p==="auto"||p==="custom") setModel("");
     else if(model && !modelsFor(p).includes(model)) setModel("");
+    // Панель не закрываем, если у провайдера есть модели — иначе не выбрать
+    // конкретную модель без второго открытия; закроется кликом вне.
+    const hasModels = p!=="auto"&&p!=="custom"&&modelsFor(p).length>0;
+    if(!hasModels) setPickerOpen(false);
   }
 
   function applyCnsStarter(question: string){
