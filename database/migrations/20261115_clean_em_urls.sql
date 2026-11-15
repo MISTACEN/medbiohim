@@ -1,0 +1,39 @@
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/01-eps.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%endoplazmaticheskaya-set-eps%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/02-golgi-diktiosoma.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%diktiosoma-kompleksa-goldzhi%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/03-lizosomy-mitohondrii.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%lizosomy-i-mitohondrii%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/04-ostatochnoe-telce-lipidy.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%ostatochnoe-telce-i-vklyucheniya-lipidov%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/05-mitohondrii.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%mitohondrii%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/06-mikrovorsinki.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%mikrovorsinki-epiteliocitov-kishechnika%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/07-resnichka-zgutik.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%resnichka-zhgutik%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/08-fagocitoz-neytrofil.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%fagocitoz-nejtrofilnym-lejkocitom-krovi%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/09-pinocitoz-endotelij.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%pinocitoz-v-endotelialnyh-kletkah-kapillyara%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/10-yadro.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%yadro%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/11-apoptoz.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%apoptoz%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/12-yajcekletka.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%yajcekletka%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/13-spermatozoid.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%spermatozoid%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/14-eozinofilnyj-granulocit.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%eozinofilnyj-granulocit%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/15-sarkomer-sarkolemma.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%sarkomer-i-sarkolemma%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/16-vstavochnyj-disk.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%vstavochnyj-disk-mezhdu-kardiomiocitami%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/17-miokard-skan.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%miokard-zheludochka-serdca%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/gistologiya/elektronogrammy/19-uzlovoj-perehvat-ranve.png'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%uzlovoj-perehvat-ranve-v-nervnom-volokne-sedalischnogo-nerva%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/histology/hist-09-nervnaya-tkan/figs/em-nervno-myshechnyy-sinaps.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%nervno-myshechnyj-sinaps%' AND is_published;
+
+UPDATE trainer_feed_cards SET preparation = jsonb_set(jsonb_set(preparation, '{imageCleanUrl}', to_jsonb('https://medbiohim.vercel.app/library/lectures/histology/hist-09-nervnaya-tkan/figs/em-mielinovoe-volokno-poperechnyy.jpg'::text), true), '{has_clean_image}', 'true'::jsonb, true) WHERE mode_set = 'electronogram' AND (preparation->>'imagePath') LIKE '%poperechnyj-srez-mielinovogo-nervnogo-volokna%' AND is_published;

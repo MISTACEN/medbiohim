@@ -12,13 +12,13 @@ export const topicNames: Record<string, string> = {
 };
 export const topicLabel = (x: string) => topicNames[x] || x.replaceAll("_", " ");
 
-export function ImageBox({ id }: { id: string }) {
+export function ImageBox({ id, variant }: { id: string; variant?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const load = async (retry = false) => {
     setLoading(true);
-    const u = retry ? await retryTrainerImage(id) : await getTrainerImageUrl(id);
+    const u = retry ? await retryTrainerImage(id, variant) : await getTrainerImageUrl(id, variant);
     setSrc(u);
     setLoading(false);
     setRetrying(false);
@@ -26,9 +26,9 @@ export function ImageBox({ id }: { id: string }) {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    void getTrainerImageUrl(id).then((u) => { if (alive) { setSrc(u); setLoading(false); } });
+    void getTrainerImageUrl(id, variant).then((u) => { if (alive) { setSrc(u); setLoading(false); } });
     return () => { alive = false; };
-  }, [id]);
+  }, [id, variant]);
   if (loading) return <div className="flex min-h-[300px] items-center justify-center bg-slate-100 text-sm text-slate-500"><RefreshCw className="mr-2 h-4 w-4 animate-spin" />Загрузка изображения…</div>;
   if (!src) return <div className="flex min-h-[300px] flex-col items-center justify-center bg-slate-100 p-6 text-center"><span className="text-4xl">?</span><b className="mt-2">Изображение временно недоступно</b><button disabled={retrying} onClick={() => { setRetrying(true); void load(true); }} className="mt-3 rounded-xl border bg-white px-4 py-2 text-sm font-semibold"><RefreshCw className="mr-2 inline h-4 w-4" />Повторить</button></div>;
   return (

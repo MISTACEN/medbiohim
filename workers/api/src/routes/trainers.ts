@@ -551,12 +551,22 @@ trainers.get("/feed/:id/image", async (c) => {
     }
 
     // ?variant=clean — версия скана БЕЗ подписей для вопросов тренажёра:
-    // preparation.imageCleanPath кладёт скрипт match_clean_em при загрузке
-    // чистых оригиналов. Подписанная версия остаётся для атласа и объяснения.
+    // preparation.imageCleanUrl — полный публичный URL (Vercel-статика),
+    // ставится SQL'ом 20261115_clean_em_urls. Подписанная версия остаётся
+    // для атласа и объяснения после ответа.
     const wantsClean = c.req.query("variant") === "clean";
     const prep = (card.preparation as Record<string, any> | null) || null;
-    if (wantsClean && prep?.imageCleanPath && !sourceKeyLooksLikeUuid) {
-      card.preparation = { ...prep, imagePath: prep.imageCleanPath };
+    if (wantsClean && prep?.imageCleanUrl) {
+      // Чистая версия лежит на Vercel-статике — redirect дешевле, чем
+      // проксировать бинарник через воркер.
+      const cleanUrl = String(prep.imageCleanUrl);
+      if (/^https:\/\//.test(cleanUrl)) {
+        return c.redirect(cleanUrl, 302);
+      }
+      // Fallback на blob-путь, если imageCleanUrl не URL, а blob-ключ.
+      if (!sourceKeyLooksLikeUuid) {
+        card.preparation = { ...prep, imagePath: String(prep.imageCleanPath || prep.imageCleanUrl) };
+      }
     }
 
     const candidates = trainerImageCandidateKeys(

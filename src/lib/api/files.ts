@@ -68,7 +68,7 @@ async function withTrainerImageConcurrency<T>(task: () => Promise<T>): Promise<T
   }
 }
 
-export async function getTrainerImageUrl(id: string): Promise<string | null> {
+export async function getTrainerImageUrl(id: string, variant?: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const idKey = String(id);
   const userScope = currentUserScope();
@@ -128,7 +128,7 @@ export async function getTrainerImageUrl(id: string): Promise<string | null> {
   return promise;
 }
 
-export async function retryTrainerImage(id: string): Promise<string | null> {
+export async function retryTrainerImage(id: string, variant?: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const idKey = String(id);
   const userScope = currentUserScope();

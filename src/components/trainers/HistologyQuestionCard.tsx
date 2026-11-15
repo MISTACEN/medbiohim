@@ -25,7 +25,7 @@ export type HistologyQuestionProps = {
   labelMode?: string | null;
   contentType?: string | null;
   working?: boolean;
-  ImageBox: (props: { id: string }) => React.ReactNode;
+  ImageBox: (props: { id: string; variant?: string }) => React.ReactNode;
   onAnswer: (value: string | null, skip?: boolean) => void;
 };
 
@@ -113,7 +113,7 @@ export function HistologyQuestionCard({
         </span>
       </div>
       <div className="relative">
-        <ImageBox id={a.question_id} />
+        <ImageBox id={a.question_id} variant={answeredNow ? undefined : "clean"} />
         {showPrepName ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8">
             <div className="text-sm font-semibold text-white drop-shadow">{showPrepName}</div>
