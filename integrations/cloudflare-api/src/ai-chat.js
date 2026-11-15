@@ -366,12 +366,22 @@ function aiTimeoutMs(cfg) {
   const remaining = Number(cfg?.deadline || 0) - Date.now();
   return Math.max(1, Math.min(EXTERNAL_CALL_TIMEOUT_MS, remaining || EXTERNAL_CALL_TIMEOUT_MS));
 }
-async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}) {
+async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}, images = []) {
   const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
-  const contents = messages.filter((message) => message.role === "user" || message.role === "assistant").map((message) => ({
-    role: message.role === "assistant" ? "model" : "user",
-    parts: [{ text: String(message.content || "") }],
-  }));
+  const contents = messages.filter((message) => message.role === "user" || message.role === "assistant").map((m) => m);
+  // Vision: inline_data для последней user-реплики (data URL → base64).
+  let lastUserIndex = -1;
+  for (let i = contents.length - 1; i >= 0; i -= 1) if (contents[i].role === "user") { lastUserIndex = i; break; }
+  const normalized = contents.map((entry, i) => {
+    const parts = [{ text: String(entry.content || "") }];
+    if (i === lastUserIndex && Array.isArray(images)) {
+      for (const image of images) {
+        const m = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(String(image || ""));
+        if (m) parts.push({ inline_data: { mime_type: m[1], data: m[2] } });
+      }
+    }
+    return { role: entry.role === "assistant" ? "model" : "user", parts };
+  });
   const endpoint = cfg.base.replace(/\/$/, "") + "/models/" + encodeURIComponent(cfg.model) + ":generateContent";
   let response;
   try {
@@ -380,7 +390,7 @@ async function callGeminiCompletion(cfg, messages, fetcher, temperature = 0.25, 
       headers: { "x-goog-api-key": cfg.key, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-        contents,
+        contents: normalized,
         generationConfig: { temperature, maxOutputTokens: 2500 },
       }),
       redirect: "manual",
@@ -628,12 +638,40 @@ async function callClaudeCompletion(cfg, messages, fetcher, temperature = 0.25, 
   return { content: text, provider: cfg.id, model: String(payload?.model || cfg.model) };
 }
 
-async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}) {
-  if (cfg.id === "gemini") return callGeminiCompletion(cfg, messages, fetcher, temperature, report);
+/**
+ * Мультимодальность: превратить последнюю пользовательскую реплику в parts с
+ * картинками (OpenAI-совместимый формат image_url). Поддерживают gemini
+ * (отдельный путь inline_data), openai, groq, openrouter, mistral и BYOM
+ * openai_compatible; gigachat — нет.
+ */
+function toMultimodalMessages(messages, images) {
+  const parts = [];
+  for (const image of images) {
+    const m = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(String(image || ""));
+    if (m) parts.push({ type: "image_url", image_url: { url: String(image) } });
+  }
+  if (!parts.length) return messages;
+  const out = messages.map((m) => ({ ...m }));
+  for (let i = out.length - 1; i >= 0; i -= 1) {
+    if (out[i].role === "user") {
+      out[i] = { role: "user", content: [{ type: "text", text: String(out[i].content || "") }, ...parts] };
+      break;
+    }
+  }
+  return out;
+}
+
+async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25, report = () => {}, options = {}) {
+  const images = Array.isArray(options?.images) ? options.images.filter(Boolean) : [];
+  if (cfg.id === "gemini") return callGeminiCompletion(cfg, messages, fetcher, temperature, report, images);
   if (cfg.id === "gigachat") return callGigaChatCompletion(cfg, messages, fetcher, temperature, report);
   if (cfg.id === "custom" && cfg.provider === "anthropic") return callClaudeCompletion(cfg, messages, fetcher, temperature, report);
   const endpoint = cfg.base.replace(/\/$/, "") + "/chat/completions";
   const started = Date.now();
+  // Vision: у openai/groq/openrouter/mistral и BYOM openai_compatible —
+  // image_url parts. Если провайдер не поддерживает конкретную модель, он
+  // вернёт 4xx и цепочка уйдёт в фолбэк/дефолт как обычно.
+  const payloadMessages = images.length ? toMultimodalMessages(messages, images) : messages;
   let response;
   try {
     response = await callFetch(fetcher, endpoint, {
@@ -644,7 +682,7 @@ async function callAiCompletion(cfg, messages, fetcher, temperature = 0.25, repo
         accept: "application/json",
         ...(cfg.id === "openrouter" ? { "HTTP-Referer": "https://medbiohim.vercel.app", "X-Title": "Medbiohim" } : {}),
       },
-      body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages }),
+      body: JSON.stringify({ model: cfg.model, temperature, max_tokens: 2500, messages: payloadMessages }),
       redirect: "manual",
       signal: AbortSignal.timeout(aiTimeoutMs(cfg)),
     });
@@ -734,10 +772,14 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
   const report = typeof options?.onAttempt === "function" ? options.onAttempt : () => {};
   let lastError = null;
   const deadline = Date.now() + EXTERNAL_TOTAL_BUDGET_MS;
+  // Картинки (data URLs) для мультимодальных провайдеров: строгая валидация.
+  const images = (Array.isArray(options?.images) ? options.images : [])
+    .filter((x) => typeof x === "string" && /^data:image\/[a-z0-9.+-]+;base64,/.test(x.slice(0, 64)) && x.length <= 6_000_000)
+    .slice(0, 4);
   for (const candidate of candidates) {
     try {
       if (deadline - Date.now() <= 250) break;
-      return await callAiCompletion({ ...candidate, deadline }, safeMessages, fetcher, temperature, report);
+      return await callAiCompletion({ ...candidate, deadline }, safeMessages, fetcher, temperature, report, { images });
     } catch (error) {
       lastError = error;
       // Выбранная студентом модель снята провайдером (400/404 = ошибка модели,
@@ -748,7 +790,7 @@ export async function generateAiCompletion(env = {}, messages = [], preferredPro
         try {
           return await callAiCompletion(
             { ...candidate, model: candidate.defaultModel, deadline },
-            safeMessages, fetcher, temperature, report,
+            safeMessages, fetcher, temperature, report, { images },
           );
         } catch (retryError) {
           lastError = retryError;

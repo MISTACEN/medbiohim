@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Bot, Loader2, Send, Sparkles, Plus, Trash2, ChevronLeft, ChevronDown,
-  Check, BookOpenCheck, ListChecks, Mic, NotebookPen, GraduationCap, BrainCircuit,
+  Check, BookOpenCheck, ListChecks, Mic, NotebookPen, GraduationCap, BrainCircuit, Paperclip, X,
 } from "lucide-react";
 import { aiConversations, aiCreateConversation, aiDeleteConversation, aiGetConversation, aiProviders, aiSendMessage, type AiChatMode, type AiConversation, type AiMessage, type AiProvider, type AiProviderMeta } from "@/lib/features-api";
 import { AnswerSources } from "@/components/ai/AnswerSources";
@@ -104,6 +104,10 @@ export default function TutorPage() {
   const [subjects,setSubjects]=useState<Array<{name:string;slug:string}>>([]);
   const [psRegionHint,setPsRegionHint]=useState(false);
   const [pickerOpen,setPickerOpen]=useState(false);
+  // Фото (vision): data URL'ы — видят Gemini, OpenAI, Groq (vision-модели), BYOM.
+  const [images,setImages]=useState<string[]>([]);
+  const fileRef=useRef<HTMLInputElement>(null);
+  const VISION_PROVIDERS=new Set<AiProvider>(["gemini","openai","groq","openrouter","custom"]);
   const [mobileList,setMobileList]=useState(true);
   const bottomRef=useRef<HTMLDivElement>(null);
   const pickerRef=useRef<HTMLDivElement>(null);
@@ -214,7 +218,8 @@ export default function TutorPage() {
     if(!q||loading||!conversation)return;
     setInput("");setError(null);setLoading(true);
     setMessages(m=>[...m,{id:"local-"+Date.now(),role:"user",content:q,created_at:new Date().toISOString()}]);
-    const r=await aiSendMessage(conversation.id,q,provider,subjectSlug||undefined,mode,provider!=="auto"&&provider!=="custom"&&model?model:undefined);
+    const r=await aiSendMessage(conversation.id,q,provider,subjectSlug||undefined,mode,provider!=="auto"&&provider!=="custom"&&model?model:undefined,images.length?images:undefined);
+    setImages([]);
     setLoading(false);
     if(!r.ok){setError(describeApiError(r.error));return;}
     setConversation(r.data.conversation);
@@ -224,6 +229,24 @@ export default function TutorPage() {
     setModel(r.data.conversation.model||"");
     setItems(x=>x.map(c=>c.id===conversation.id?r.data.conversation:c));
     setMessages(m=>[...m.filter(x=>!x.id.startsWith("local-")),r.data.user_message,r.data.assistant_message]);
+  }
+
+  function pickImages(files: FileList | null){
+    if(!files||!files.length) return;
+    void (async()=>{
+      const next: string[]=[];
+      for(const f of Array.from(files).slice(0,4)){
+        if(!f.type.startsWith("image/")) continue;
+        if(f.size>4*1024*1024) { setError("Фото больше 4 МБ — сожмите и прикрепите снова."); continue; }
+        next.push(await new Promise<string>((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=()=>resolve(String(reader.result||""));
+          reader.onerror=()=>reject(new Error("read failed"));
+          reader.readAsDataURL(f);
+        }));
+      }
+      setImages((cur)=>[...cur,...next].slice(0,4));
+    })();
   }
 
   function onKeyDown(e:React.KeyboardEvent<HTMLTextAreaElement>){
@@ -365,23 +388,23 @@ export default function TutorPage() {
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
               {messages.length===0&&(
-                <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary-soft)]"><Sparkles className="h-8 w-8 text-[var(--primary)]"/></div>
+                <div className="mx-auto w-full max-w-2xl py-6 text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--primary-soft)]"><Sparkles className="h-6 w-6 text-[var(--primary)]"/></div>
                   <b>Начните диалог</b>
-                  <p className="mt-2 max-w-md text-sm text-[var(--muted)]">Сообщения будут сохранены. Можно закрыть страницу и продолжить позже.</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">Сообщения будут сохранены. Можно закрыть страницу и продолжить позже.</p>
 
                   {/* Модули подготовки — переходы без выхода из тьютора. */}
-                  <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3">
+                  <div className="mt-5 flex flex-wrap justify-center gap-1.5">
                     {MODULE_LINKS.map(({href,label,icon:Icon})=>(
-                      <Link key={href} href={href} className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-left text-xs font-semibold transition hover:border-[var(--primary)]/50 hover:text-[var(--primary)]">
+                      <Link key={href} href={href} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-[11px] font-semibold transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)]">
                         <Icon className="h-4 w-4 shrink-0 text-[var(--primary)]" /> {label}
                       </Link>
                     ))}
                   </div>
 
                   {/* Подготовка ЦНС: включает предмет physiology — RAG подтянет корпус знаний ЦНС. */}
-                  <div className="mt-4 w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 text-left">
-                    <p className="flex items-center gap-2 text-sm font-bold"><BrainCircuit className="h-4 w-4 text-[var(--primary)]" /> Подготовка к ЦНС</p>
+                  <div className="mt-3 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-left">
+                    <p className="flex items-center gap-2 text-xs font-bold"><BrainCircuit className="h-4 w-4 text-[var(--primary)]" /> Подготовка к ЦНС</p>
                     <p className="mt-1 text-xs text-[var(--muted)]">Конспекты, шпаргалка и задачи из методички — тьютор отвечает со сносками на них. Нажмите тему:</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {CNS_STARTERS.map(q=>(
@@ -393,15 +416,15 @@ export default function TutorPage() {
                   </div>
 
                   {/* Возможности моделей — честная сводка, чтобы знать, что спрашивать. */}
-                  <div className="mt-4 w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 text-left">
-                    <p className="text-sm font-bold">Что умеют модели в этом чате</p>
+                  <details className="mt-3 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-left">
+                    <summary className="cursor-pointer text-xs font-bold">Что умеют модели в этом чате</summary>
                     <ul className="mt-1.5 space-y-1 text-xs text-[var(--muted)]">
                       <li>• <b className="text-[var(--foreground)]">Все модели</b>: текст, таблицы, списки, схемы mermaid и формулы — отрисовываются прямо в чате.</li>
                       <li>• <b className="text-[var(--foreground)]">GigaChat</b>: лучший русский, нормативная база РФ. <b className="text-[var(--foreground)]">Groq</b>: самый быстрый, reasoning. <b className="text-[var(--foreground)]">Gemini</b>: видит картинки (из RU недоступен).</li>
                       <li>• «Точный» режим отвечает по лекциям предмета и материалам ЦНС со сносками [N]; «Быстрый» — без базы.</li>
-                      <li>• Изображения не генерирует ни одна подключённая модель; свои ключи — Настройки → Своя ИИ-модель.</li>
+                      <li>• Изображения не генерирует ни одна подключённая модель, но <b className="text-[var(--foreground)]">Gemini и GPT видят ваши картинки</b> — прикрепите фото кнопкой скрепки.</li>
                     </ul>
-                  </div>
+                  </details>
                 </div>
               )}
               {messages.map(m=>(
@@ -417,6 +440,17 @@ export default function TutorPage() {
             </div>
             <div className="border-t border-[var(--border)] p-3 sm:p-4">
               {error&&<div className="mb-2 rounded-lg bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">{error}</div>}
+              {images.length>0&&(
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {images.map((img,i)=>(
+                    <div key={i} className="relative">
+                      <img src={img} alt={"фото "+(i+1)} className="h-16 w-16 rounded-lg border border-[var(--border)] object-cover"/>
+                      <button type="button" onClick={()=>setImages((cur)=>cur.filter((_,j)=>j!==i))} className="absolute -right-1.5 -top-1.5 rounded-full bg-[var(--status-critical-fg)] p-0.5 text-white" aria-label="Убрать фото"><X className="h-3 w-3"/></button>
+                    </div>
+                  ))}
+                  {!VISION_PROVIDERS.has(provider)&&<p className="self-center text-xs text-[var(--status-warn-fg)]">Модель {PROVIDER_LABEL[provider]} не видит картинки — переключитесь на Gemini, GPT или Свою модель.</p>}
+                </div>
+              )}
               {/* Инструменты чата: готовые инструкции (таблица/схема/формулы/карточки). */}
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {CHAT_TOOLS.map(({label,prompt})=>(
@@ -426,7 +460,7 @@ export default function TutorPage() {
                 ))}
               </div>
               <AiQuickActions topic={input} onPrompt={(p) => { setInput(p); inputRef.current?.focus(); }} />
-              <div className="flex gap-2"><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} aria-label="Отправить" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
+              <div className="flex gap-2"><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e)=>{pickImages(e.target.files); e.currentTarget.value="";}}/><button type="button" onClick={()=>fileRef.current?.click()} disabled={loading||!conversation} aria-label="Прикрепить фото" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--primary)]/60 hover:text-[var(--primary)] disabled:opacity-40"><Paperclip className="h-5 w-5"/></button><textarea ref={inputRef} rows={2} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKeyDown} disabled={loading||!conversation} placeholder="Ваш вопрос… Enter — отправить" className="min-h-[48px] flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--primary)]/30"/><button type="button" onClick={()=>void send()} disabled={loading||!input.trim()||!conversation} aria-label="Отправить" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white disabled:opacity-40">{loading?<Loader2 className="h-5 w-5 animate-spin"/>:<Send className="h-5 w-5"/>}</button></div>
             </div>
           </div>
         </section>

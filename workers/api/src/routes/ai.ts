@@ -185,6 +185,7 @@ async function generate(
   userOverride?: unknown,
   model?: string,
   unhealthy?: string[],
+  images?: string[],
 ): Promise<ProviderResult> {
   const system = messages.find((message) => message.role === "system");
   const context = [...(system ? [system] : []), ...messages.filter((message) => message.role !== "system").slice(-23)];
@@ -196,6 +197,7 @@ async function generate(
     ...(userOverride ? { userOverride } : {}),
     ...(model ? { model } : {}),
     ...(unhealthy?.length ? { unhealthy } : {}),
+    ...(images?.length ? { images } : {}),
   });
   return { text: result.content, provider: result.provider, model: result.model };
 }
@@ -229,9 +231,10 @@ async function generateWithFallback(
   userOverride?: unknown,
   model?: string,
   unhealthy?: string[],
+  images?: string[],
 ): Promise<ProviderResult> {
   try {
-    return await generate(env, messages, requested, temperature, onAttempt, userOverride, model, unhealthy);
+    return await generate(env, messages, requested, temperature, onAttempt, userOverride, model, unhealthy, images);
   } catch (error) {
     if (!workersAiConfigured(env)) throw error;
     console.error("[ai:workers-ai-fallback]", error instanceof Error ? error.message : String(error));
@@ -273,6 +276,7 @@ function trackedGeneration(
   userOverride?: unknown,
   model?: string,
   unhealthy?: string[],
+  images?: string[],
 ): Promise<ProviderResult> {
   return withAiCall(env, usage, () =>
     generateWithFallback(env, messages, requested, temperature, (attempt) => {
@@ -283,7 +287,7 @@ function trackedGeneration(
       if (id && id !== "custom") {
         void recordProviderProbe(env, id, attempt?.outcome === "ok", `${attempt?.outcome || "error"} ${attempt?.status || ""}`.trim());
       }
-    }, userOverride, model, unhealthy));
+    }, userOverride, model, unhealthy, images));
 }
 
 /**
@@ -666,7 +670,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     return c.json(body, status as 429);
   }
 
-  let payload: { content?: string; provider?: string; model?: string; subject_slug?: string; mode?: string } = {};
+  let payload: { content?: string; provider?: string; model?: string; subject_slug?: string; mode?: string; images?: string[] } = {};
   try { payload = await c.req.json(); } catch {
     const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
     return c.json(body, status as 400);
@@ -733,6 +737,17 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
     const requestedModel = effectiveProvider !== "auto" && effectiveProvider !== "custom"
       ? await validateConversationModel(c, effectiveProvider, payload.model)
       : null;
+    // Фото (vision): data URL'ы до 4 МБ, максимум 4 на сообщение; видят
+    // gemini/openai/groq/openrouter и BYOM — gigachat честно отклоняем.
+    const VISION_PROVIDERS = new Set(["gemini", "openai", "groq", "openrouter", "custom"]);
+    const rawImages = Array.isArray(payload.images) ? payload.images : [];
+    const validImages = rawImages
+      .filter((x) => typeof x === "string" && /^data:image\/[a-z0-9.+-]+;base64,/.test(x.slice(0, 64)) && x.length <= 5_600_000)
+      .slice(0, 4);
+    if (validImages.length && !VISION_PROVIDERS.has(effectiveProvider)) {
+      const { body, status } = fail("NO_VISION", "Эта модель не видит картинки — переключитесь на Gemini, GPT или Свою модель", 422, rid);
+      return c.json(body, status as 422);
+    }
     // Провайдеры с недавними отказами (пробы) уходят в конец цепочки: auto
     // не должен ждать 403/429 заведомо больных upstream'ов.
     const unhealthy = Object.entries(await readProviderProbes(c.env))
@@ -754,6 +769,7 @@ ai.post("/conversations/:id/messages", requireAuth, async (c) => {
       userOverride ?? undefined,
       requestedModel ?? undefined,
       unhealthy,
+      validImages,
     );
     // Модель не поставила сносок — гарантируем их сами (см. lib/ai-citations.ts).
     generated = { ...generated, text: formatAnswer(generated.text, rag.citations) };

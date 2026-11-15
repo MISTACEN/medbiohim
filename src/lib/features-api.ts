@@ -200,7 +200,7 @@ export async function aiConversations(){ return api<{items:AiConversation[]}>("/
 export async function aiCreateConversation(payload?:{title?:string;provider?:AiProvider;model?:string;subject_slug?:string}){ return api<{conversation:AiConversation}>("/ai/conversations",{method:"POST",body:JSON.stringify(payload||{})}); }
 export async function aiGetConversation(id:string){ return api<{conversation:AiConversation;messages:AiMessage[]}>(`/ai/conversations/${encodeURIComponent(id)}`); }
 export async function aiDeleteConversation(id:string){ return api<{deleted:boolean}>(`/ai/conversations/${encodeURIComponent(id)}`,{method:"DELETE"}); }
-export async function aiSendMessage(id:string,content:string,provider?:AiProvider,subject_slug?:string,mode?:AiChatMode,model?:string){ return api<{conversation:AiConversation;user_message:AiMessage;assistant_message:AiMessage}>(`/ai/conversations/${encodeURIComponent(id)}/messages`,{method:"POST",body:JSON.stringify({content,provider,subject_slug,mode,model}),timeoutMs:60000}); }
+export async function aiSendMessage(id:string,content:string,provider?:AiProvider,subject_slug?:string,mode?:AiChatMode,model?:string,images?:string[]){ return api<{conversation:AiConversation;user_message:AiMessage;assistant_message:AiMessage}>(`/ai/conversations/${encodeURIComponent(id)}/messages`,{method:"POST",body:JSON.stringify({content,provider,subject_slug,mode,model,images}),timeoutMs:90000}); }
 /** One-shot completion without chat history/RAG — для генерации плана подготовки. */
 /** Режим ответа: «точный» — с RAG и сносками, «быстрый» — без контекста. */
 export type AiChatMode = "precise" | "fast";
