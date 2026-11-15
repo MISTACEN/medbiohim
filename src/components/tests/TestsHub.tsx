@@ -931,9 +931,16 @@ export function TestsHub({
                                 По разделам и подразделам
                               </summary>
                               <div className="mt-2 space-y-2">
-                                {sections.map((section) => {
+                                {sections.map((section, sectionIndex) => {
                                   const first = section.subsections[0];
                                   const last = section.subsections[section.subsections.length - 1];
+                                  // «Весь раздел» ведёт в уже существующий банк «Раздел N.»,
+                                  // чтобы не плодить второй экземпляр того же набора.
+                                  const wholeTest = tests.find((candidate) => {
+                                    const source = candidate.source || "";
+                                    if (source.startsWith("phys_full:") || source.startsWith("phys_sub:")) return false;
+                                    return candidate.questionCount === section.count && new RegExp(`^Раздел ${sectionIndex + 1}\\.`).test(candidate.title);
+                                  });
                                   return (
                                     <div key={section.title} className="rounded-lg border border-[var(--border)] bg-slate-50/50 p-2">
                                       <div className="flex items-start justify-between gap-2">
@@ -943,7 +950,7 @@ export function TestsHub({
                                         </div>
                                         {first && last && (
                                           <Link
-                                            href={hrefFor(first.from, last.to)}
+                                            href={wholeTest ? buildHref(wholeTest, "sequential", count) : first && last ? hrefFor(first.from, last.to) : "#"}
                                             className="shrink-0 rounded-full bg-indigo-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-indigo-700"
                                           >
                                             Весь раздел

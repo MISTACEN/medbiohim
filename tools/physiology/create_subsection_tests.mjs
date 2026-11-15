@@ -39,9 +39,8 @@ function rangesFor(bank) {
       out.push({ title: String(sub.title || ""), from, to, count: nums.filter((n) => n >= from && n <= to).length });
     }
   }
-  if (subs.length > 1) {
-    out.unshift({ title: `Раздел: ${String(bank.title || "").replace(/^Раздел \d+\.\s*/, "").slice(0, 80)}`, from: out[0].from, to: out[out.length - 1].to, count: out.reduce((s, r) => s + r.count, 0), whole: true });
-  }
+  // «Весь раздел» не генерируем: такой банк уже есть в каталоге под своим
+  // названием, второй экземпляр давал дубль с отдельным прогрессом.
   return out;
 }
 
