@@ -238,5 +238,8 @@ export function useStudentAgenda(): UseStudentAgendaResult {
 
 /** Готовиться по ИИ-чеклисту можно к аттестационным событиям. */
 export function isPrepTarget(item: AgendaItem): boolean {
-  return PREP_KINDS.has(item.kind) || Boolean(item.scheduleEntryId && item.kind !== "homework");
+  // Готовиться — к аттестациям и пересдачам/досдачам. Рядовая пара с
+  // scheduleEntryId — не цель подготовки (иначе каждая пара в «Ближайшем»
+  // обрастала кнопками «План/Готовиться» и блок важных распухал до простыни).
+  return PREP_KINDS.has(item.kind) || item.kind === "retake" || item.kind === "makeup";
 }
