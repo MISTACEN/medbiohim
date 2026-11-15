@@ -26,10 +26,17 @@
     padding: 10px 22px; border-radius: 12px;
   }
   button:active { transform: translateY(1px); }
+  .mirror {
+    display: none; margin-top: 14px; padding: 10px; border-radius: 12px;
+    background: #eef2ff; font-size: 13px; color: #3730a3;
+  }
+  .mirror a { color: #4338ca; font-weight: 600; }
   @media (prefers-color-scheme: dark) {
     body { background: #0f172a; color: #e2e8f0; }
     .card { background: #1e293b; border-color: #334155; box-shadow: none; }
     p { color: #94a3b8; }
+    .mirror { background: #1e1b4b; color: #c7d2fe; }
+    .mirror a { color: #a5b4fc; }
   }
 </style>
 </head>
@@ -39,6 +46,28 @@
   <h1>Нет подключения к сети</h1>
   <p>Страница MEDBIOHIM недоступна офлайн. Данные (расписание, ДЗ, тесты) загружаются с сервера и требуют интернета. Проверьте сеть и попробуйте снова.</p>
   <button type="button" onclick="location.reload()">Повторить</button>
+  <div class="mirror" id="mirror">
+    Этот домен не отвечает. Попробуйте зеркало:{" "}
+    <a id="mirror-link" href="#">открыть эту страницу на зеркале</a>
+  </div>
 </main>
+<script>
+  (function () {
+    var mirrors = ["https://medbiohim.vercel.app", "https://medbiohim.layero.app"];
+    var current = location.origin;
+    var other = mirrors.find(function (m) { return m !== current; });
+    if (!other || mirrors.indexOf(current) < 0) return; // localhost/dev — зеркала не предлагаем
+    var link = document.getElementById("mirror-link");
+    link.href = other + location.pathname + location.search;
+    link.textContent = "открыть эту страницу на " + other.replace(/^https:\/\//, "");
+    // Показываем кнопку, только если зеркало живо (быстрая проба).
+    fetch(other + "/api/v1/ai/providers", { method: "HEAD", mode: "no-cors", signal: AbortSignal.timeout(4000) })
+      .then(function () { document.getElementById("mirror").style.display = "block"; })
+      .catch(function () {
+        // no-cors HEAD может «зафейлиться» даже на живом зеркале — показываем всё равно
+        document.getElementById("mirror").style.display = "block";
+      });
+  })();
+</script>
 </body>
 </html>
