@@ -276,7 +276,7 @@ export async function cardPackDelete(id: string) {
 export async function cardPackImport(id: string) {
   return api<{ pack: { id: string; title: string }; card_count: number }>(`/card-packs/${encodeURIComponent(id)}/import`, { method: "POST", body: "{}", timeoutMs: 60000 });
 }
-export async function cardPackAiGenerate(payload: { topic: string; subject_slug: string }) {
+export async function cardPackAiGenerate(payload: { topic: string; subject_slug?: string; source_text?: string }) {
   return api<CardPackAiDraft>("/card-packs/ai-generate", { method: "POST", body: JSON.stringify(payload), timeoutMs: 90000 });
 }
 

@@ -267,12 +267,17 @@ cardPacks.post("/:id/import", requireAuth, async (c) => {
 // Возвращает ТОЛЬКО черновик: сохранение — отдельным POST /card-packs.
 cardPacks.post("/ai-generate", requireAuth, async (c) => {
   const rid = requestId();
-  let input: { topic?: string; subject_slug?: string } = {};
+  let input: { topic?: string; subject_slug?: string; source_text?: string } = {};
   try { input = await c.req.json(); } catch { return err(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON"); }
   const topic = String(input?.topic || "").trim();
   const subjectSlug = String(input?.subject_slug || "").trim() || null;
+  // Свой текст (конспект из фото/PDF или личная лекция) важнее RAG: если он
+  // есть, карточки собираются ровно по нему, а предмет не обязателен.
+  const sourceText = String(input?.source_text || "").trim().slice(0, 12000);
   if (!topic || topic.length > 300) return err(c, rid, 422, "VALIDATION_ERROR", "Укажите тему (до 300 символов)");
-  if (!subjectSlug) return err(c, rid, 422, "VALIDATION_ERROR", "Выберите предмет для контекста лекций");
+  if (!subjectSlug && sourceText.length < 200) {
+    return err(c, rid, 422, "VALIDATION_ERROR", "Выберите предмет для контекста лекций или передайте текст");
+  }
 
   // Генерация пака — дорогая внешняя ИИ-операция: суточная квота на студента.
   const userId = c.get("user").id;
@@ -292,8 +297,11 @@ cardPacks.post("/ai-generate", requireAuth, async (c) => {
   try {
     // buildLectureContext возвращает объект с текстовым блоком, а не строку:
     // раньше в промпт попадал «[object Object]», и модель отдавала пустой пак.
-    const lectureContext = await buildLectureContext(db, subjectSlug, topic);
-    const lectureBlock = String(lectureContext?.block || "").trim();
+    let lectureBlock = sourceText;
+    if (lectureBlock.length < 200) {
+      const lectureContext = await buildLectureContext(db, subjectSlug, topic);
+      lectureBlock = String(lectureContext?.block || "").trim();
+    }
     if (!lectureBlock) {
       return err(c, rid, 422, "NO_LECTURE_CONTEXT", "По этому предмету нет лекций для контекста");
     }
@@ -471,7 +479,9 @@ function extractCardsJson(raw: string): { cards?: Array<{ front?: string; back?:
  * и модель честно отвечает «нет определений». Здесь берём лекции, в названии
  * или тексте которых есть слова темы, и отдаём по 1500 символов на каждую.
  */
-async function directLectureBlock(db: any, subjectSlug: string, topic: string): Promise<string> {
+async function directLectureBlock(db: any, subjectSlug: string | null, topic: string): Promise<string> {
+  // Без предмета искать нечего: генерация из своего текста сюда не доходит.
+  if (!subjectSlug) return "";
   const words = topic.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 3).slice(0, 3);
   if (!words.length) return "";
   try {

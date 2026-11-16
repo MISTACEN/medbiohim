@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, FileText, Loader2, Save, Upload, Wand2 } from "lucide-react";
-import { aiNotesFromFile } from "@/lib/features-api";
+import { aiNotesFromFile, cardPackAiGenerate, cardPackCreate } from "@/lib/features-api";
 import { listSubjectsCatalog } from "@/lib/api";
 import { createMyLecture } from "@/lib/api/myLectures";
 import { describeApiError } from "@/lib/errors";
@@ -37,6 +37,8 @@ export default function ImportNotesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [generating, setGenerating] = useState(false);
   const [notes, setNotes] = useState("");
+  const [cardsBusy, setCardsBusy] = useState(false);
+  const [cardsNote, setCardsNote] = useState("");
   const [title, setTitle] = useState("");
   const [subjectSlug, setSubjectSlug] = useState("");
   const [subjects, setSubjects] = useState<Array<{ name: string; slug: string }>>([]);
@@ -96,6 +98,42 @@ export default function ImportNotesPage() {
     } finally {
       setGenerating(false);
     }
+  }
+
+  async function makeCards() {
+    const slug = subjectSlug || (subjects[0]?.slug || "");
+    if (!notes.trim() || cardsBusy) return;
+    setCardsBusy(true);
+    setError("");
+    setCardsNote("");
+    const draft = await cardPackAiGenerate({
+      topic: (inferredTitle || "Конспект").trim().slice(0, 300),
+      subject_slug: slug || undefined,
+      source_text: notes.slice(0, 12000),
+    });
+    if (!draft.ok) {
+      setCardsBusy(false);
+      setError(describeApiError(draft.error));
+      return;
+    }
+    const items = (draft.data?.cards || [])
+      .map((card) => ({ front: String(card.front || "").trim(), back: String(card.back || "").trim() }))
+      .filter((card) => card.front && card.back);
+    if (!items.length) {
+      setCardsBusy(false);
+      setError("ИИ не нашёл в конспекте фактов для карточек");
+      return;
+    }
+    const pack = await cardPackCreate({
+      title: `Из конспекта: ${(inferredTitle || "без названия").slice(0, 150)}`,
+      description: "Карточки собраны ИИ из конспекта, сделанного по фото/PDF/аудио.",
+      subject_slug: slug || null,
+      source: "ai",
+      items,
+    });
+    setCardsBusy(false);
+    if (pack.ok) setCardsNote(`Готово: ${pack.data.card_count} карточек в паках карточек.`);
+    else setError(describeApiError(pack.error));
   }
 
   async function save() {
@@ -194,6 +232,23 @@ export default function ImportNotesPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {saving ? "Сохраняю…" : "Сохранить как личную лекцию"}
               </button>
+              <button
+                type="button"
+                onClick={() => void makeCards()}
+                disabled={cardsBusy || !notes.trim()}
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-bold disabled:opacity-50"
+              >
+                {cardsBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                {cardsBusy ? "ИИ собирает карточки…" : "Сделать карточки из конспекта"}
+              </button>
+              {cardsNote ? (
+                <p className="text-sm text-[var(--status-ok-fg)]">
+                  {cardsNote}{" "}
+                  <Link href="/cards" className="font-semibold underline">
+                    Открыть карточки
+                  </Link>
+                </p>
+              ) : null}
             </section>
           ) : null}
 
