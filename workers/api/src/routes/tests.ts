@@ -703,7 +703,9 @@ tests.post("/attempts/:id/finish", requireAuth, async (c) => {
     if (!error) {
       // Фаза 5: завершение теста — событие ленты (сбой записи не влияет на ответ).
       const { logActivity } = await import("../lib/activity");
-      const attempt: any = (data as any)?.attempt ?? null;
+      // RPC отвечает {ok, data:{attempt}}, старый формат — {attempt} на верхнем
+      // уровне: берём оба, иначе освоенность темы не записывалась.
+      const attempt: any = (data as any)?.attempt ?? (data as any)?.data?.attempt ?? null;
       await logActivity(c.env, {
         userId: c.get("user").id,
         kind: "test_finished",
