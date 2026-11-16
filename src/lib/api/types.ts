@@ -59,7 +59,7 @@ export type StudyPlan = {
   event_date: string;
   days: StudyPlanDay[];
   topics: Array<{ topic_id?: string | null; title: string; mastery_pct: number }>;
-  mastery_pct: number;
+  mastery_pct: number | null;
   status: string;
   generated_by: string;
 };

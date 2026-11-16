@@ -108,7 +108,12 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
     [plan, persisted],
   );
 
-  const readiness = Math.max(0, Math.min(100, Math.round(Number(plan?.mastery_pct ?? item.masteryPct ?? 0))));
+  // null = темы ещё не измерены (нет ни одной попытки по ним). Тогда честно
+  // пишем «нет данных», а не «готовность 0%».
+  // Свежее значение — из /academic/state (item.masteryPct, там null = не измерено),
+  // в сохранённом плане лежит число для истории.
+  const measured = item.masteryPct !== undefined ? item.masteryPct : plan?.mastery_pct ?? null;
+  const readiness = measured == null ? null : Math.max(0, Math.min(100, Math.round(Number(measured))));
   const kindLabel = EVENT_LABEL[item.kind] || "занятие";
   const totalItems = plan?.days.reduce((sum, day) => sum + day.items.length, 0) ?? 0;
   const doneItems = plan?.days.reduce((sum, day) => sum + day.items.filter((entry) => entry.done).length, 0) ?? 0;
@@ -142,14 +147,19 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
           <>
             <div className="mt-4 rounded-xl border border-[var(--border)] px-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span className="font-semibold">Готовность: {readiness}%</span>
+                <span className="font-semibold">
+                  Готовность: {readiness == null ? "нет данных" : `${readiness}%`}
+                </span>
                 <span className="text-xs text-[var(--muted)]">
                   {plan.topics.length ? `тем события: ${plan.topics.length}` : "темы не найдены в плане предмета"}
                   {totalItems ? ` · шагов: ${doneItems} из ${totalItems}` : ""}
                 </span>
               </div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--border)]">
-                <div className={"h-full rounded-full transition-all " + barTone(readiness)} style={{ width: `${readiness}%` }} />
+                <div
+                  className={"h-full rounded-full transition-all " + (readiness == null ? "bg-[var(--border)]" : barTone(readiness))}
+                  style={{ width: `${readiness ?? 0}%` }}
+                />
               </div>
               {plan.topics.length ? (
                 <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -157,9 +167,10 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
                     <li
                       key={topic.topic_id || `${topic.title}-${index}`}
                       className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--muted)]"
-                      title={`Освоено ${topic.mastery_pct}%`}
+                      title={readiness == null ? "Освоенность ещё не измерена" : `Освоено ${topic.mastery_pct}%`}
                     >
-                      {topic.title} · {topic.mastery_pct}%
+                      {topic.title}
+                      {readiness == null ? "" : ` · ${topic.mastery_pct}%`}
                     </li>
                   ))}
                 </ul>

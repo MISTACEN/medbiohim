@@ -42,7 +42,7 @@ export type PrepReadiness = {
   subject_name: string | null;
   event_date: string | null;
   days_left: number | null;
-  mastery_pct: number;
+  mastery_pct: number | null;
   topics: PrepTopic[];
   source: "curriculum" | "progress" | "none";
 };
@@ -256,7 +256,11 @@ export async function prepReadinessForEvents(
       subject_name: String(event.subject_name || (subjectId ? nameById.get(subjectId) : "") || "") || null,
       event_date: eventDate,
       days_left: Math.max(0, diffDays(today, eventDate)),
-      mastery_pct: averageMastery(topics),
+      // Если ни по одной теме события нет строки прогресса, процент не измерен:
+      // отдаём null, чтобы UI не писал «готовность 0%» про неизвестное.
+      mastery_pct: topics.some((topic) => topic.topic_id && percentByTopic.has(topic.topic_id))
+        ? averageMastery(topics)
+        : null,
       topics,
       source,
     });
