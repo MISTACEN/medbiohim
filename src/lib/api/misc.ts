@@ -19,6 +19,11 @@ import type {
 
 export async function health() { return api<any>(endpoints.misc.health()); }
 export async function presenceHeartbeat() { return api<any>(endpoints.misc.presenceHeartbeat(), { method: "POST", body: "{}" }); }
+
+/** Сколько студентов активно за последние 2 минуты (только агрегат). */
+export async function getPresenceCount(options: RequestInit = {}) {
+  return api<{ count: number; available: boolean; window_seconds?: number }>(endpoints.misc.presenceCount(), options);
+}
 export async function getDashboard(options: RequestInit = {}) {
   const r = await api<Dashboard>(endpoints.misc.dashboard(), options);
   if (r?.ok && r.data) r.data = { ...r.data, announcements: filterSafe(r.data?.announcements, isAnnouncement) };

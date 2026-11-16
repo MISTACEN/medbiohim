@@ -337,6 +337,7 @@ export const endpoints = {
   misc: {
     health: (): string => "/health",
     presenceHeartbeat: (): string => "/presence/heartbeat",
+    presenceCount: (): string => "/presence/count",
     dashboard: (): string => "/dashboard",
     progress: (query?: string): string => withQuery("/progress", query),
     progressSummary: (): string => "/progress/summary",

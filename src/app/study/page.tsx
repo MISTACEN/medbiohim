@@ -42,6 +42,7 @@ import { WeeklyLeague } from "@/components/study/WeeklyLeague";
 import { StreakHeatmap } from "@/components/study/StreakHeatmap";
 import { DailyQuests } from "@/components/study/DailyQuests";
 import { DailyCard } from "@/components/study/DailyCard";
+import { PresenceBadge } from "@/components/study/PresenceBadge";
 import { BadgeCollection } from "@/components/study/BadgeCollection";
 import ExamAgent from "@/components/study/ExamAgent";
 import { SrsDueCard } from "@/components/study/SrsDueCard";
@@ -257,6 +258,7 @@ export default function StudyPage() {
         </div>
 
         <aside className="space-y-5">
+          <div><PresenceBadge /></div>
           <WeakTopics academic={academic} />
           <SrsDueCard />
           <RecentActivity />
