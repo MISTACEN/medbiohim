@@ -215,13 +215,43 @@ export async function prepReadinessForEvents(
     }
   }
 
+  // Дата предыдущей аттестации того же предмета: коллоквиум/КР обычно покрывают
+  // материал после прошлой контрольной точки, а не весь семестр — окно тем
+  // сужается с «всё до даты события» до «после прошлой аттестации».
+  const prevControlDateBySubject = new Map<string, string>();
+  if (subjectIds.length) {
+    const { data: prevEvents, error: prevError } = await supabase
+      .from("schedule_entries")
+      .select("subject_id,date")
+      .in("subject_id", subjectIds)
+      .in("event_kind", [...PREP_KINDS])
+      .not("date", "is", null)
+      .lt("date", today)
+      .order("date", { ascending: false })
+      .limit(200);
+    if (prevError) console.warn("[study-prep:prev-controls]", prevError.message);
+    for (const row of prevEvents || []) {
+      const subjectId = String(row?.subject_id || "");
+      const date = String(row?.date || "");
+      // Наиболее свежая прошлая аттестация предмета.
+      if (subjectId && date && !prevControlDateBySubject.has(subjectId)) {
+        prevControlDateBySubject.set(subjectId, date);
+      }
+    }
+  }
+
   for (const event of candidates) {
     const id = String(event.id);
     const eventDate = String(event.date);
     const subjectId = event.subject_id ? String(event.subject_id) : "";
     const fromPlan = subjectId ? planTopicsBySubject.get(subjectId) || [] : [];
     // Темы, пройденные к дате события (по плану предмета — сверху ближайшие).
-    const relevant = fromPlan.filter((entry) => entry.date <= eventDate);
+    // Узкое окно «после прошлой аттестации» применяется, только если в нём есть
+    // темы: пустое окно (нет curriculum-строк после прошлой КР) откатывается к
+    // прежнему поведению, чтобы план подготовки не опустел.
+    const prevDate = prevControlDateBySubject.get(subjectId || "");
+    const narrowed = prevDate ? fromPlan.filter((entry) => entry.date > prevDate && entry.date <= eventDate) : [];
+    const relevant = narrowed.length ? narrowed : fromPlan.filter((entry) => entry.date <= eventDate);
 
     let topics: PrepTopic[] = [];
     let source: PrepReadiness["source"] = "none";

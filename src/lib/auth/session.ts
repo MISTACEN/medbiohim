@@ -25,6 +25,14 @@ const LEGACY_ACCESS_KEY = "mb_access_token";
 const LEGACY_REFRESH_KEY = "mb_refresh_token";
 const TRANSPORT_FLAG_KEY = "mb_auth_transport";
 const TRANSPORT_FLAG_VALUE = "cookie";
+/**
+ * Метка «в этом браузере когда-то была сессия»: живёт в localStorage, поэтому
+ * переживает перезагрузку страницы, когда in-memory токен уже потерян. По ней
+ * гостевой bootstrap отличает вернувшегося пользователя (куки mb_rt могут быть
+ * валидны — стоит пробовать refresh) от настоящего гостя (refresh звать бессмысленно
+ * и он шумит 422 в консоли при каждом открытии /login).
+ */
+const SESSION_SEEN_KEY = "mb_session_seen";
 
 /** Событие «сессия окончательно истекла»: refresh-токен отвергнут сервером. */
 export const SESSION_EXPIRED_EVENT = "mbh:session-expired";
@@ -63,6 +71,28 @@ let sessionAlive = false;
 /** Считать сессию подтверждённой по кукам (после успешного /auth/me). */
 export function markSessionAlive(): void {
   sessionAlive = true;
+  const store = storage();
+  if (store) {
+    try {
+      store.setItem(SESSION_SEEN_KEY, "1");
+    } catch {
+      /* приватный режим — маркер не ставится, refresh просто не вызовется */
+    }
+  }
+}
+
+/**
+ * Была ли в этом браузере сессия (для решения «пробовать ли refresh на 401»).
+ * true у вернувшегося пользователя даже после перезагрузки страницы.
+ */
+export function hasSessionMarker(): boolean {
+  const store = storage();
+  if (!store) return false;
+  try {
+    return store.getItem(SESSION_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 /** In-memory Bearer для кросс-доменных вызовов; null после перезагрузки страницы. */
@@ -128,6 +158,11 @@ export async function setSessionTokens(access: string, refresh?: string): Promis
   const store = storage();
   if (store) {
     store.setItem(TRANSPORT_FLAG_KEY, TRANSPORT_FLAG_VALUE);
+    try {
+      store.setItem(SESSION_SEEN_KEY, "1");
+    } catch {
+      /* приватный режим */
+    }
     clearLegacyTokenStorage();
   }
   // An access token for a different user must not keep the previous account's

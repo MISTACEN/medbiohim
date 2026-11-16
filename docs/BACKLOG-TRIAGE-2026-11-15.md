@@ -45,7 +45,7 @@
 | 2.3 Cloze-конспекты | ✅ worker GET/POST /lectures/:id/cloze + страница /lectures/[id]/learn + ошибки в SRS + ссылка из лекции |
 | 2.4 Лента активности | ✅ activity_events + RecentActivity на /study |
 | 2.5 Конспект из файлов (MVP) | ✅ POST /ai/notes-from-file (PDF unpdf / фото Gemini или OCR) + /study/import + сохранение в личные лекции. Аудио (2.5.2) и подкаст (2.5.3) ⬜ — отдельные фазы |
-| 2.6 Ночной агент + Telegram | 🔶 runExamAgentNightly в cron воркера есть; отчёт в Telegram — при следующем заходе |
+| 2.6 Ночной агент + Telegram | ✅ runExamAgentNightly в cron (17 3 * * *) + утренний отчёт в Telegram (notifyPlanReport: личный чат из telegram_accounts, до 5 вопросов дня + ссылка на план) |
 | 2.7 Ответы к экзамену .docx | ✅ worker /exam-questions/export + buildExamAnswersDocx на клиенте + кнопка в предметах |
 | 2.8 Устный экзамен голосом | ✅ POST /ai/oral-evaluate + /tests/preparation/[id]/oral (Web Speech API ru-RU, fallback текст) + карточка режима |
 | 2.9 Мнемоники/доска/тона | ✅ AiQuickActions в тьюторе (5 тонов) |
@@ -111,9 +111,24 @@
 - ⬜ 2 электронограммы с EMF-картинками в docx — нужен конвертер.
 - ⬜ Включить Leaked Password Protection в дашборде Supabase.
 - ⬜ Сменить админ-пароль (засветился в чате).
-- 🔶 Шум после логина: гонка первого захода даёт 401 /auth/me + 422
-  /api/auth/refresh в консоли, сессия корректно восстанавливается — можно
-  тихо гасить (не критично).
+
+### Заход 2026-11-17 (вечер) — добивка
+
+- ✅ **Шум после логина погашен**: гостевой bootstrap больше не зовёт
+  `/api/auth/refresh` — маркер `mb_session_seen` в localStorage отличает
+  вернувшегося пользователя от гостя (`hasSessionMarker()`,
+  `src/lib/auth/session.ts` + AuthProvider). Раньше каждое открытие /login
+  гостем давало 401 me + 422 refresh ×1–2 в консоли.
+- ✅ **Telegram-отчёт ночного агента (2.6)** — проверка кода показала, что он
+  уже реализован полностью: `notifyPlanReport` в jobs/exam-agent.ts (личный
+  чат из telegram_accounts, до 5 вопросов + ссылка на план) вызывается из
+  `runExamAgentNightly`, cron 17 3 * * * в index.ts. Статус закрыт как ✅.
+- ✅ **Матчинг covers сужен**: `prepReadinessForEvents` брал ВСЕ темы
+  curriculum до даты события; теперь окно — темы после предыдущей аттестации
+  того же предмета (schedule_entries, PREP_KINDS, date < today), при пустом
+  узком окне — откат к прежнему поведению. Коллоквиум больше не покрывает
+  весь семестр.
+- ✅ Контракт-тест Drive-резолвера обновлён под thumbnail/full маркеры.
 
 ### Живой клик-прогон (2026-11-17, Playwright headless под админ-сессией)
 

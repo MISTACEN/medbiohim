@@ -11,7 +11,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SESSION_EXPIRED_EVENT, clearLegacyTokenStorage, markSessionAlive } from "@/lib/auth/session";
+import { SESSION_EXPIRED_EVENT, clearLegacyTokenStorage, hasSessionMarker, markSessionAlive } from "@/lib/auth/session";
 import { isTemporaryAuthFailure } from "@/lib/retry";
 import { clearTokens, hasToken, logoutSession, me, refreshSession, setTokens, telegramWebAppLogin } from "@/lib/api";
 import { getTelegramInitData } from "@/lib/telegram-webapp";
@@ -85,14 +85,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // mb_rt + свежий access в теле) → повтор; оба мимо → гость.
       let res = await me();
       if (!res.ok && res.error.code === "UNAUTHORIZED") {
-        let refreshed = await refreshSession();
-        if (!refreshed.ok && isTemporaryAuthFailure(refreshed.error.code)) {
-          await new Promise((resolve) => setTimeout(resolve, 600));
-          refreshed = await refreshSession();
-        }
-        if (refreshed.ok) {
-          // Свежий access уже в памяти (refreshSessionResult); повторяем профиль.
-          res = await me();
+        // Refresh имеет смысл только если в этом браузере уже была сессия
+        // (маркер в localStorage): у настоящего гостя куки mb_rt нет, и запрос
+        // refresh каждый раз шумел 422 в консоли при открытии /login.
+        if (hasSessionMarker()) {
+          let refreshed = await refreshSession();
+          if (!refreshed.ok && isTemporaryAuthFailure(refreshed.error.code)) {
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            refreshed = await refreshSession();
+          }
+          if (refreshed.ok) {
+            // Свежий access уже в памяти (refreshSessionResult); повторяем профиль.
+            res = await me();
+          }
         }
       }
       if (!res.ok && isTemporaryAuthFailure(res.error.code)) {

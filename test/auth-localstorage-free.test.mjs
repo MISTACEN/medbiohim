@@ -34,12 +34,17 @@ test("session module only removes legacy token keys and writes the transport fla
   // Ни getItem, ни setItem с legacy-ключами не существует.
   assert.doesNotMatch(session, /getItem\([^)]*LEGACY_/);
   assert.doesNotMatch(session, /setItem\([^)]*LEGACY_/);
-  // Единственная запись в localStorage — флаг транспорта.
+  // Записи в localStorage — только не-токеновые флаги: транспорт и маркер
+  // «сессия в этом браузере была» (гостевой bootstrap не шумит refresh-ом).
   assert.match(session, /TRANSPORT_FLAG_KEY = "mb_auth_transport"/);
   assert.match(session, /TRANSPORT_FLAG_VALUE = "cookie"/);
   assert.match(session, /store\.setItem\(TRANSPORT_FLAG_KEY, TRANSPORT_FLAG_VALUE\)/);
+  assert.match(session, /SESSION_SEEN_KEY = "mb_session_seen"/);
+  assert.match(session, /hasSessionMarker/);
   const setItemCalls = session.match(/\.setItem\(/g) || [];
-  assert.equal(setItemCalls.length, 1, "в session.ts единственная запись в localStorage — флаг транспорта");
+  // Три: флаг транспорта, маркер сессии при входе и тот же маркер при
+  // успешном /auth/me. Никаких токенов в localStorage нет.
+  assert.equal(setItemCalls.length, 3, "в session.ts только не-токеновые флаги");
 });
 
 test("AuthProvider bootstraps from cookies: legacy cleanup + me() + server refresh", () => {

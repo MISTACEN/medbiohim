@@ -65,7 +65,10 @@ test("histology temporary Google Drive index covers all original preparation pho
   assert.ok(index.items.every((item) => /^[A-Za-z0-9_-]{20,}$/.test(item.id)));
   assert.ok(trainersSource.includes('import histologyDriveIndex from "../data/histology-drive-index.json"'));
   assert.ok(trainersSource.includes("findHistologyDriveItem"));
-  assert.ok(trainersSource.includes("google-drive-temporary"));
+  // Растровые картинки идут thumbnail-ом (sz=w2000) — «долгие электронограммы»;
+  // полный оригинал — по ?variant=full. Маркеры резолвера фиксированы тестом.
+  assert.ok(trainersSource.includes("google-drive-thumbnail"));
+  assert.ok(trainersSource.includes("google-drive-full"));
   assert.ok(trainersSource.includes('String((card as any).subject_slug || "") === "histology"'));
   assert.ok(trainersSource.includes('String((card as any).specialty_slug || "") === "mbh"'));
   assert.ok(trainersSource.includes('https://drive.google.com/uc?export=download&id='));
