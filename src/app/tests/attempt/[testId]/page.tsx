@@ -17,6 +17,7 @@ import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/endpoints";
 import { describeApiError } from "@/lib/errors";
 import { ExplainWithAi } from "@/components/tests/ExplainWithAi";
+import { createCardsFromAttempt } from "@/lib/api/tests";
 
 type QOption = string | { key?: unknown; label?: unknown };
 type Question = { id: string; text: string; options: QOption[]; type?: string; is_closed?: boolean; allow_multiple?: boolean };
@@ -38,6 +39,8 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [finished, setFinished] = useState<{ percent: number | null; score: number | null; max_score: number | null } | null>(null);
+  const [cardsBusy, setCardsBusy] = useState(false);
+  const [cardsNote, setCardsNote] = useState("");
   const [error, setError] = useState("");
   // Слаг предмета из детали теста — для RAG-разбора ошибки тьютором.
   const [subjectSlug, setSubjectSlug] = useState("");
@@ -102,6 +105,15 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
     }
   }
 
+  async function makeCards() {
+    if (!attemptId || cardsBusy) return;
+    setCardsBusy(true);
+    const response = await createCardsFromAttempt(attemptId);
+    setCardsBusy(false);
+    if (response.ok) setCardsNote(`Готово: ${response.data.card_count} карточек в паке «Из теста» — открыть в /cards`);
+    else setCardsNote(describeApiError(response.error));
+  }
+
   async function finish() {
     if (!attemptId || busy) return;
     setBusy(true);
@@ -123,7 +135,18 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
       <h1 className="page-title">Тестирование завершено</h1>
       <div className="my-4 text-5xl font-extrabold text-indigo-600">{finished.percent ?? "—"}%</div>
       <p className="text-sm text-slate-500">{finished.score ?? 0} из {finished.max_score ?? questions.length} верных · результат отправлен преподавателю</p>
-      <Link href="/tests" className="btn-primary mt-4 inline-flex">К тестам</Link>
+      {cardsNote && <p className="mt-3 text-sm text-[var(--status-ok-fg)]">{cardsNote}</p>}
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <button
+          type="button"
+          className="btn-secondary inline-flex items-center gap-2"
+          disabled={cardsBusy}
+          onClick={() => void makeCards()}
+        >
+          {cardsBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Сделать карточки из теста
+        </button>
+        <Link href="/tests" className="btn-primary inline-flex">К тестам</Link>
+      </div>
     </div></main>;
   }
 

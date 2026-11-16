@@ -728,6 +728,86 @@ tests.post("/attempts/:id/finish", requireAuth, async (c) => {
   }
 });
 
+/**
+ * Карточки из завершённой попытки: вопрос → правильный вариант.
+ * Снимок вопросов лежит в test_attempts.question_snapshot (с верными ответами),
+ * поэтому клиенту не нужно раскрывать ответы напрямую. Один вызов — один пак.
+ */
+tests.post("/attempts/:id/cards", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
+  if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID попытки");
+  const MAX_CARDS = 100;
+  try {
+    const { data: attempt, error } = await db
+      .from("test_attempts")
+      .select("id,test_id,status,question_snapshot,tests(title,subject_id)")
+      .eq("id", id).eq("user_id", c.get("user").id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!attempt) {
+      const { body, status } = fail("NOT_FOUND", "Попытка не найдена", 404, rid);
+      return c.json(body, status as 404);
+    }
+    if (String(attempt.status || "") !== "submitted") {
+      const { body, status } = fail("VALIDATION_ERROR", "Сначала завершите тест", 422, rid);
+      return c.json(body, status as 422);
+    }
+    const snapshot: any[] = Array.isArray(attempt.question_snapshot) ? attempt.question_snapshot : [];
+    const seen = new Set<string>();
+    const items: Array<{ front: string; back: string }> = [];
+    for (const question of snapshot) {
+      const front = String(question?.text || "").trim().slice(0, 1000);
+      if (!front || seen.has(front)) continue;
+      const options = Array.isArray(question?.options) ? question.options : [];
+      const correct = options.find((option: any) => option?.correct === true);
+      const fallback = String(question?.answer || "").replace(/^Верный ответ:\s*/i, "").trim();
+      const back = String(correct?.label || fallback || "").trim().slice(0, 1000);
+      if (!back) continue;
+      seen.add(front);
+      items.push({ front, back });
+      if (items.length >= MAX_CARDS) break;
+    }
+    if (!items.length) {
+      const { body, status } = fail("NO_CARDS", "В этой попытке нет вопросов с известным ответом", 422, rid);
+      return c.json(body, status as 422);
+    }
+
+    const testTitle = String((attempt as any)?.tests?.title || "Тест").slice(0, 150);
+    const subjectId = String((attempt as any)?.tests?.subject_id || "");
+    let subjectSlug: string | null = null;
+    if (subjectId && UUID.test(subjectId)) {
+      const { data: subject } = await db.from("subjects").select("slug").eq("id", subjectId).limit(1).maybeSingle();
+      subjectSlug = subject?.slug ? String(subject.slug) : null;
+    }
+
+    const { data: pack, error: packError } = await db
+      .from("card_packs")
+      .insert({
+        owner_id: c.get("user").id,
+        title: `Из теста: ${testTitle}`.slice(0, 200),
+        description: `Карточки собраны из вопросов теста «${testTitle}» после завершения попытки.`,
+        subject_slug: subjectSlug,
+        source: "user",
+        is_published: false,
+        published_at: null,
+      })
+      .select("id")
+      .single();
+    if (packError) throw packError;
+
+    const rows = items.map((item, index) => ({ pack_id: pack.id, front: item.front, back: item.back, order_index: index }));
+    for (let i = 0; i < rows.length; i += 25) {
+      const { error: itemsError } = await db.from("card_pack_items").insert(rows.slice(i, i + 25));
+      if (itemsError) throw itemsError;
+    }
+    return c.json(ok({ pack_id: pack.id, card_count: items.length }, rid), 201);
+  } catch (createError) {
+    console.error("[tests:attempt-cards]", createError);
+    const { body, status } = fail("CARDS_CREATE_FAILED", "Не удалось собрать карточки", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 tests.post("/attempts/:attemptId/answers/:questionId/regrade", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), attemptId = (c.req.param("attemptId") ?? ""), questionId = (c.req.param("questionId") ?? "");
   if (!UUID.test(attemptId) || !UUID.test(questionId)) return invalid(c, rid, "Некорректный ID попытки или вопроса");

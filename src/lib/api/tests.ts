@@ -69,6 +69,14 @@ export async function saveTestAnswer(attemptId: string, questionId: string, answ
   return api<any>(endpoints.tests.attemptsAnswers(attemptId), { method: "POST", body: JSON.stringify({ question_id: questionId, answer_text: answerText }) });
 }
 export async function finishAttempt(id: string) { return api<any>(endpoints.tests.attemptsFinish(id), { method: "POST", body: "{}" }); }
+/** Собрать пак карточек из вопросов завершённой попытки. */
+export async function createCardsFromAttempt(attemptId: string) {
+  return api<{ pack_id: string; card_count: number }>(endpoints.tests.attemptCards(attemptId), {
+    method: "POST",
+    body: "{}",
+  });
+}
+
 export async function retryTestAnswerGrading(attemptId: string, questionId: string) {
   return api<any>(endpoints.tests.attemptsAnswerRegrade(attemptId, questionId), { method: "POST", body: "{}" });
 }

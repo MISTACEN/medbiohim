@@ -72,6 +72,7 @@ export const endpoints = {
     attemptsAnswerRegrade: (attemptId: string, questionId: string): string =>
       `/tests/attempts/${enc(attemptId)}/answers/${enc(questionId)}/regrade`,
     attemptsFinish: (attemptId: string): string => `/tests/attempts/${enc(attemptId)}/finish`,
+    attemptCards: (attemptId: string): string => `/tests/attempts/${enc(attemptId)}/cards`,
     myAttempts: (query?: string): string => withQuery("/my/attempts", query),
     preparation: (sessionId: string): string => `/tests/preparation/${enc(sessionId)}`,
     preparationFinish: (sessionId: string): string => `/tests/preparation/${enc(sessionId)}/finish`,
