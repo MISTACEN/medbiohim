@@ -109,6 +109,12 @@
 - ⬜ Применить `20261117_drop_probe_fn.sql` вручную (DROP в SQL-редакторе;
   через пулер DROP стабильно виснет, доступ уже закрыт revoke).
 - ⬜ 2 электронограммы с EMF-картинками в docx — нужен конвертер.
+- ⬜ **GEMINI_API_KEY на воркере** — инфраструктурный блокер: подкаст (TTS) и
+  фото→конспект (vision) честно отвечают PODCAST_NOT_CONFIGURED /
+  VISION_NOT_CONFIGURED. Тьютор живёт на Groq/GigaChat без Gemini. Нужно:
+  ключ Google AI Studio → `wrangler secret put GEMINI_API_KEY` (и опционально
+  GEMINI_VERCEL_PROXY_URL/SECRET для RU). Секреты VERTEX_*/GOOGLE_CLOUD_* в
+  списке есть, но кодом не используются — мусор.
 - ⬜ Включить Leaked Password Protection в дашборде Supabase.
 - ⬜ Сменить админ-пароль (засветился в чате).
 
