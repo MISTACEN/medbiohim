@@ -49,7 +49,7 @@
 | 2.7 Ответы к экзамену .docx | ✅ worker /exam-questions/export + buildExamAnswersDocx на клиенте + кнопка в предметах |
 | 2.8 Устный экзамен голосом | ✅ POST /ai/oral-evaluate + /tests/preparation/[id]/oral (Web Speech API ru-RU, fallback текст) + карточка режима |
 | 2.9 Мнемоники/доска/тона | ✅ AiQuickActions в тьюторе (5 тонов) |
-| 2.10 Лиги/рейтинг | ⬜ отложено (фаза 5) |
+| 2.10 Лиги/рейтинг | ✅ GET /league (недельный топ по activity_events с весами: тест +10, отработки +8, ДЗ +5, SRS/лекции +2; лиги Бронза→Алмаз по порогам; кэш Redis 120с) + LeagueCard на /study; анти-чит по построению — события пишет только service_role |
 | FSRS вместо SM-2 | ⬜ опция, не запланировано |
 
 ## Отдельные задачи

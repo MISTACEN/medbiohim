@@ -41,6 +41,7 @@ import tests from "./routes/tests";
 import preparation from "./routes/preparation";
 import tickets from "./routes/tickets";
 import examQuestions from "./routes/exam-questions";
+import league from "./routes/league";
 import my from "./routes/my";
 import questions from "./routes/questions";
 import favorites from "./routes/favorites";
@@ -216,6 +217,8 @@ v1.route("/tests", gatedModule("subjects", preparation));
 v1.route("/tests", gatedModule("subjects", tests));
 v1.route("/tickets", gatedModule("subjects", tickets));
 v1.route("/exam-questions", gatedModule("subjects", examQuestions));
+// Лиги/рейтинг (2.10): недельный топ по activity_events, очки пишет service_role.
+v1.route("/league", league);
 v1.route("/my", studentOnly(my));
 v1.route("/questions", gatedModule("subjects", questions));
 v1.route("/favorites", studentOnly(favorites));

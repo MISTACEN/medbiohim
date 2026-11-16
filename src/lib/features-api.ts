@@ -298,6 +298,17 @@ export async function lectureSlides(id: string) {
   return api<LectureSlides>(endpoints.content.lectureSlides(id), { method: "POST", body: "{}", timeoutMs: 120000 });
 }
 
+/* —— Лиги/рейтинг (2.10): недельный топ по activity_events, очки пишет воркер —— */
+export type LeagueData = {
+  week_start: string;
+  my: { points: number; rank: number | null; league: string; next_league: { name: string; remaining: number } | null; breakdown: Record<string, number> };
+  top: Array<{ rank: number; name: string; points: number; league: string; is_me: boolean }>;
+  total: number;
+};
+export async function getLeague() {
+  return api<LeagueData>("/league", { timeoutMs: 30000 });
+}
+
 export async function cardPackAiGenerate(payload: { topic: string; subject_slug?: string; source_text?: string }) {
   return api<CardPackAiDraft>("/card-packs/ai-generate", { method: "POST", body: JSON.stringify(payload), timeoutMs: 90000 });
 }

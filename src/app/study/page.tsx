@@ -46,6 +46,7 @@ import { PresenceBadge } from "@/components/study/PresenceBadge";
 import { BadgeCollection } from "@/components/study/BadgeCollection";
 import ExamAgent from "@/components/study/ExamAgent";
 import { SrsDueCard } from "@/components/study/SrsDueCard";
+import { LeagueCard } from "@/components/study/LeagueCard";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
 import { TodayPlan } from "@/components/study/TodayPlan";
 import { WeakTopics } from "@/components/study/WeakTopics";
@@ -261,6 +262,7 @@ export default function StudyPage() {
           <div><PresenceBadge /></div>
           <WeakTopics academic={academic} />
           <SrsDueCard />
+          <LeagueCard />
           <RecentActivity />
           <WeeklyLeague />
           <StreakHeatmap />
