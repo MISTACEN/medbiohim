@@ -91,6 +91,29 @@ export async function setExamAgentItemDone(id: string, done = true) {
     body: JSON.stringify({ done }),
   });
 }
+/** Отчёт ночного агента в Telegram — по кнопке, не дожидаясь cron. */
+export async function sendExamAgentReport() {
+  return api<{ sent: number; day: string }>(endpoints.misc.studyPrepAgentReport(), {
+    method: "POST",
+    body: "{}",
+  });
+}
+
+/** Лига недели: место среди своей группы по очкам активности (без имён). */
+export type WeeklyLeague = {
+  available: boolean;
+  reason?: string;
+  points?: number;
+  rank?: number;
+  members?: number;
+  leader_points?: number;
+  next_gap?: number | null;
+  days?: number;
+};
+export async function getWeeklyLeague(options: RequestInit = {}) {
+  return api<WeeklyLeague>(endpoints.misc.studyPrepLeague(), options);
+}
+
 export async function syncAcademicState() { return api<any>(endpoints.misc.academicSync(), { method: "POST", body: "{}" }); }
 export async function getAcademicState(options: RequestInit = {}) { return api<AcademicState>(endpoints.misc.academicState(), options); }
 export async function saveAcademicState(payload: Record<string, unknown>) { return api<any>(endpoints.misc.academicState(), { method: "PUT", body: JSON.stringify(payload) }); }

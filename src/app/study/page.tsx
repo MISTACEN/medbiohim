@@ -38,6 +38,7 @@ import { AgendaTimeline } from "@/components/study/AgendaTimeline";
 import { PrepChecklist } from "@/components/study/PrepChecklist";
 import { PrepPlan } from "@/components/study/PrepPlan";
 import { RecentActivity } from "@/components/study/RecentActivity";
+import { WeeklyLeague } from "@/components/study/WeeklyLeague";
 import ExamAgent from "@/components/study/ExamAgent";
 import { SrsDueCard } from "@/components/study/SrsDueCard";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
@@ -255,6 +256,7 @@ export default function StudyPage() {
           <WeakTopics academic={academic} />
           <SrsDueCard />
           <RecentActivity />
+          <WeeklyLeague />
         </aside>
       </div>
 

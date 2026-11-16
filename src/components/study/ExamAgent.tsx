@@ -8,10 +8,11 @@
  * эталонный ответ из банка, поэтому блок работает без ИИ.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Check, ChevronDown, ChevronUp, Loader2, Sparkles, TriangleAlert } from "lucide-react";
+import { Bot, Check, ChevronDown, ChevronUp, Loader2, Send, Sparkles, TriangleAlert } from "lucide-react";
 import {
   createExamAgent,
   getExamAgent,
+  sendExamAgentReport,
   setExamAgentItemDone,
   type ExamAgentPlan,
 } from "@/lib/api/misc";
@@ -71,6 +72,18 @@ export default function ExamAgent() {
       return;
     }
     await load();
+  }
+
+  async function sendReport() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const response = await sendExamAgentReport();
+    setBusy(false);
+    if (!response.ok) {
+      setError(describeApiError(response.error));
+      return;
+    }
   }
 
   async function toggle(planId: string, itemId: string, done: boolean) {
@@ -141,6 +154,16 @@ export default function ExamAgent() {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           Запустить агента
         </button>
+        {plans.length > 0 && (
+          <button
+            type="button"
+            className="btn-secondary inline-flex items-center gap-2 text-sm"
+            onClick={() => void sendReport()}
+            disabled={busy}
+          >
+            <Send className="h-4 w-4" /> Прислать отчёт в Telegram
+          </button>
+        )}
       </div>
 
       {error && (
