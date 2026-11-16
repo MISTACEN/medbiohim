@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { Award, Loader2, Trophy } from "lucide-react";
 import { getLeague, type LeagueData } from "@/lib/features-api";
+import { getWeeklyLeague, type WeeklyLeague as GroupLeague } from "@/lib/api/misc";
 import { describeApiError } from "@/lib/errors";
 
 const TIER_STYLES: Record<string, string> = {
@@ -34,15 +35,20 @@ function tierStyle(name: string): string {
 
 export function LeagueCard() {
   const [data, setData] = useState<LeagueData | null>(null);
+  const [group, setGroup] = useState<GroupLeague | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const result = await getLeague();
+      // Оба источника — платформенный /league (топ с именами) и групповой
+      // /study-prep/league (анонимное место в своей группе) — грузим параллельно;
+      // группа не обязательна: её строка рисуется, только если есть группа.
+      const [result, groupResult] = await Promise.all([getLeague(), getWeeklyLeague().catch(() => null)]);
       if (cancelled) return;
       setLoading(false);
+      if (groupResult?.ok) setGroup(groupResult.data);
       if (!result.ok) {
         setError(describeApiError(result.error));
         return;
@@ -93,6 +99,14 @@ export function LeagueCard() {
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--border)]">
         <div className="h-full rounded-full bg-[var(--primary)] transition-all" style={{ width: `${progress}%` }} />
       </div>
+
+      {/* Групповое место (свой источник, без имён) — строкой внутри карточки,
+          чтобы на /study не было двух «Лиг недели» с разными очками. */}
+      {group?.available && (group.members ?? 0) > 1 ? (
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          В своей группе: <b className="text-[var(--text)]">{group.rank}-е из {group.members}</b> · {group.points} XP за 7 дней
+        </p>
+      ) : null}
 
       {top.length ? (
         <div className="mt-4">

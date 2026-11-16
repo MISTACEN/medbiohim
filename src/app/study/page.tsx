@@ -38,7 +38,6 @@ import { AgendaTimeline } from "@/components/study/AgendaTimeline";
 import { PrepChecklist } from "@/components/study/PrepChecklist";
 import { PrepPlan } from "@/components/study/PrepPlan";
 import { RecentActivity } from "@/components/study/RecentActivity";
-import { WeeklyLeague } from "@/components/study/WeeklyLeague";
 import { StreakHeatmap } from "@/components/study/StreakHeatmap";
 import { DailyQuests } from "@/components/study/DailyQuests";
 import { DailyCard } from "@/components/study/DailyCard";
@@ -264,7 +263,6 @@ export default function StudyPage() {
           <SrsDueCard />
           <LeagueCard />
           <RecentActivity />
-          <WeeklyLeague />
           <StreakHeatmap />
           <DailyCard />
           <DailyQuests />

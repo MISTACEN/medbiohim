@@ -25,7 +25,7 @@ type Rating = 1 | 2 | 3 | 4;
 const RATING_BTNS: Array<{ r: Rating; label: string; hint: string; className: string }> = [
   { r: 1, label: "Снова", hint: "~1 мин", className: "bg-red-500 hover:bg-red-600 text-white" },
   { r: 2, label: "Трудно", hint: "короче", className: "bg-[var(--status-warn-fg)] hover:bg-[var(--status-warn-fg)] text-white" },
-  { r: 3, label: "Хорошо", hint: "SM-2", className: "bg-[var(--status-ok-fg)] hover:bg-[var(--status-ok-fg)] text-white" },
+  { r: 3, label: "Хорошо", hint: "FSRS", className: "bg-[var(--status-ok-fg)] hover:bg-[var(--status-ok-fg)] text-white" },
   { r: 4, label: "Легко", hint: "длиннее", className: "bg-sky-500 hover:bg-sky-600 text-white" },
 ];
 
@@ -172,7 +172,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
             Повторение (SRS)
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Интервальное повторение (SM-2). {scope === "personal" ? "Личные карточки" : "Карточки из общего банка"} — отдельно от билетов.
+            Интервальное повторение (FSRS-4.5, удержание 90%). {scope === "personal" ? "Личные карточки" : "Карточки из общего банка"} — отдельно от билетов.
             {subjectSlug ? ` · ${subjectSlug}` : ""}
           </p>
         </div>

@@ -630,10 +630,11 @@ lectures.post("/:id/slides", requireAuth, async (c) => {
           {
             role: "user",
             content: [
-              "Ты собираешь презентацию по лекции для студента-медика: 8–14 слайдов.",
+              "Ты собираешь презентацию по лекции для студента-медика: 8–12 слайдов.",
               "СТРОГОЕ ПРАВИЛО: каждый факт бери ДОСЛОВНО из текста лекции, ничего не добавляй извне.",
-              "Слайд: короткий заголовок (до 8 слов) и 3–5 пунктов-тезисов (до 14 слов каждый).",
-              "Порядок — как в лекции: от строения к функции; последний слайд — «Ключевые термины».",
+              "Слайд: короткий заголовок (до 8 слов) и 3–4 пункта-тезиса (до 80 знаков каждый!).",
+              "Порядок — как в лекции; последний слайд — «Ключевые термины» (3–4 термина).",
+              "JSON должен быть КОМПАКТНЫМ: провайдер обрезает длинные ответы.",
               "Формат ответа — строго JSON без markdown-обёртки:",
               '{"slides":[{"title":"…","bullets":["…","…"]}]}',
               "",
@@ -648,17 +649,43 @@ lectures.post("/:id/slides", requireAuth, async (c) => {
       ),
     );
     const rawText = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-    let parsed: unknown = null;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      const match = /\{[\s\S]*"slides"[\s\S]*\}/.exec(String(result.content || ""));
-      if (match) {
-        try { parsed = JSON.parse(match[0]); } catch { /* handled below */ }
+    const tryParse = (value: string): unknown => {
+      try {
+        return JSON.parse(value);
+      } catch {
+        const match = /\{[\s\S]*"slides"[\s\S]*\}/.exec(value);
+        if (match) {
+          try { return JSON.parse(match[0]); } catch { return null; }
+        }
+        return null;
+      }
+    };
+    let parsed = tryParse(rawText);
+    // Провайдеры иногда обрезают длинный JSON или оборачивают пояснениями:
+    // один строгий повтор дешевле, чем «презентация не собирается».
+    if (!parsed) {
+      // Голова ответа в логе: видно, что вернула модель (обрезка, пояснения, прозу).
+      console.warn("[lectures:slides:retry-json]", { requestId: rid, provider: result.provider, head: rawText.slice(0, 400), tail: rawText.slice(-200) });
+      try {
+        const retry = await generateAiCompletion(
+          c.env,
+          [
+            { role: "user", content: text.slice(0, 8000) },
+            { role: "assistant", content: rawText.slice(0, 4000) },
+            { role: "user", content: "Ответ не был валидным JSON (вероятно, обрезан). Верни КОМПАКТНЫЙ валидный JSON вида {\"slides\":[{\"title\":\"…\",\"bullets\":[\"…\"]}]}, 8–12 слайдов, пункты до 60 знаков, и ничего больше." },
+          ],
+          "auto",
+          fetch,
+          { temperature: 0 },
+        );
+        parsed = tryParse(String(retry.content || ""));
+      } catch (retryError) {
+        console.warn("[lectures:slides:retry-failed]", String(retryError).slice(0, 200));
       }
     }
     const slides = normalizeSlides(parsed);
     if (!slides) {
+      console.error("[lectures:slides:unusable]", { requestId: rid, head: rawText.slice(0, 400) });
       const { body, status } = fail("SLIDES_BAD_OUTPUT", "ИИ не собрал презентацию — попробуйте ещё раз", 502, rid);
       return c.json(body, status as 502);
     }
