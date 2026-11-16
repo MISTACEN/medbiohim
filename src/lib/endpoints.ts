@@ -350,6 +350,7 @@ export const endpoints = {
     studyPrepLeague: (): string => "/study-prep/league",
     studyPrepStreak: (): string => "/study-prep/streak",
     studyPrepQuests: (): string => "/study-prep/quests",
+    studyPrepAchievements: (): string => "/study-prep/achievements",
     studyPrepAgentItem: (id: string): string => `/study-prep/agent/items/${enc(id)}`,
     studyPrepAgentReport: (): string => "/study-prep/agent/report",
     notes: (): string => "/notes",

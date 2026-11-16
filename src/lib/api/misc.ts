@@ -99,6 +99,12 @@ export async function sendExamAgentReport() {
   });
 }
 
+/** Коллекция значков: прогресс и полученные достижения. */
+export type Badge = { id: string; title: string; hint: string; goal: number; value: number; earned: boolean };
+export async function getAchievements(options: RequestInit = {}) {
+  return api<{ badges: Badge[]; earned: number; total: number }>(endpoints.misc.studyPrepAchievements(), options);
+}
+
 /** Три цели дня, собранные из очереди SRS и сегодняшних событий. */
 export type DailyQuest = {
   id: string;

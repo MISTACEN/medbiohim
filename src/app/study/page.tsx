@@ -41,6 +41,7 @@ import { RecentActivity } from "@/components/study/RecentActivity";
 import { WeeklyLeague } from "@/components/study/WeeklyLeague";
 import { StreakHeatmap } from "@/components/study/StreakHeatmap";
 import { DailyQuests } from "@/components/study/DailyQuests";
+import { BadgeCollection } from "@/components/study/BadgeCollection";
 import ExamAgent from "@/components/study/ExamAgent";
 import { SrsDueCard } from "@/components/study/SrsDueCard";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
@@ -261,6 +262,7 @@ export default function StudyPage() {
           <WeeklyLeague />
           <StreakHeatmap />
           <DailyQuests />
+          <BadgeCollection />
         </aside>
       </div>
 
