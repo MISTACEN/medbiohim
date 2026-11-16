@@ -105,13 +105,15 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
     }
   }
 
-  async function makeCards() {
+  async function makeCards(questionIds?: string[]) {
     if (!attemptId || cardsBusy) return;
     setCardsBusy(true);
-    const response = await createCardsFromAttempt(attemptId);
+    const response = await createCardsFromAttempt(attemptId, questionIds);
     setCardsBusy(false);
-    if (response.ok) setCardsNote(`Готово: ${response.data.card_count} карточек в паке «Из теста» — открыть в /cards`);
-    else setCardsNote(describeApiError(response.error));
+    if (response.ok) {
+      const pack = questionIds?.length ? "Из ошибок" : "Из теста";
+      setCardsNote(`Готово: ${response.data.card_count} карточек в паке «${pack}» — открыть в /cards`);
+    } else setCardsNote(describeApiError(response.error));
   }
 
   async function finish() {
@@ -126,6 +128,11 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
       setError(describeApiError(result.error));
     }
   }
+
+  // Ошибки для повторения: экран уже знает, что проверено и неверно.
+  const wrongIds = Object.entries(grading)
+    .filter(([, row]) => (row as { is_correct?: boolean | null } | null)?.is_correct === false)
+    .map(([questionId]) => questionId);
 
   if (loading) return <div className="p-8 text-center text-sm text-slate-500"><Loader2 className="inline h-4 w-4 animate-spin" /> Запуск тестирования…</div>;
   if (error) return <main className="mx-auto max-w-md p-8"><div className="card p-6 text-center"><h1 className="page-title">Не удалось начать</h1><p className="mt-2 text-sm text-[var(--status-critical-fg)]">{error}</p><Link href="/tests" className="btn-secondary mt-4 inline-flex">К тестам</Link></div></main>;
@@ -145,6 +152,16 @@ export default function AttemptRunnerPage({ params }: { params: Promise<{ testId
         >
           {cardsBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Сделать карточки из теста
         </button>
+        {wrongIds.length ? (
+          <button
+            type="button"
+            className="btn-secondary inline-flex items-center gap-2"
+            disabled={cardsBusy}
+            onClick={() => void makeCards(wrongIds)}
+          >
+            Карточки по ошибкам ({wrongIds.length})
+          </button>
+        ) : null}
         <Link href="/tests" className="btn-primary inline-flex">К тестам</Link>
       </div>
     </div></main>;

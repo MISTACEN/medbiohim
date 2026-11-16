@@ -737,6 +737,18 @@ tests.post("/attempts/:id/cards", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID попытки");
   const MAX_CARDS = 100;
+  // «Повторение ошибок»: экран результата присылает id вопросов, отвеченных
+  // неверно. Фильтр по снимку попытки — источник правды остаётся на сервере,
+  // клиент не может подсунуть чужие вопросы: их просто нет в snapshot.
+  let onlyIds: string[] = [];
+  try {
+    const body: any = await c.req.json();
+    if (Array.isArray(body?.question_ids)) {
+      onlyIds = body.question_ids.filter((value: unknown) => typeof value === "string" && UUID.test(value)).slice(0, 200);
+    }
+  } catch {
+    // Пустое тело — обычный режим (все вопросы попытки).
+  }
   try {
     const { data: attempt, error } = await db
       .from("test_attempts")
@@ -753,9 +765,15 @@ tests.post("/attempts/:id/cards", requireAuth, async (c) => {
       return c.json(body, status as 422);
     }
     const snapshot: any[] = Array.isArray(attempt.question_snapshot) ? attempt.question_snapshot : [];
+    const wanted = new Set(onlyIds);
+    const selected = wanted.size ? snapshot.filter((question) => wanted.has(String(question?.id || ""))) : snapshot;
+    if (wanted.size && !selected.length) {
+      const { body, status } = fail("NO_MISTAKES", "В этой попытке нет ошибок для повторения", 422, rid);
+      return c.json(body, status as 422);
+    }
     const seen = new Set<string>();
     const items: Array<{ front: string; back: string }> = [];
-    for (const question of snapshot) {
+    for (const question of selected) {
       const front = String(question?.text || "").trim().slice(0, 1000);
       if (!front || seen.has(front)) continue;
       const options = Array.isArray(question?.options) ? question.options : [];
@@ -784,8 +802,10 @@ tests.post("/attempts/:id/cards", requireAuth, async (c) => {
       .from("card_packs")
       .insert({
         owner_id: c.get("user").id,
-        title: `Из теста: ${testTitle}`.slice(0, 200),
-        description: `Карточки собраны из вопросов теста «${testTitle}» после завершения попытки.`,
+        title: `${wanted.size ? "Из ошибок" : "Из теста"}: ${testTitle}`.slice(0, 200),
+        description: wanted.size
+          ? `Карточки по вопросам, отвеченным неверно в тесте «${testTitle}».`
+          : `Карточки собраны из вопросов теста «${testTitle}» после завершения попытки.`,
         subject_slug: subjectSlug,
         source: "user",
         is_published: false,

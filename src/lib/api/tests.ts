@@ -70,10 +70,10 @@ export async function saveTestAnswer(attemptId: string, questionId: string, answ
 }
 export async function finishAttempt(id: string) { return api<any>(endpoints.tests.attemptsFinish(id), { method: "POST", body: "{}" }); }
 /** Собрать пак карточек из вопросов завершённой попытки. */
-export async function createCardsFromAttempt(attemptId: string) {
+export async function createCardsFromAttempt(attemptId: string, questionIds?: string[]) {
   return api<{ pack_id: string; card_count: number }>(endpoints.tests.attemptCards(attemptId), {
     method: "POST",
-    body: "{}",
+    body: JSON.stringify(questionIds?.length ? { question_ids: questionIds } : {}),
   });
 }
 
