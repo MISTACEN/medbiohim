@@ -235,7 +235,7 @@ export default function LectureAiActions({
             onClick={() => void makePodcast()}
           >
             {podcastBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Headphones className="h-3.5 w-3.5" />}
-            {podcastBusy ? "Пишем и озвучиваем…" : "Подкаст по лекции"}
+            {podcastBusy ? "Пишем и озвучиваем диалог…" : "Подкаст-диалог"}
           </button>
           <button
             type="button"
@@ -284,7 +284,10 @@ export default function LectureAiActions({
       ) : null}
 
       {podcastScript ? (
-        <p className="mt-2 rounded-xl bg-[var(--primary-soft)]/40 p-3 text-sm leading-relaxed">{podcastScript}</p>
+        <div className="mt-2 rounded-xl bg-[var(--primary-soft)]/40 p-3">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Сценарий диалога (Ведущий + Студент)</p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{podcastScript}</p>
+        </div>
       ) : null}
 
       {error && (

@@ -476,10 +476,14 @@ lectures.post("/:id/podcast", requireAuth, async (c) => {
           {
             role: "user",
             content: [
-              "Ты пишешь сценарий короткого аудио-конспекта (подкаста) по лекции для студента-медика.",
+              "Ты пишешь сценарий аудио-подкаста-диалога по лекции для студента-медика.",
+              "Диалог двух голосов: ВЕДУЩИЙ объясняет материал лекции, СТУДЕНТ задаёт короткие",
+              "уточняющие вопросы и пересказывает своими словами — как живой разговор на кухне общежития.",
               "Строго по тексту лекции, без добавления фактов извне.",
-              "Длина — 120–180 слов: вступление одной фразой, 3–4 ключевых факта, вывод одной фразой.",
-              "Пиши так, как говорят вслух: короткие предложения, без списков, без markdown и без сносок.",
+              "Длина — 8–12 обменов репликами (120–220 слов суммарно): вступление, ключевые факты,",
+              "студент переспрашивает самое сложное, короткий вывод.",
+              "Формат каждой реплики СТРОГО: «Ведущий: текст» или «Студент: текст» — новой строкой,",
+              "без списков, без markdown, без сносок. Имена реплик нужны озвучке для выбора голоса.",
               `Лекция: «${lecture.title || "без названия"}».`,
               "",
               "=== ТЕКСТ ЛЕКЦИИ ===",
@@ -492,9 +496,14 @@ lectures.post("/:id/podcast", requireAuth, async (c) => {
         { temperature: 0.2 },
       ),
     );
-    const script = String(result.content || "").replace(/\s+/g, " ").trim().slice(0, 1200);
+    const script = String(result.content || "").replace(/\s+/g, " ").trim().slice(0, 2000);
     if (script.length < 80) {
       const { body, status } = fail("PODCAST_EMPTY", "ИИ не смог собрать сценарий", 502, rid);
+      return c.json(body, status as 502);
+    }
+    // Диалог должен содержать обе роли, иначе озвучка прочитает его одним голосом.
+    if (!/Ведущий:/i.test(script) || !/Студент:/i.test(script)) {
+      const { body, status } = fail("PODCAST_EMPTY", "ИИ вернул монолог вместо диалога — попробуйте ещё раз", 502, rid);
       return c.json(body, status as 502);
     }
 
@@ -507,7 +516,15 @@ lectures.post("/:id/podcast", requireAuth, async (c) => {
           contents: [{ parts: [{ text: script }] }],
           generationConfig: {
             responseModalities: ["AUDIO"],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } },
+            // Диалог двух голосов: Ведущий объясняет, Студент спрашивает.
+            speechConfig: {
+              multiSpeakerVoiceConfig: {
+                speakerVoiceConfigs: [
+                  { speaker: "Ведущий", voiceName: "Kore" },
+                  { speaker: "Студент", voiceName: "Puck" },
+                ],
+              },
+            },
           },
         }),
         signal: AbortSignal.timeout(60_000),
