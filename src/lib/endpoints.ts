@@ -348,6 +348,8 @@ export const endpoints = {
     /** Фаза 2.6: ночной агент к экзамену. */
     studyPrepAgent: (): string => "/study-prep/agent",
     studyPrepLeague: (): string => "/study-prep/league",
+    studyPrepStreak: (): string => "/study-prep/streak",
+    studyPrepQuests: (): string => "/study-prep/quests",
     studyPrepAgentItem: (id: string): string => `/study-prep/agent/items/${enc(id)}`,
     studyPrepAgentReport: (): string => "/study-prep/agent/report",
     notes: (): string => "/notes",

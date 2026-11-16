@@ -99,6 +99,33 @@ export async function sendExamAgentReport() {
   });
 }
 
+/** Три цели дня, собранные из очереди SRS и сегодняшних событий. */
+export type DailyQuest = {
+  id: string;
+  title: string;
+  hint: string;
+  done: boolean;
+  progress: number;
+  goal: number;
+  href: string;
+};
+export async function getDailyQuests(options: RequestInit = {}) {
+  return api<{ date: string; quests: DailyQuest[]; done: number }>(endpoints.misc.studyPrepQuests(), options);
+}
+
+/** Серия дней и карта активности за 16 недель. */
+export type StudyStreak = {
+  current_streak: number;
+  longest_streak: number;
+  active_days: number;
+  weeks: number;
+  days: Array<{ date: string; count: number }>;
+  today: string;
+};
+export async function getStudyStreak(options: RequestInit = {}) {
+  return api<StudyStreak>(endpoints.misc.studyPrepStreak(), options);
+}
+
 /** Лига недели: место среди своей группы по очкам активности (без имён). */
 export type WeeklyLeague = {
   available: boolean;

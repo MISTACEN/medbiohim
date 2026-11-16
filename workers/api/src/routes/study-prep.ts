@@ -929,6 +929,127 @@ studyPrep.post("/agent/report", requireAuth, async (c) => {
 });
 
 /**
+ * Цели дня: три конкретных дела вместо абстрактного «позанимайся».
+ * Считаются из реальных данных — очередь SRS и события за сегодня, — поэтому
+ * отдельная таблица квестов не нужна и цели не расходятся с фактами.
+ */
+studyPrep.get("/quests", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  try {
+    const [dueResult, todayResult] = await Promise.all([
+      db.from("srs_cards").select("id", { count: "exact", head: true }).eq("user_id", user.id).lte("due_at", new Date().toISOString()),
+      db.from("activity_events").select("kind").eq("user_id", user.id).gte("created_at", todayStart.toISOString()).limit(500),
+    ]);
+    if (todayResult.error) throw todayResult.error;
+    const kinds = (todayResult.data || []).map((row: any) => String(row.kind || ""));
+    const reviewed = kinds.filter((kind) => kind === "srs_review").length;
+    const tested = kinds.filter((kind) => kind === "test_finished").length;
+    const studied = kinds.filter((kind) => kind === "lecture_opened" || kind === "cloze_completed").length;
+    const due = dueResult.error ? 0 : dueResult.count || 0;
+    const target = Math.min(Math.max(due, 10), 30);
+
+    const quests = [
+      {
+        id: "srs",
+        title: due > 0 ? `Повторить ${target} карточек` : "Повторить 10 карточек",
+        hint: due > 0 ? `в очереди ${due}` : "очередь пуста — можно взять любые",
+        done: reviewed >= target,
+        progress: Math.min(target, reviewed),
+        goal: target,
+        href: "/cards",
+      },
+      {
+        id: "test",
+        title: "Пройти один тест",
+        hint: tested ? `сегодня пройдено: ${tested}` : "любой банк по слабой теме",
+        done: tested > 0,
+        progress: Math.min(1, tested),
+        goal: 1,
+        href: "/tests",
+      },
+      {
+        id: "study",
+        title: "Разобрать лекцию или конспект",
+        hint: studied ? `сегодня открыто: ${studied}` : "лекция, cloze или конспект из файла",
+        done: studied > 0,
+        progress: Math.min(1, studied),
+        goal: 1,
+        href: "/lectures",
+      },
+    ];
+    return c.json(ok({ date: todayStart.toISOString().slice(0, 10), quests, done: quests.filter((q) => q.done).length }, rid));
+  } catch (error) {
+    console.error("[study-prep:quests]", error);
+    const { body: errBody, status } = fail("QUESTS_ERROR", "Не удалось собрать цели дня", 503, rid);
+    return c.json(errBody, status as 503);
+  }
+});
+
+/**
+ * Серия дней и карта активности (16 недель). Считаем по activity_events:
+ * отдельная таблица серии не нужна, и «заморозки» не понадобились —
+ * день засчитывается, если было хотя бы одно учебное событие.
+ */
+studyPrep.get("/streak", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const WEEKS = 16;
+  const today = isoToday();
+  const since = new Date(Date.now() - (WEEKS * 7 + 7) * 86400000).toISOString();
+  try {
+    const { data, error } = await db
+      .from("activity_events")
+      .select("created_at")
+      .eq("user_id", user.id)
+      .gte("created_at", since)
+      .limit(5000);
+    if (error) throw error;
+    const perDay = new Map<string, number>();
+    for (const row of data || []) {
+      const day = String((row as any).created_at || "").slice(0, 10);
+      if (day) perDay.set(day, (perDay.get(day) || 0) + 1);
+    }
+
+    // Серия: считаем от сегодня; если сегодня ещё ничего не сделано — от вчера
+    // (день не должен обрывать серию до вечера).
+    const has = (day: string) => (perDay.get(day) || 0) > 0;
+    let cursor = has(today) ? today : addDays(today, -1);
+    let current = 0;
+    while (has(cursor) && current < 400) {
+      current += 1;
+      cursor = addDays(cursor, -1);
+    }
+
+    const days: Array<{ date: string; count: number }> = [];
+    for (let offset = WEEKS * 7 - 1; offset >= 0; offset -= 1) {
+      const day = addDays(today, -offset);
+      days.push({ date: day, count: perDay.get(day) || 0 });
+    }
+    let longest = 0;
+    let run = 0;
+    for (const day of days) {
+      if (day.count > 0) {
+        run += 1;
+        longest = Math.max(longest, run);
+      } else run = 0;
+    }
+
+    return c.json(
+      ok({ current_streak: current, longest_streak: Math.max(longest, current), active_days: days.filter((d) => d.count > 0).length, weeks: WEEKS, days, today }, rid),
+    );
+  } catch (error) {
+    console.error("[study-prep:streak]", error);
+    const { body: errBody, status } = fail("STREAK_ERROR", "Не удалось посчитать серию", 503, rid);
+    return c.json(errBody, status as 503);
+  }
+});
+
+/**
  * Вес активности для лиги. Очки считаются из activity_events, поэтому лига не
  * зависит от ИИ и не требует отдельной таблицы рейтинга.
  */
