@@ -75,6 +75,8 @@ export const endpoints = {
     attemptCards: (attemptId: string): string => `/tests/attempts/${enc(attemptId)}/cards`,
     /** «Практика: для вас» — тесты по слабым темам. */
     recommended: (): string => "/tests/recommended",
+    /** Случайная задача по химии для виджета на главной. */
+    chemistryRandom: (query?: string): string => withQuery("/tests/chemistry-random", query),
     myAttempts: (query?: string): string => withQuery("/my/attempts", query),
     preparation: (sessionId: string): string => `/tests/preparation/${enc(sessionId)}`,
     preparationFinish: (sessionId: string): string => `/tests/preparation/${enc(sessionId)}/finish`,

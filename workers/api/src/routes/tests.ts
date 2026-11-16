@@ -355,6 +355,55 @@ tests.get("/chemistry-master", requireAuth, async (c) => {
   }
 });
 
+/**
+ * Случайная задача по химии — один запрос вместо каталога.
+ * Нужна для виджета на главной: студент открывает сайт и сразу решает, а не
+ * выбирёт фильтры. Отдаём только задания с готовым ответом, иначе «задача дня»
+ * заканчивается тупиком.
+ */
+tests.get("/chemistry-random", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase");
+  const subjectSlug = (c.req.query("subject_slug") || "").trim().toLowerCase();
+  const kind = c.req.query("kind") || "";
+  const exclude = new Set(
+    (c.req.query("exclude") || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 20),
+  );
+  if (kind && kind !== "test_question" && kind !== "open_task") {
+    return invalid(c, rid, "Неизвестный тип задания");
+  }
+  try {
+    const { data, error } = await db
+      .from("chemistry_master_documents")
+      .select("id,subject_slug,title,version,content,item_count,updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(20);
+    if (error) throw error;
+
+    const items: Record<string, any>[] = [];
+    for (const doc of data || []) {
+      if (subjectSlug && String((doc as any).subject_slug || "").toLowerCase() !== subjectSlug) continue;
+      const content = Array.isArray((doc as any).content) ? (doc as any).content : [];
+      for (const raw of content) {
+        const item = normalizeChemistryItem(raw, doc) as Record<string, any>;
+        if (!item?.question || !item?.answer) continue;
+        if (kind && item.kind !== kind) continue;
+        if (exclude.has(String(item.item_id || ""))) continue;
+        items.push(item);
+      }
+    }
+    if (!items.length) return c.json(ok({ item: null, reason: exclude.size ? "ALL_SEEN" : "EMPTY" }, rid));
+    const item = items[Math.floor(Math.random() * items.length)];
+    return c.json(ok({ item, pool: items.length }, rid));
+  } catch {
+    const { body, status } = fail("DB_UNAVAILABLE", "Задания по химии временно недоступны", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
 tests.get("/attempts", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), user = c.get("user");
   const testId = c.req.query("test_id");

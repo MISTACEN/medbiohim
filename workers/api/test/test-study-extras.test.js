@@ -56,6 +56,16 @@ test("подкаст лекции: ключ, WAV и квота", async () => {
   assert.match(body, /lecture_podcast/);
 });
 
+test("случайная задача по химии отдаёт только задания с ответом", async () => {
+  const route = await read("src/routes/tests.ts");
+  const start = route.indexOf('tests.get("/chemistry-random"');
+  assert.ok(start > -1, "маршрут /tests/chemistry-random существует");
+  const body = route.slice(start, route.indexOf('tests.get("/attempts"'));
+  assert.match(body, /if \(!item\?\.question \|\| !item\?\.answer\) continue;/);
+  assert.match(body, /exclude/);
+  assert.match(body, /ALL_SEEN/);
+});
+
 test("шпаргалка лекции кэшируется по хэшу тела", async () => {
   const route = await read("src/routes/lectures.ts");
   const start = route.indexOf('lectures.post("/:id/cheatsheet"');

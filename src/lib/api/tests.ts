@@ -84,6 +84,23 @@ export async function getRecommendedTests(options: RequestInit = {}) {
   return api<{ items: RecommendedTest[]; reason: string }>(endpoints.tests.recommended(), options);
 }
 
+/** Случайная задача по химии с готовым ответом (для виджета на главной). */
+export type ChemistryRandomItem = {
+  item_id: string;
+  kind: string;
+  question: string;
+  answer?: string | null;
+  topic?: string | null;
+  source?: string | null;
+};
+export async function getRandomChemistryTask(exclude: string[] = [], options: RequestInit = {}) {
+  const query = exclude.length ? `exclude=${encodeURIComponent(exclude.slice(-20).join(","))}` : undefined;
+  return api<{ item: ChemistryRandomItem | null; pool?: number; reason?: string }>(
+    endpoints.tests.chemistryRandom(query),
+    options,
+  );
+}
+
 export async function createCardsFromAttempt(attemptId: string, questionIds?: string[]) {
   return api<{ pack_id: string; card_count: number }>(endpoints.tests.attemptCards(attemptId), {
     method: "POST",

@@ -35,6 +35,7 @@ import { ServiceNoticeBanner } from "@/components/ui/ServiceNoticeBanner";
 import { describeApiError } from "@/lib/errors";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { TodaySummary } from "@/components/home/TodaySummary";
+import { DailyChemistryTask } from "@/components/home/DailyChemistryTask";
 import {
   defaultHomeLayout,
   loadLocalHome,
@@ -588,6 +589,8 @@ export default function DashboardPage() {
         </Link>
       </div>
     ),
+
+    chemistry: <DailyChemistryTask />,
 
     subjects: (
       <section className="h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
