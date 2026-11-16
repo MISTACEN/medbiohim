@@ -44,7 +44,7 @@
 | 2.1 Готовность к событию + план по дням | ✅ study-prep воркер + PrepPlan на /study |
 | 2.3 Cloze-конспекты | ✅ worker GET/POST /lectures/:id/cloze + страница /lectures/[id]/learn + ошибки в SRS + ссылка из лекции |
 | 2.4 Лента активности | ✅ activity_events + RecentActivity на /study |
-| 2.5 Конспект из файлов (MVP) | ✅ POST /ai/notes-from-file (PDF unpdf / фото Gemini или OCR) + /study/import + сохранение в личные лекции. Аудио (2.5.2) и подкаст (2.5.3) ⬜ — отдельные фазы |
+| 2.5 Конспект из файлов (MVP) | ✅ POST /ai/notes-from-file (PDF unpdf / фото Gemini или OCR) + /study/import + сохранение в личные лекции. Аудио (2.5.2) ✅ — Groq Whisper (whisper-large-v3), до 4 МБ ≈ 8 минут, квота notes_audio 5/день, /study/import принимает mp3/m4a/ogg/wav/webm. Подкаст (2.5.3) ⬜ — отдельная фаза |
 | 2.6 Ночной агент + Telegram | ✅ runExamAgentNightly в cron (17 3 * * *) + утренний отчёт в Telegram (notifyPlanReport: личный чат из telegram_accounts, до 5 вопросов дня + ссылка на план) |
 | 2.7 Ответы к экзамену .docx | ✅ worker /exam-questions/export + buildExamAnswersDocx на клиенте + кнопка в предметах |
 | 2.8 Устный экзамен голосом | ✅ POST /ai/oral-evaluate + /tests/preparation/[id]/oral (Web Speech API ru-RU, fallback текст) + карточка режима |
