@@ -115,8 +115,14 @@ export type DailyQuest = {
   goal: number;
   href: string;
 };
+export type DailyChest = { bonus: number; unlocked: boolean; claimed: boolean; available: boolean };
 export async function getDailyQuests(options: RequestInit = {}) {
-  return api<{ date: string; quests: DailyQuest[]; done: number }>(endpoints.misc.studyPrepQuests(), options);
+  return api<{ date: string; quests: DailyQuest[]; done: number; chest?: DailyChest }>(endpoints.misc.studyPrepQuests(), options);
+}
+
+/** Сундук дня: награда за все три цели (сервер сам проверяет идемпотентность). */
+export async function claimDailyChest() {
+  return api<DailyChest & { reason?: string }>("/study-prep/quests/chest", { method: "POST", body: "{}" });
 }
 
 /** Серия дней и карта активности за 16 недель. */

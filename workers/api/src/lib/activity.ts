@@ -15,6 +15,7 @@ export const ACTIVITY_KINDS = [
   "srs_review",
   "homework_marked",
   "assignment_updated",
+  "quest_chest",
 ] as const;
 
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
