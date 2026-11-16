@@ -69,6 +69,7 @@ export default function LectureViewPage() {
       />
 
       <LectureAiActions
+        lectureId={id}
         title={String(lec?.title || "")}
         subjectSlug={lec?.subject_slug ?? null}
         excerpt={String(lec?.body_markdown || "")}

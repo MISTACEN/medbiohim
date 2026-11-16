@@ -7,9 +7,9 @@
  * Ответ рендерится тем же LectureRenderer, что и сама лекция, поэтому блок
  * ```mermaid рисуется существующим кодом — отдельной схемной библиотеки нет.
  */
-import { useState } from "react";
-import { Baby, Brain, Drama, Loader2, Network, Sparkles, type LucideIcon } from "lucide-react";
-import { aiChat } from "@/lib/features-api";
+import { useEffect, useState } from "react";
+import { Baby, Brain, Drama, Headphones, Loader2, Network, Sparkles, type LucideIcon } from "lucide-react";
+import { aiChat, lecturePodcast } from "@/lib/features-api";
 import { describeApiError } from "@/lib/errors";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { AI_PRESETS, buildPresetMessage, presetById, type AiPresetId } from "@/lib/ai/presets";
@@ -23,10 +23,12 @@ const ICONS: Record<AiPresetId, LucideIcon> = {
 };
 
 export default function LectureAiActions({
+  lectureId,
   title,
   subjectSlug,
   excerpt,
 }: {
+  lectureId?: string;
   title: string;
   subjectSlug?: string | null;
   excerpt?: string | null;
@@ -36,6 +38,34 @@ export default function LectureAiActions({
   const [meta, setMeta] = useState<{ provider?: string; model?: string }>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Аудио-конспект: WAV приходит в base64, играем через blob-URL и убираем его
+  // при размонтировании — иначе такие URL живут до перезагрузки страницы.
+  const [podcastUrl, setPodcastUrl] = useState<string | null>(null);
+  const [podcastScript, setPodcastScript] = useState("");
+  const [podcastBusy, setPodcastBusy] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (podcastUrl) URL.revokeObjectURL(podcastUrl);
+    };
+  }, [podcastUrl]);
+
+  async function makePodcast() {
+    if (!lectureId || podcastBusy) return;
+    setPodcastBusy(true);
+    setError(null);
+    const result = await lecturePodcast(lectureId);
+    setPodcastBusy(false);
+    if (!result.ok) {
+      setError(describeApiError(result.error));
+      return;
+    }
+    const bytes = Uint8Array.from(atob(result.data.audio_base64), (ch) => ch.charCodeAt(0));
+    const blob = new Blob([bytes], { type: result.data.mime || "audio/wav" });
+    setPodcastUrl(URL.createObjectURL(blob));
+    setPodcastScript(result.data.script || "");
+  }
 
   async function run(id: AiPresetId) {
     if (busy) return;
@@ -91,6 +121,24 @@ export default function LectureAiActions({
           );
         })}
       </div>
+
+      {lectureId ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--primary-soft)]"
+            disabled={podcastBusy}
+            onClick={() => void makePodcast()}
+          >
+            {podcastBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Headphones className="h-3.5 w-3.5" />}
+            {podcastBusy ? "Пишем и озвучиваем…" : "Подкаст по лекции"}
+          </button>
+          {podcastUrl ? <audio controls src={podcastUrl} className="h-9 w-full max-w-md" /> : null}
+        </div>
+      ) : null}
+      {podcastScript ? (
+        <p className="mt-2 rounded-xl bg-[var(--primary-soft)]/40 p-3 text-sm leading-relaxed">{podcastScript}</p>
+      ) : null}
 
       {error && (
         <p className="mt-3 rounded-xl border border-[var(--status-warn-bg)] bg-[var(--status-warn-bg)] p-3 text-sm" style={{ color: "var(--status-warn-fg)" }}>

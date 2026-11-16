@@ -288,6 +288,163 @@ lectures.get("/", requireAuth, async (c) => {
   }
 });
 
+/**
+ * Аудио-конспект лекции («подкаст», roadmap 2.5.3).
+ * Сценарий пишет LLM строго по тексту лекции, озвучка — Gemini TTS.
+ * Gemini отдаёт сырой PCM (audio/L16), поэтому заворачиваем его в WAV-заголовок:
+ * браузеры не умеют проигрывать L16 напрямую.
+ */
+
+/** WAV-обёртка для PCM 16-bit mono. */
+function pcmToWav(pcm: Uint8Array, sampleRate = 24000, channels = 1, bits = 16): Uint8Array {
+  const blockAlign = (channels * bits) / 8;
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+  const write = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+  };
+  write(0, "RIFF");
+  view.setUint32(4, 36 + pcm.byteLength, true);
+  write(8, "WAVE");
+  write(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bits, true);
+  write(36, "data");
+  view.setUint32(40, pcm.byteLength, true);
+  const out = new Uint8Array(44 + pcm.byteLength);
+  out.set(new Uint8Array(header), 0);
+  out.set(pcm, 44);
+  return out;
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+lectures.post("/:id/podcast", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const id = String(c.req.param("id") || "");
+  const rl = await rateLimit(c.env, `lecture:podcast:${user.id}`, 4, 600);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много подкастов подряд. Подождите пару минут.", 429, rid);
+    return c.json(body, status as 429);
+  }
+  try {
+    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    if (!lecture) {
+      const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const text = String(lecture.body_markdown || "").replace(/[#*_>`]/g, " ").slice(0, 12000).trim();
+    if (text.length < 400) {
+      const { body, status } = fail("LECTURE_TOO_SHORT", "Текст лекции слишком короткий для подкаста", 422, rid);
+      return c.json(body, status as 422);
+    }
+    const apiKey = String(c.env.GEMINI_API_KEY || "").trim();
+    if (!apiKey) {
+      const { body, status } = fail("PODCAST_NOT_CONFIGURED", "Озвучка не настроена на сервере (нет GEMINI_API_KEY)", 503, rid);
+      return c.json(body, status as 503);
+    }
+    const quota = await aiDailyQuota(c.env, "lecture_podcast", user.id);
+    if (!quota.allowed) {
+      await logAiQuotaRejection(c.env, {
+        route: "POST /lectures/:id/podcast",
+        feature: "lecture_podcast",
+        userId: user.id,
+        subjectSlug: lecture.subject_slug,
+        requestId: rid,
+      });
+      const { body, status } = fail("AI_DAILY_LIMIT", aiQuotaMessage(quota, "lecture_podcast"), 429, rid);
+      return c.json(body, status as 429);
+    }
+
+    const result = await withAiCall<{ content?: string; provider?: string; model?: string }>(
+      c.env,
+      { route: "POST /lectures/:id/podcast", feature: "lecture_podcast", userId: user.id, subjectSlug: lecture.subject_slug, requestId: rid, attempts: [] },
+      () => generateAiCompletion(
+        c.env,
+        [
+          {
+            role: "user",
+            content: [
+              "Ты пишешь сценарий короткого аудио-конспекта (подкаста) по лекции для студента-медика.",
+              "Строго по тексту лекции, без добавления фактов извне.",
+              "Длина — 120–180 слов: вступление одной фразой, 3–4 ключевых факта, вывод одной фразой.",
+              "Пиши так, как говорят вслух: короткие предложения, без списков, без markdown и без сносок.",
+              `Лекция: «${lecture.title || "без названия"}».`,
+              "",
+              "=== ТЕКСТ ЛЕКЦИИ ===",
+              text,
+            ].join("\n"),
+          },
+        ],
+        "auto",
+        fetch,
+        { temperature: 0.2 },
+      ),
+    );
+    const script = String(result.content || "").replace(/\s+/g, " ").trim().slice(0, 1200);
+    if (script.length < 80) {
+      const { body, status } = fail("PODCAST_EMPTY", "ИИ не смог собрать сценарий", 502, rid);
+      return c.json(body, status as 502);
+    }
+
+    const ttsResponse = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: script }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } },
+          },
+        }),
+        signal: AbortSignal.timeout(60_000),
+      },
+    );
+    if (!ttsResponse.ok) {
+      const detail = (await ttsResponse.text()).slice(0, 300);
+      console.error("[lectures:podcast:tts]", ttsResponse.status, detail);
+      const { body, status } = fail("PODCAST_TTS_FAILED", "Озвучка не удалась — попробуйте позже", 502, rid);
+      return c.json(body, status as 502);
+    }
+    const payload: any = await ttsResponse.json().catch(() => null);
+    const inline = payload?.candidates?.[0]?.content?.parts?.find((part: any) => part?.inlineData?.data)?.inlineData;
+    if (!inline?.data) {
+      const { body, status } = fail("PODCAST_TTS_FAILED", "Озвучка вернула пустой ответ", 502, rid);
+      return c.json(body, status as 502);
+    }
+    const wav = pcmToWav(base64ToBytes(String(inline.data)));
+    return c.json(
+      ok({ lecture_id: id, title: lecture.title || "", script, mime: "audio/wav", audio_base64: bytesToBase64(wav), seconds: Math.round(script.length / 15) }, rid),
+    );
+  } catch (error) {
+    console.error("[lectures:podcast]", error);
+    const { body, status } = fail("PODCAST_FAILED", "Не удалось собрать подкаст", 502, rid);
+    return c.json(body, status as 502);
+  }
+});
+
 lectures.get("/:id", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");

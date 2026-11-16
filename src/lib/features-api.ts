@@ -276,6 +276,12 @@ export async function cardPackDelete(id: string) {
 export async function cardPackImport(id: string) {
   return api<{ pack: { id: string; title: string }; card_count: number }>(`/card-packs/${encodeURIComponent(id)}/import`, { method: "POST", body: "{}", timeoutMs: 60000 });
 }
+/** Аудио-конспект лекции: сценарий + озвучка (WAV в base64). */
+export type LecturePodcast = { lecture_id: string; title: string; script: string; mime: string; audio_base64: string; seconds: number };
+export async function lecturePodcast(id: string) {
+  return api<LecturePodcast>(`/lectures/${encodeURIComponent(id)}/podcast`, { method: "POST", body: "{}", timeoutMs: 120000 });
+}
+
 export async function cardPackAiGenerate(payload: { topic: string; subject_slug?: string; source_text?: string }) {
   return api<CardPackAiDraft>("/card-packs/ai-generate", { method: "POST", body: JSON.stringify(payload), timeoutMs: 90000 });
 }

@@ -122,6 +122,7 @@ export const endpoints = {
     lecture: (id: string): string => `/lectures/${enc(id)}`,
     /** Фаза 4: конспект с пропусками (кэш — GET, генерация — POST). */
     lectureCloze: (id: string): string => `/lectures/${enc(id)}/cloze`,
+    lecturePodcast: (id: string): string => `/lectures/${enc(id)}/podcast`,
     myLectures: (): string => "/my-lectures",
     myToolsExtractPdf: (): string => "/my-tools/extract-pdf",
     myToolsOcr: (): string => "/my-tools/ocr",
