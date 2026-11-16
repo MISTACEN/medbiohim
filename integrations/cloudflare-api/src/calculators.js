@@ -223,6 +223,69 @@ const CALCULATORS = [
       { key: "value", label: "Значение", type: "number", min: 0, max: 10000, step: 0.01, hint: "Например, 120 мм рт. ст. ≈ 16.0 кПа." },
     ],
   },
+  {
+    id: "gcs",
+    name: "Шкала комы Глазго (GCS)",
+    category: "неврология",
+    description: "Сумма баллов открывания глаз, речевого и двигательного ответа (3–15).",
+    fields: [
+      {
+        key: "eye",
+        label: "Открывание глаз",
+        type: "select",
+        options: [
+          { value: "4", label: "4 — спонтанно" },
+          { value: "3", label: "3 — на голос" },
+          { value: "2", label: "2 — на боль" },
+          { value: "1", label: "1 — нет" },
+        ],
+      },
+      {
+        key: "verbal",
+        label: "Речевой ответ",
+        type: "select",
+        options: [
+          { value: "5", label: "5 — ориентирован" },
+          { value: "4", label: "4 — спутанная речь" },
+          { value: "3", label: "3 — отдельные слова" },
+          { value: "2", label: "2 — нечленораздельные звуки" },
+          { value: "1", label: "1 — нет" },
+        ],
+      },
+      {
+        key: "motor",
+        label: "Двигательный ответ",
+        type: "select",
+        options: [
+          { value: "6", label: "6 — выполняет команды" },
+          { value: "5", label: "5 — локализует боль" },
+          { value: "4", label: "4 — отстраняется от боли" },
+          { value: "3", label: "3 — патологическое сгибание" },
+          { value: "2", label: "2 — патологическое разгибание" },
+          { value: "1", label: "1 — нет" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "curb65",
+    name: "CURB-65 (тяжесть пневмонии)",
+    category: "пульмонология",
+    description: "5 признаков, каждый — 1 балл; сумма 0–5 подсказывает место лечения.",
+    fields: [
+      {
+        key: "confusion",
+        label: "Спутанность сознания",
+        type: "select",
+        options: [{ value: "no", label: "Нет" }, { value: "yes", label: "Есть" }],
+      },
+      { key: "urea_mmol_l", label: "Мочевина, ммоль/л", type: "number", min: 0.5, max: 60, step: 0.1 },
+      { key: "resp_rate", label: "ЧДД, в минуту", type: "number", min: 4, max: 80, step: 1 },
+      { key: "sbp", label: "САД, мм рт. ст.", type: "number", min: 40, max: 260, step: 1 },
+      { key: "dbp", label: "ДАД, мм рт. ст.", type: "number", min: 20, max: 160, step: 1 },
+      { key: "age", label: "Возраст, лет", type: "number", min: 18, max: 120, step: 1 },
+    ],
+  },
 ];
 
 /** Молярные массы и коэффициенты пересчёта: 1 ммоль/л = X mg/dL. */
@@ -964,6 +1027,57 @@ export function computeCalculator(id, input) {
         "Давление в дыхательных путях и газах крови может выражаться в обеих единицах — сверяйте единицы бланка.",
       ];
       approximate = true;
+      break;
+    }
+    case "gcs": {
+      const eye = value("eye");
+      const verbal = value("verbal");
+      const motor = value("motor");
+      const allowed = { eye: [1, 2, 3, 4], verbal: [1, 2, 3, 4, 5], motor: [1, 2, 3, 4, 5, 6] };
+      if (!allowed.eye.includes(eye) || !allowed.verbal.includes(verbal) || !allowed.motor.includes(motor)) {
+        throw new CalculatorValidationError("Баллы вне диапазона шкалы");
+      }
+      const total = eye + verbal + motor;
+      result = { "GCS": total, "Глаза": eye, "Речь": verbal, "Движения": motor };
+      interpretation = total <= 8
+        ? "Тяжёлое угнетение сознания (≤8): кома, оценить защиту дыхательных путей."
+        : total <= 12
+          ? "Умеренное угнетение сознания (9–12)."
+          : "Сознание ясное или лёгкое угнетение (13–15).";
+      steps = [
+        step("Глаза", `E = ${eye}`, `${eye} балл(а)`),
+        step("Речь", `V = ${verbal}`, `${verbal} балл(а)`),
+        step("Движения", `M = ${motor}`, `${motor} балл(а)`),
+        step("Сумма", `GCS = E + V + M = ${eye} + ${verbal} + ${motor}`, `${total}`),
+      ];
+      notes = ["Минимум 3, максимум 15. Оценка субъективна, важна динамика, а не одно число."];
+      break;
+    }
+    case "curb65": {
+      const confusion = String(input.confusion ?? "no") === "yes";
+      const urea = value("urea_mmol_l");
+      const rr = value("resp_rate");
+      const sbp = value("sbp");
+      const dbp = value("dbp");
+      const age = value("age");
+      let score = 0;
+      const hits = [];
+      if (confusion) { score += 1; hits.push("спутанность"); }
+      if (urea >= 7) { score += 1; hits.push(`мочевина ${fmt(urea, 1)} ммоль/л`); }
+      if (rr >= 30) { score += 1; hits.push(`ЧДД ${fmt(rr, 0)}`); }
+      if (sbp < 90 || dbp <= 60) { score += 1; hits.push(`АД ${fmt(sbp, 0)}/${fmt(dbp, 0)}`); }
+      if (age >= 65) { score += 1; hits.push(`возраст ${fmt(age, 0)}`); }
+      result = { "CURB-65": score };
+      interpretation = score <= 1
+        ? "Низкий риск: лечение амбулаторно."
+        : score === 2
+          ? "Средний риск: рассмотреть госпитализацию."
+          : "Высокий риск (≥3): госпитализация, оценить ОРИТ."
+      steps = [
+        step("Признаки", `1 балл за каждый: C, U, R, B, 65`, hits.length ? hits.join(", ") : "ни одного"),
+        step("Сумма", `CURB-65 = ${score}`, `${score} из 5`),
+      ];
+      notes = ["Шкала не заменяет клиническую оценку и сатурацию; порог мочевины — 7 ммоль/л (≈19.6 мг/дл)."];
       break;
     }
     default:
