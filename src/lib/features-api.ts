@@ -1,5 +1,6 @@
 /** Feature API: tutor, calculators, search, SRS — extends core client. */
 import { api } from "./api";
+import { endpoints } from "./endpoints";
 import { describeApiError } from "./errors";
 
 /* —— Tutor (RAG) —— */
@@ -279,7 +280,7 @@ export async function cardPackImport(id: string) {
 /** Шпаргалка на один лист по лекции (markdown, кэшируется на сервере). */
 export async function lectureCheatsheet(id: string) {
   return api<{ lecture_id: string; title: string; content: string; cached: boolean }>(
-    `/lectures/${encodeURIComponent(id)}/cheatsheet`,
+    endpoints.content.lectureCheatsheet(id),
     { method: "POST", body: "{}", timeoutMs: 90000 },
   );
 }
@@ -287,7 +288,7 @@ export async function lectureCheatsheet(id: string) {
 /** Аудио-конспект лекции: сценарий + озвучка (WAV в base64). */
 export type LecturePodcast = { lecture_id: string; title: string; script: string; mime: string; audio_base64: string; seconds: number };
 export async function lecturePodcast(id: string) {
-  return api<LecturePodcast>(`/lectures/${encodeURIComponent(id)}/podcast`, { method: "POST", body: "{}", timeoutMs: 120000 });
+  return api<LecturePodcast>(endpoints.content.lecturePodcast(id), { method: "POST", body: "{}", timeoutMs: 120000 });
 }
 
 export async function cardPackAiGenerate(payload: { topic: string; subject_slug?: string; source_text?: string }) {

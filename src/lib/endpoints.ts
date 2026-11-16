@@ -73,6 +73,8 @@ export const endpoints = {
       `/tests/attempts/${enc(attemptId)}/answers/${enc(questionId)}/regrade`,
     attemptsFinish: (attemptId: string): string => `/tests/attempts/${enc(attemptId)}/finish`,
     attemptCards: (attemptId: string): string => `/tests/attempts/${enc(attemptId)}/cards`,
+    /** «Практика: для вас» — тесты по слабым темам. */
+    recommended: (): string => "/tests/recommended",
     myAttempts: (query?: string): string => withQuery("/my/attempts", query),
     preparation: (sessionId: string): string => `/tests/preparation/${enc(sessionId)}`,
     preparationFinish: (sessionId: string): string => `/tests/preparation/${enc(sessionId)}/finish`,
@@ -123,6 +125,7 @@ export const endpoints = {
     /** Фаза 4: конспект с пропусками (кэш — GET, генерация — POST). */
     lectureCloze: (id: string): string => `/lectures/${enc(id)}/cloze`,
     lecturePodcast: (id: string): string => `/lectures/${enc(id)}/podcast`,
+    lectureCheatsheet: (id: string): string => `/lectures/${enc(id)}/cheatsheet`,
     myLectures: (): string => "/my-lectures",
     myToolsExtractPdf: (): string => "/my-tools/extract-pdf",
     myToolsOcr: (): string => "/my-tools/ocr",
@@ -352,6 +355,7 @@ export const endpoints = {
     studyPrepLeague: (): string => "/study-prep/league",
     studyPrepStreak: (): string => "/study-prep/streak",
     studyPrepQuests: (): string => "/study-prep/quests",
+    studyPrepChest: (): string => "/study-prep/quests/chest",
     studyPrepAchievements: (): string => "/study-prep/achievements",
     studyPrepAgentItem: (id: string): string => `/study-prep/agent/items/${enc(id)}`,
     studyPrepAgentReport: (): string => "/study-prep/agent/report",

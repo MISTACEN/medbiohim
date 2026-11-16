@@ -122,7 +122,7 @@ export async function getDailyQuests(options: RequestInit = {}) {
 
 /** Сундук дня: награда за все три цели (сервер сам проверяет идемпотентность). */
 export async function claimDailyChest() {
-  return api<DailyChest & { reason?: string }>("/study-prep/quests/chest", { method: "POST", body: "{}" });
+  return api<DailyChest & { reason?: string }>(endpoints.misc.studyPrepChest(), { method: "POST", body: "{}" });
 }
 
 /** Серия дней и карта активности за 16 недель. */

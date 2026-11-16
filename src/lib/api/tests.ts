@@ -81,7 +81,7 @@ export type RecommendedTest = {
   reason: string;
 };
 export async function getRecommendedTests(options: RequestInit = {}) {
-  return api<{ items: RecommendedTest[]; reason: string }>("/tests/recommended", options);
+  return api<{ items: RecommendedTest[]; reason: string }>(endpoints.tests.recommended(), options);
 }
 
 export async function createCardsFromAttempt(attemptId: string, questionIds?: string[]) {
