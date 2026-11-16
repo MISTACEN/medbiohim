@@ -56,7 +56,25 @@ subjects.get("/", requireAuth, async (c) => {
   if (semester) q = q.eq("semester", Number(semester));
   const { data, error } = await q;
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subjects unavailable", 503, rid); return c.json(body, status as 503); }
-  return c.json(ok({ items: data || [] }, rid));
+  // В каталоге бывают строки-пустышки без слага и активные дубли одного
+  // предмета (разные курсы/семестры, один slug) — студенту они показываются
+  // как одинаковые предметы и ломают переход по адресу. Админке отдаём сырой
+  // список (include_inactive), чтобы архив можно было восстановить.
+  if (includeInactive) return c.json(ok({ items: data || [] }, rid));
+  const bySlug = new Map<string, any>();
+  for (const row of data || []) {
+    const slug = String(row?.slug || "").trim();
+    if (!slug) continue;
+    const current = bySlug.get(slug);
+    if (!current) { bySlug.set(slug, row); continue; }
+    // Дубль: оставляем строку с большей нагрузкой (часы), затем с кафедрой.
+    const better =
+      Number(row?.total_hours || 0) > Number(current?.total_hours || 0) ||
+      (Number(row?.total_hours || 0) === Number(current?.total_hours || 0) &&
+        !current?.specialty_slug && Boolean(row?.specialty_slug));
+    if (better) bySlug.set(slug, row);
+  }
+  return c.json(ok({ items: [...bySlug.values()] }, rid));
 });
 
 subjects.get("/:id/gradebook", requireAuth, async (c) => {
