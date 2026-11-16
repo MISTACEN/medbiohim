@@ -50,7 +50,7 @@
 | 2.8 Устный экзамен голосом | ✅ POST /ai/oral-evaluate + /tests/preparation/[id]/oral (Web Speech API ru-RU, fallback текст) + карточка режима |
 | 2.9 Мнемоники/доска/тона | ✅ AiQuickActions в тьюторе (5 тонов) |
 | 2.10 Лиги/рейтинг | ✅ GET /league (недельный топ по activity_events с весами: тест +10, отработки +8, ДЗ +5, SRS/лекции +2; лиги Бронза→Алмаз по порогам; кэш Redis 120с) + LeagueCard на /study; анти-чит по построению — события пишет только service_role |
-| FSRS вместо SM-2 | ⬜ опция, не запланировано |
+| FSRS вместо SM-2 | ✅ FSRS-4.5 в проде: retention 90%, кривая забывания R(t,S), stability/difficulty/state/lapses в srs_cards (поля были в схеме — миграция не понадобилась), SM-2-колонки обновляются рядом для совместимости; общая математика nextReviewState для сайта и Telegram-тренажёра; тесты srs-fsrs.test.js |
 
 ## Отдельные задачи
 
