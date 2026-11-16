@@ -8,8 +8,8 @@
  * ```mermaid рисуется существующим кодом — отдельной схемной библиотеки нет.
  */
 import { useEffect, useState } from "react";
-import { Baby, Brain, Drama, Headphones, Loader2, Network, Sparkles, type LucideIcon } from "lucide-react";
-import { aiChat, lecturePodcast } from "@/lib/features-api";
+import { Baby, Brain, Drama, FileText, Headphones, Loader2, Network, Printer, Sparkles, type LucideIcon } from "lucide-react";
+import { aiChat, lectureCheatsheet, lecturePodcast } from "@/lib/features-api";
 import { describeApiError } from "@/lib/errors";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { AI_PRESETS, buildPresetMessage, presetById, type AiPresetId } from "@/lib/ai/presets";
@@ -50,6 +50,47 @@ export default function LectureAiActions({
       if (podcastUrl) URL.revokeObjectURL(podcastUrl);
     };
   }, [podcastUrl]);
+
+  // Шпаргалка: markdown от ИИ + печать на один лист в отдельном окне.
+  const [cheat, setCheat] = useState<{ title: string; content: string } | null>(null);
+  const [cheatBusy, setCheatBusy] = useState(false);
+
+  async function makeCheatsheet() {
+    if (!lectureId || cheatBusy) return;
+    setCheatBusy(true);
+    setError(null);
+    const result = await lectureCheatsheet(lectureId);
+    setCheatBusy(false);
+    if (!result.ok) {
+      setError(describeApiError(result.error));
+      return;
+    }
+    setCheat({ title: result.data.title || title, content: result.data.content || "" });
+  }
+
+  function printCheatsheet() {
+    if (!cheat) return;
+    const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = cheat.content
+      .split("\n")
+      .map((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return "";
+        if (trimmed.startsWith("### ")) return `<h3>${escape(trimmed.slice(4))}</h3>`;
+        if (trimmed.startsWith("## ")) return `<h2>${escape(trimmed.slice(3))}</h2>`;
+        if (trimmed.startsWith("# ")) return `<h2>${escape(trimmed.slice(2))}</h2>`;
+        if (/^[-*] /.test(trimmed)) return `<li>${escape(trimmed.slice(2)).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</li>`;
+        return `<p>${escape(trimmed).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</p>`;
+      })
+      .join("\n")
+      .replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, "<ul>$1</ul>");
+    const win = window.open("", "_blank", "width=800,height=1000");
+    if (!win) return;
+    win.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${escape(cheat.title)} — шпаргалка</title><style>body{font-family:Georgia,serif;max-width:760px;margin:24px auto;padding:0 16px;line-height:1.45;color:#111}h1,h2{font-size:16px;margin:12px 0 4px}h3{font-size:14px;margin:10px 0 4px}p,li{font-size:13px;margin:2px 0}ul{margin:4px 0 8px 18px;padding:0}h1{font-size:20px}@media print{body{margin:0}}</style></head><body><h1>${escape(cheat.title)}</h1>${html}</body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
 
   async function makePodcast() {
     if (!lectureId || podcastBusy) return;
@@ -133,9 +174,34 @@ export default function LectureAiActions({
             {podcastBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Headphones className="h-3.5 w-3.5" />}
             {podcastBusy ? "Пишем и озвучиваем…" : "Подкаст по лекции"}
           </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--primary-soft)]"
+            disabled={cheatBusy}
+            onClick={() => void makeCheatsheet()}
+          >
+            {cheatBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {cheatBusy ? "Сжимаем…" : "Шпаргалка на лист"}
+          </button>
+          {cheat ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--primary-soft)]"
+              onClick={printCheatsheet}
+            >
+              <Printer className="h-3.5 w-3.5" /> Печать
+            </button>
+          ) : null}
           {podcastUrl ? <audio controls src={podcastUrl} className="h-9 w-full max-w-md" /> : null}
         </div>
       ) : null}
+      {cheat ? (
+        <div className="mt-3 rounded-xl border border-[var(--border)] p-3">
+          <p className="mb-2 text-[11px] text-[var(--muted)]">Шпаргалка · {cheat.title}</p>
+          <LectureRenderer markdown={cheat.content} />
+        </div>
+      ) : null}
+
       {podcastScript ? (
         <p className="mt-2 rounded-xl bg-[var(--primary-soft)]/40 p-3 text-sm leading-relaxed">{podcastScript}</p>
       ) : null}

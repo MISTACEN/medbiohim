@@ -338,6 +338,97 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/**
+ * Шпаргалка по лекции (аудит «Школы Сеченова», раздел cheat sheets):
+ * сжатый конспект на один печатный лист, только факты из текста лекции.
+ * Кэш привязан к хэшу тела, чтобы повторное открытие не тратило квоту.
+ */
+lectures.post("/:id/cheatsheet", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const id = String(c.req.param("id") || "");
+  const rl = await rateLimit(c.env, `lecture:cheatsheet:${user.id}`, 10, 600);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много шпаргалок подряд.", 429, rid);
+    return c.json(body, status as 429);
+  }
+  try {
+    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    if (!lecture) {
+      const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const text = String(lecture.body_markdown || "").slice(0, 14000).trim();
+    if (text.length < 400) {
+      const { body, status } = fail("LECTURE_TOO_SHORT", "Текст лекции слишком короткий для шпаргалки", 422, rid);
+      return c.json(body, status as 422);
+    }
+    const hash = await clozeBodyHash(lecture.body_markdown);
+    const cacheKey = `cheatsheet:v1:${id}:${hash.slice(0, 12)}`;
+    const service = clozeCache(c);
+    if (service) {
+      const { data: cached } = await service.from("site_content").select("payload").eq("key", cacheKey).maybeSingle();
+      const content = String(cached?.payload?.content || "").trim();
+      if (content) return c.json(ok({ lecture_id: id, title: lecture.title || "", content, cached: true }, rid));
+    }
+
+    const quota = await aiDailyQuota(c.env, "lecture_cheatsheet", user.id);
+    if (!quota.allowed) {
+      await logAiQuotaRejection(c.env, {
+        route: "POST /lectures/:id/cheatsheet",
+        feature: "lecture_cheatsheet",
+        userId: user.id,
+        subjectSlug: lecture.subject_slug,
+        requestId: rid,
+      });
+      const { body, status } = fail("AI_DAILY_LIMIT", aiQuotaMessage(quota, "lecture_cheatsheet"), 429, rid);
+      return c.json(body, status as 429);
+    }
+
+    const result = await withAiCall<{ content?: string; provider?: string; model?: string }>(
+      c.env,
+      { route: "POST /lectures/:id/cheatsheet", feature: "lecture_cheatsheet", userId: user.id, subjectSlug: lecture.subject_slug, requestId: rid, attempts: [] },
+      () => generateAiCompletion(
+        c.env,
+        [
+          {
+            role: "user",
+            content: [
+              "Сожми лекцию в шпаргалку на один лист А4 для подготовки к занятию.",
+              "Только факты из текста, ничего извне. Без вступлений и воды.",
+              "Формат — markdown: 4–7 блоков с заголовками ## и короткими пунктами; термины выделяй **жирным**.",
+              "В конце блок «## Запомнить» — 3–5 самых спрашиваемых фактов одним списком.",
+              `Лекция: «${lecture.title || "без названия"}».`,
+              "",
+              "=== ТЕКСТ ЛЕКЦИИ ===",
+              text,
+            ].join("\n"),
+          },
+        ],
+        "auto",
+        fetch,
+        { temperature: 0.2 },
+      ),
+    );
+    const content = String(result.content || "").trim().slice(0, 12000);
+    if (content.length < 100) {
+      const { body, status } = fail("CHEATSHEET_EMPTY", "ИИ не смог собрать шпаргалку", 502, rid);
+      return c.json(body, status as 502);
+    }
+    if (service) {
+      await service.from("site_content").upsert(
+        { key: cacheKey, payload: { content, title: lecture.title || "", lecture_id: id, updated_at: new Date().toISOString() } },
+        { onConflict: "key" },
+      ).then(() => undefined, () => undefined);
+    }
+    return c.json(ok({ lecture_id: id, title: lecture.title || "", content, cached: false }, rid));
+  } catch (error) {
+    console.error("[lectures:cheatsheet]", error);
+    const { body, status } = fail("CHEATSHEET_FAILED", "Не удалось собрать шпаргалку", 502, rid);
+    return c.json(body, status as 502);
+  }
+});
+
 lectures.post("/:id/podcast", requireAuth, async (c) => {
   const rid = requestId();
   const user = c.get("user");
