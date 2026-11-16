@@ -23,6 +23,7 @@ import { describeApiError } from "@/lib/errors";
 import { useApiRequest } from "@/hooks/useApiRequest";
 import { useAuth } from "@/components/auth/AuthProvider";
 import TestsHub from "@/components/tests/TestsHub";
+import { RecommendedTests } from "@/components/tests/RecommendedTests";
 
 type View = "tests" | "chemistry" | "history";
 
@@ -179,6 +180,7 @@ function TestsPageInner() {
         })}
       </nav>
 
+      {view === "tests" && <RecommendedTests />}
       {view === "tests" && <TestsHub highlightTestId={openTestId} />}
 
       {view === "chemistry" && (

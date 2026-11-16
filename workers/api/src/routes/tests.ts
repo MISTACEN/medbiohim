@@ -501,6 +501,19 @@ tests.get("/assignments", requireAuth, async (c) => {
   }
 });
 
+/** id тестов, которые пользователь начинал за последние `days` дней. */
+async function recentAttemptTestIds(db: any, userId: string, days: number): Promise<Set<string>> {
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data, error } = await db
+    .from("test_attempts")
+    .select("test_id")
+    .eq("user_id", userId)
+    .gte("started_at", since)
+    .limit(100);
+  if (error) throw error;
+  return new Set((data || []).map((row: any) => String(row.test_id || "")));
+}
+
 tests.get("/preview/:id", requireAuth, async (c) => {
   const rid = requestId(), db = c.get("supabase"), id = (c.req.param("id") ?? "");
   if (!UUID.test(id)) return invalid(c, rid, "Некорректный ID теста");
@@ -573,6 +586,68 @@ tests.get("/preview/:id", requireAuth, async (c) => {
     return c.json(ok({ test, questions, mode: "author_preview" }, rid));
   } catch {
     const { body, status } = fail("DB_UNAVAILABLE", "Тест недоступен", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
+/**
+ * «Практика: для вас» — что пройти дальше, без ручного выбора банка.
+ * Основа — освоенность тем (user_topic_progress): берём самые слабые темы и
+ * тесты, которые их покрывают. Свежие попытки (3 дня) пропускаем, иначе
+ * рекомендация зацикливается на одном тесте. Нет данных — пустой список и
+ * честный reason, а не случайный тест.
+ */
+tests.get("/recommended", requireAuth, async (c) => {
+  const rid = requestId(), db = c.get("supabase"), user = c.get("user");
+  try {
+    const { data: progress, error: progressError } = await db
+      .from("user_topic_progress")
+      .select("topic_id,percent,status")
+      .eq("user_id", user.id)
+      .lt("percent", 60)
+      .order("percent", { ascending: true })
+      .limit(20);
+    if (progressError) throw progressError;
+    const weak = (progress || []).filter((row: any) => row.topic_id);
+    if (!weak.length) return c.json(ok({ items: [], reason: "NO_PROGRESS" }, rid));
+    const percentByTopic = new Map(weak.map((row: any) => [String(row.topic_id), Number(row.percent) || 0]));
+
+    const { data: candidates, error: testsError } = await db
+      .from("tests")
+      .select("id,title,subject_id,topic_id,subjects(name,slug)")
+      .eq("is_published", true)
+      .is("archived_at", null)
+      .in("topic_id", Array.from(percentByTopic.keys()))
+      .limit(40);
+    if (testsError) throw testsError;
+    if (!candidates?.length) return c.json(ok({ items: [], reason: "NO_TESTS" }, rid));
+
+    const allowed = await accessibleSubjectIds(db, user.id, candidates.map((row: any) => String(row.subject_id || "")));
+    const recentIds = await recentAttemptTestIds(db, user.id, 3);
+
+    const items = (candidates as any[])
+      .filter((test) => !test.subject_id || allowed.has(String(test.subject_id)))
+      .filter((test) => !recentIds.has(String(test.id)))
+      .map((test) => {
+        const percent = percentByTopic.get(String(test.topic_id)) ?? 0;
+        const subject = Array.isArray(test.subjects) ? test.subjects[0] : test.subjects;
+        return {
+          test_id: String(test.id),
+          title: String(test.title || "Тест"),
+          subject_slug: subject?.slug ? String(subject.slug) : null,
+          subject_name: subject?.name ? String(subject.name) : null,
+          topic_id: String(test.topic_id || ""),
+          percent: Math.round(percent),
+          reason: `Тема освоена на ${Math.round(percent)}% — стоит закрепить`,
+        };
+      })
+      .sort((a, b) => a.percent - b.percent)
+      .slice(0, 3);
+
+    return c.json(ok({ items, reason: items.length ? "OK" : "ALL_RECENT" }, rid));
+  } catch (error) {
+    console.error("[tests:recommended]", error);
+    const { body, status } = fail("RECOMMENDED_UNAVAILABLE", "Не удалось подобрать практику", 503, rid);
     return c.json(body, status as 503);
   }
 });

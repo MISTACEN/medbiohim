@@ -70,6 +70,20 @@ export async function saveTestAnswer(attemptId: string, questionId: string, answ
 }
 export async function finishAttempt(id: string) { return api<any>(endpoints.tests.attemptsFinish(id), { method: "POST", body: "{}" }); }
 /** Собрать пак карточек из вопросов завершённой попытки. */
+/** «Практика: для вас» — тесты по самым слабым темам. */
+export type RecommendedTest = {
+  test_id: string;
+  title: string;
+  subject_slug: string | null;
+  subject_name: string | null;
+  topic_id: string;
+  percent: number;
+  reason: string;
+};
+export async function getRecommendedTests(options: RequestInit = {}) {
+  return api<{ items: RecommendedTest[]; reason: string }>("/tests/recommended", options);
+}
+
 export async function createCardsFromAttempt(attemptId: string, questionIds?: string[]) {
   return api<{ pack_id: string; card_count: number }>(endpoints.tests.attemptCards(attemptId), {
     method: "POST",
