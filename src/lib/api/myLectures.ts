@@ -14,6 +14,8 @@ export async function updateMyLecture(id: string, payload: Record<string, unknow
   return api(endpoints.content.myLecture(id), { method: "PATCH", body: JSON.stringify(payload) }) as any;
 }
 
+export async function deleteMyLecture(id: string): Promise<any> { return api(endpoints.content.myLectureDelete(id), { method: "DELETE" }); }
+
 export async function publishMyLecture(id: string): Promise<any> {
   return api(endpoints.content.myLecturePublish(id), { method: "POST", body: "{}" }) as any;
 }

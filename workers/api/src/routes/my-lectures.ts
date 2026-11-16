@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { checkLectureForPublish, syncPublishedLecture } from "../lib/lecture-quality";
+import { createServiceClient } from "../lib/supabase";
 
 /**
  * Авторские занятия: обычный пользователь видит, правит и публикует только
@@ -125,9 +126,14 @@ myLectures.post("/", requireAuth, async (c) => {
     created_at: now,
     updated_at: now,
   };
+  // Запись — только service client: RLS site_content не даёт authenticated
+  // обновлять ключ lectures, и PostgREST «успешно» обновлял 0 строк, теряя
+  // занятие при ответе 201 (прогон 2).
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось сохранить занятие: нужен service client");
   try {
-    const store = await readStore(db);
-    await writeStore(db, store, [lecture, ...store.items]);
+    const store = await readStore(service);
+    await writeStore(service, store, [lecture, ...store.items]);
     return c.json(ok({ lecture }, rid), 201);
   } catch (dbError: any) {
     console.error("[my-lectures:create]", dbError?.message);
@@ -171,6 +177,29 @@ myLectures.patch("/:id", requireAuth, async (c) => {
 });
 
 /** Публикация своего занятия в общий каталог. */
+// Удаление своего занятия (прогон 2: маршрута не существовало — тестовые
+// и черновые занятия нельзя было убрать).
+myLectures.delete("/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  const db = c.get("supabase");
+  const user = c.get("user");
+  const id = String(c.req.param("id") || "").trim();
+  const service = createServiceClient(c.env);
+  if (!service) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось удалить занятие: нужен service client");
+  try {
+    const store = await readStore(service);
+    const target = store.items.find((item: any) => String(item?.id || "") === id);
+    if (!target || ownerOf(target) !== String(user.id)) {
+      return error(c, rid, 404, "NOT_FOUND", "Занятие не найдено или не ваше");
+    }
+    await writeStore(service, store, store.items.filter((item: any) => String(item?.id || "") !== id));
+    return c.json(ok({ deleted: true }, rid));
+  } catch (dbError: any) {
+    console.error("[my-lectures:delete]", dbError?.message);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось удалить занятие");
+  }
+});
+
 myLectures.post("/:id/publish", requireAuth, async (c) => {
   const rid = requestId();
   const db = c.get("supabase");

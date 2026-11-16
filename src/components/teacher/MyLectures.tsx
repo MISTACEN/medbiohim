@@ -10,10 +10,11 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Loader2, Plus, Save } from "lucide-react";
+import { BookOpen, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { RichLectureEditor } from "@/components/editor/RichLectureEditor";
 import {
   createMyLecture,
+  deleteMyLecture,
   listMyLectures,
   publishMyLecture,
   updateMyLecture,
@@ -129,6 +130,19 @@ export function MyLectures() {
     await load();
   }
 
+  async function remove(lecture: LectureItem) {
+    if (!lecture.id) return;
+    setBusy("delete-" + lecture.id);
+    setError("");
+    const result: any = await deleteMyLecture(lecture.id);
+    setBusy("");
+    if (!result?.ok) {
+      setError(describeApiError(result?.error));
+      return;
+    }
+    setItems((current) => current.filter((item) => item.id !== lecture.id));
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -191,6 +205,17 @@ export function MyLectures() {
                     Опубликовать
                   </button>
                 )}
+                <button
+                  type="button"
+                  disabled={busy === "delete-" + lecture.id}
+                  onClick={() => {
+                    if (!window.confirm(`Удалить «${lecture.title || "без названия"}»? Действие необратимо.`)) return;
+                    void remove(lecture);
+                  }}
+                  className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 disabled:opacity-50"
+                >
+                  {busy === "delete-" + lecture.id ? "Удаляем…" : "Удалить"}
+                </button>
               </div>
             </div>
           ))}

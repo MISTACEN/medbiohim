@@ -66,7 +66,7 @@ async function generateClozeDraft(
   }
 }
 
-async function loadLectureForCloze(supabase: any, id: string) {
+async function loadLectureForCloze(supabase: any, id: string, userId?: string) {
   if (!LECTURE_ID.test(id)) return null;
   const { data, error } = await supabase
     .from("histology_lectures")
@@ -75,7 +75,39 @@ async function loadLectureForCloze(supabase: any, id: string) {
     .eq("is_published", true)
     .maybeSingle();
   if (error) throw error;
-  return data || null;
+  if (data) return data;
+  // Личная лекция автора: cloze/подкаст/слайды работают и для неё.
+  return userId ? await loadPersonalLecture(supabase, id, userId) : null;
+}
+
+/**
+ * Личные лекции авторов живут в store site_content (key="lectures") — открываем
+ * свои и опубликованные по тому же адресу /lectures/<id>, что и кафедральные:
+ * «Открыть лекцию» из импорта конспекта и из Мастерской раньше получала 404.
+ * Для cloze/подкаста/слайдов форма та же, что у кафедральной лекции.
+ */
+async function loadPersonalLecture(supabase: any, id: string, userId: string) {
+  if (!LECTURE_ID.test(id)) return null;
+  const { data: rows } = await supabase
+    .from("site_content")
+    .select("payload")
+    .eq("key", "lectures")
+    .limit(1);
+  const items = Array.isArray(rows?.[0]?.payload?.items) ? rows[0].payload.items : [];
+  const item = items.find((entry: any) => String(entry?.id || "") === id);
+  if (!item) return null;
+  const mine = String(item.created_by || "") === String(userId);
+  const published = item.status === "published" || item.is_published === true;
+  if (!mine && !published) return null;
+  const body = String(item.body_md || item.body_markdown || "");
+  if (!body.trim()) return null;
+  return {
+    id: String(item.id),
+    title: String(item.title || ""),
+    subject_slug: String(item.subject_slug || ""),
+    body_markdown: body,
+    is_published: true,
+  };
 }
 
 function clozeCache(c: any) {
@@ -99,7 +131,7 @@ lectures.get("/:id/cloze", requireAuth, async (c) => {
   const service = clozeCache(c);
   if (!service) return c.json(ok({ lecture_id: id, items: [], cached: false, available: false }, rid));
   try {
-    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    const lecture = await loadLectureForCloze(c.get("supabase"), id, c.get("user").id);
     if (!lecture) return c.json(ok({ lecture_id: id, items: [], cached: false, available: true }, rid));
     const hash = await clozeBodyHash(lecture.body_markdown);
     const { data, error } = await service
@@ -128,7 +160,7 @@ lectures.post("/:id/cloze", requireAuth, async (c) => {
   }
   try {
     const supabase = c.get("supabase");
-    const lecture = await loadLectureForCloze(supabase, id);
+    const lecture = await loadLectureForCloze(supabase, id, c.get("user").id);
     if (!lecture) {
       const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
       return c.json(body, status as 404);
@@ -353,7 +385,7 @@ lectures.post("/:id/cheatsheet", requireAuth, async (c) => {
     return c.json(body, status as 429);
   }
   try {
-    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    const lecture = await loadLectureForCloze(c.get("supabase"), id, c.get("user").id);
     if (!lecture) {
       const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
       return c.json(body, status as 404);
@@ -439,7 +471,7 @@ lectures.post("/:id/podcast", requireAuth, async (c) => {
     return c.json(body, status as 429);
   }
   try {
-    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    const lecture = await loadLectureForCloze(c.get("supabase"), id, c.get("user").id);
     if (!lecture) {
       const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
       return c.json(body, status as 404);
@@ -583,7 +615,7 @@ lectures.post("/:id/slides", requireAuth, async (c) => {
     return c.json(body, status as 429);
   }
   try {
-    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    const lecture = await loadLectureForCloze(c.get("supabase"), id, c.get("user").id);
     if (!lecture) {
       const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
       return c.json(body, status as 404);
@@ -727,8 +759,20 @@ lectures.get("/:id", requireAuth, async (c) => {
       return c.json(body, status as 503);
     }
     if (!data) {
-      const { body, status } = fail("NOT_FOUND", "Лекция не найдена", 404, rid);
-      return c.json(body, status as 404);
+      // Личная лекция автора: открываем по тому же адресу (импорт конспекта
+      // и Мастерская ведут на /lectures/<id>).
+      const personal = await loadPersonalLecture(supabase, id, c.get("user").id);
+      if (!personal) {
+        const { body, status } = fail("NOT_FOUND", "Лекция не найдена", 404, rid);
+        return c.json(body, status as 404);
+      }
+      await logActivity(c.env, {
+        userId: c.get("user").id,
+        kind: "lecture_opened",
+        subjectSlug: personal.subject_slug || null,
+        refId: personal.id,
+      });
+      return c.json(ok(personal, rid));
     }
     // Фаза 5: открытие лекции — событие ленты.
     await logActivity(c.env, {

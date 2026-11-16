@@ -136,6 +136,7 @@ export const endpoints = {
     myQuestion: (id: string): string => `/my-questions/${enc(id)}`,
     myLecture: (id: string): string => `/my-lectures/${enc(id)}`,
     myLecturePublish: (id: string): string => `/my-lectures/${enc(id)}/publish`,
+    myLectureDelete: (id: string): string => `/my-lectures/${enc(id)}`,
     subjectMaterials: (query?: string): string => withQuery("/subject-materials", query),
     contentSource: (id: string): string => `/content-sources/${enc(id)}`,
     histologySourceFile: (): string => "/histology/source-file",
