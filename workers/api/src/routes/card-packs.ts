@@ -290,8 +290,11 @@ cardPacks.post("/ai-generate", requireAuth, async (c) => {
 
   const db = c.get("supabase");
   try {
+    // buildLectureContext возвращает объект с текстовым блоком, а не строку:
+    // раньше в промпт попадал «[object Object]», и модель отдавала пустой пак.
     const lectureContext = await buildLectureContext(db, subjectSlug, topic);
-    if (!lectureContext) {
+    const lectureBlock = String(lectureContext?.block || "").trim();
+    if (!lectureBlock) {
       return err(c, rid, 422, "NO_LECTURE_CONTEXT", "По этому предмету нет лекций для контекста");
     }
     const prompt = [
@@ -304,9 +307,13 @@ cardPacks.post("/ai-generate", requireAuth, async (c) => {
       "От 4 до 12 карточек. Front — короткий термин или вопрос; back — определение из лекции.",
       "",
       "=== ФРАГМЕНТЫ ЛЕКЦИЙ ===",
-      lectureContext,
+      lectureBlock,
     ].join("\n");
     const attempts: Array<Record<string, unknown>> = [];
+    // Строгий JSON лучше держат крупные модели: сортировочный провайдер
+    // (часто llama-8b) отдаёт прозу или пустой массив. AI_JSON_PROVIDER можно
+    // переопределить в настройках воркера, по умолчанию — Groq.
+    const jsonProvider = String((c.env as any).AI_JSON_PROVIDER || "groq").trim() || "auto";
     const result = await withAiCall<{ content?: string; provider?: string; model?: string }>(
       c.env,
       {
@@ -320,27 +327,88 @@ cardPacks.post("/ai-generate", requireAuth, async (c) => {
       () => generateAiCompletion(
         c.env,
         [{ role: "user", content: prompt.slice(0, 24000) }],
-        "auto",
+        jsonProvider,
         fetch,
-        { onAttempt: (attempt: Record<string, unknown>) => attempts.push(attempt) },
+        { temperature: 0.1, onAttempt: (attempt: Record<string, unknown>) => attempts.push(attempt) },
       ),
     );
-    let draft: { cards?: Array<{ front?: string; back?: string; source?: string }> } = {};
-    const raw = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-    try { draft = JSON.parse(raw); } catch {
-      const match = /\{[\s\S]*"cards"[\s\S]*\}/.exec(String(result.content || ""));
-      if (match) draft = JSON.parse(match[0]);
-      else return err(c, rid, 502, "AI_BAD_OUTPUT", "ИИ вернул неожиданный формат — попробуйте ещё раз");
+    let draft = extractCardsJson(String(result.content || ""));
+    if (!draft) {
+      // Модель иногда добавляет пояснения вокруг JSON или обрезает ответ.
+      // Один строгий повтор дешевле, чем «карточки не генерируются».
+      console.warn("[card-packs:ai-generate:retry-json]", { requestId: rid, provider: result.provider });
+      try {
+        const retry = await generateAiCompletion(
+          c.env,
+          [
+            { role: "user", content: prompt.slice(0, 8000) },
+            { role: "assistant", content: String(result.content || "").slice(0, 4000) },
+            { role: "user", content: "Ответ не был валидным JSON. Верни только валидный JSON вида {\"cards\":[{\"front\":\"...\",\"back\":\"...\",\"source\":\"...\"}]} и ничего больше." },
+          ],
+          jsonProvider,
+          fetch,
+          { temperature: 0 },
+        );
+        draft = extractCardsJson(String(retry.content || ""));
+      } catch (retryError) {
+        console.warn("[card-packs:ai-generate:retry-failed]", String(retryError));
+      }
     }
+    if (!draft) return err(c, rid, 502, "AI_BAD_OUTPUT", "ИИ вернул неожиданный формат — попробуйте ещё раз");
+    if (!(draft.cards || []).length) {
+      console.warn("[card-packs:ai-generate:empty]", JSON.stringify({ requestId: rid, head: String(result.content || "").slice(0, 400) }));
+    }
+    // Модели иногда называют поля по-своему (term/definition, question/answer)
+    // или отдают пару массивом — берём всё, что похоже на карточку.
     const cards = (draft.cards || [])
+      .map((card: any) => {
+        if (Array.isArray(card)) {
+          return { front: String(card[0] || ""), back: String(card[1] || ""), source: String(card[2] || "") };
+        }
+        return {
+          front: String(card?.front ?? card?.term ?? card?.question ?? card?.q ?? ""),
+          back: String(card?.back ?? card?.definition ?? card?.answer ?? card?.a ?? ""),
+          source: String(card?.source ?? card?.quote ?? card?.fragment ?? ""),
+        };
+      })
       .map((card) => ({
-        front: String(card?.front || "").trim().slice(0, MAX_CARD_TEXT),
-        back: String(card?.back || "").trim().slice(0, MAX_CARD_TEXT),
-        source: String(card?.source || "").trim().slice(0, 300),
+        front: card.front.trim().slice(0, MAX_CARD_TEXT),
+        back: card.back.trim().slice(0, MAX_CARD_TEXT),
+        source: card.source.trim().slice(0, 300),
       }))
       .filter((card) => card.front && card.back)
       .slice(0, 12);
-    if (!cards.length) return err(c, rid, 502, "AI_EMPTY", "ИИ не смог собрать карточки по этой теме");
+    if (!cards.length) {
+      // Маленькие модели плохо держат JSON. Просим простой построчный формат
+      // «термин || определение» — его понимают все провайдеры.
+      console.warn("[card-packs:ai-generate:fallback-lines]", JSON.stringify({ requestId: rid, head: String(result.content || "").slice(0, 200) }));
+      try {
+        // RAG мог выбрать не ту лекцию. Ищем лекцию по названию/тексту темы
+        // и повторяем с этим фрагментом — на нём модель уже видит определения.
+        const direct = await directLectureBlock(db, subjectSlug, topic);
+        const lines = await generateAiCompletion(
+          c.env,
+          [
+            { role: "user", content: (direct ? prompt.replace(lectureBlock, direct) : prompt).slice(0, 12000) },
+            { role: "user", content: "Не JSON. Верни 6–10 строк, каждая строго в виде: термин || определение (дословно из фрагментов выше). Без нумерации и пояснений." },
+          ],
+          jsonProvider,
+          fetch,
+          { temperature: 0 },
+        );
+        const parsed = String(lines.content || "")
+          .split("\n")
+          .map((line) => line.split("||"))
+          .filter((parts) => parts.length >= 2 && parts[0].trim() && parts[1].trim())
+          .map((parts) => ({ front: parts[0].trim(), back: parts.slice(1).join("||").trim(), source: "" }));
+        if (parsed.length) cards.push(...parsed.slice(0, 12));
+      } catch (fallbackError) {
+        console.warn("[card-packs:ai-generate:fallback-failed]", String(fallbackError));
+      }
+    }
+    if (!cards.length) {
+      return err(c, rid, 502, "AI_EMPTY", "ИИ не смог собрать карточки по этой теме");
+    }
     return c.json(ok({ topic, subject_slug: subjectSlug, cards, provider: result.provider, model: result.model }, rid));
   } catch (generateError) {
     console.error("[card-packs:ai-generate]", generateError);
@@ -353,6 +421,80 @@ cardPacks.post("/ai-generate", requireAuth, async (c) => {
 });
 
 export default cardPacks;
+
+/**
+ * Достаёт {"cards":[...]} из свободного ответа модели: снимает ```json-обёртку,
+ * берёт первый сбалансированный объект и терпит мусор до/после JSON.
+ */
+function extractCardsJson(raw: string): { cards?: Array<{ front?: string; back?: string; source?: string }> } | null {
+  const text = String(raw || "").replace(/```(?:json)?/gi, "").trim();
+  if (!text) return null;
+  const candidates: string[] = [text];
+  const start = text.indexOf("{");
+  if (start >= 0) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = start; i < text.length; i++) {
+      const char = text[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') inString = true;
+      else if (char === "{") depth++;
+      else if (char === "}") {
+        depth--;
+        if (depth === 0) {
+          candidates.push(text.slice(start, i + 1));
+          break;
+        }
+      }
+    }
+  }
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      const cards = Array.isArray(parsed) ? parsed : parsed?.cards;
+      if (Array.isArray(cards)) return { cards };
+    } catch {
+      /* следующий кандидат */
+    }
+  }
+  return null;
+}
+
+/**
+ * Прямой поиск лекции по теме: RAG может отдать фрагмент из соседней лекции,
+ * и модель честно отвечает «нет определений». Здесь берём лекции, в названии
+ * или тексте которых есть слова темы, и отдаём по 1500 символов на каждую.
+ */
+async function directLectureBlock(db: any, subjectSlug: string, topic: string): Promise<string> {
+  const words = topic.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 3).slice(0, 3);
+  if (!words.length) return "";
+  try {
+    const byTitle = await db.from("histology_lectures")
+      .select("title,body_markdown")
+      .eq("is_published", true).eq("subject_slug", subjectSlug)
+      .ilike("title", `%${words[0]}%`).limit(3);
+    let rows = (byTitle?.data || []) as Array<{ title?: string; body_markdown?: string }>;
+    if (!rows.length) {
+      const byBody = await db.from("histology_lectures")
+        .select("title,body_markdown")
+        .eq("is_published", true).eq("subject_slug", subjectSlug)
+        .ilike("body_markdown", `%${words[0]}%`).limit(3);
+      rows = (byBody?.data || []) as Array<{ title?: string; body_markdown?: string }>;
+    }
+    if (!rows.length) return "";
+    return rows
+      .map((row, index) => `[${index + 1}] Лекция «${row.title || ""}»:\n${String(row.body_markdown || "").slice(0, 1500)}`)
+      .join("\n\n");
+  } catch {
+    return "";
+  }
+}
 
 function err(c: any, rid: string, status: number, code: string, message: string) {
   const { body } = fail(code, message, status, rid);
