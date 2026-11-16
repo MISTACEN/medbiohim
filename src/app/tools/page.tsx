@@ -8,24 +8,32 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Atom, Bot, Calculator, Microscope } from "lucide-react";
+import { Atom, Bot, Calculator, Droplets, Microscope } from "lucide-react";
 import clsx from "clsx";
 import { AtlasView } from "@/components/tools/AtlasView";
 import { CalculatorsView } from "@/components/tools/CalculatorsView";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
 import { PeriodicTableView } from "@/components/tools/PeriodicTableView";
+import { SolubilityTableView } from "@/components/tools/SolubilityTableView";
 
-type Tab = "atlas" | "calculators" | "tutor" | "periodic";
+type Tab = "atlas" | "calculators" | "tutor" | "periodic" | "solubility";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; hint: string }> = [
   { id: "atlas", label: "Атлас", icon: Microscope, hint: "препараты и электронограммы" },
   { id: "calculators", label: "Калькуляторы", icon: Calculator, hint: "клиника, лаборатория, дозы" },
   { id: "tutor", label: "ИИ-тьютор", icon: Bot, hint: "чат с контекстом предметов" },
   { id: "periodic", label: "Периодическая таблица", icon: Atom, hint: "118 элементов, массы и группы" },
+  { id: "solubility", label: "Растворимость", icon: Droplets, hint: "катионы × анионы" },
 ];
 
 function isValidTab(value: string | null): value is Tab {
-  return value === "atlas" || value === "calculators" || value === "tutor" || value === "periodic";
+  return (
+    value === "atlas" ||
+    value === "calculators" ||
+    value === "tutor" ||
+    value === "periodic" ||
+    value === "solubility"
+  );
 }
 
 function ToolsPageInner() {
@@ -74,6 +82,7 @@ function ToolsPageInner() {
       </div>
 
       {tab === "periodic" ? <PeriodicTableView /> : null}
+      {tab === "solubility" ? <SolubilityTableView /> : null}
       {tab === "atlas" ? <AtlasView /> : null}
       {tab === "calculators" ? <CalculatorsView /> : null}
       {tab === "tutor" ? (
