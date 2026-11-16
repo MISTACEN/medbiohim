@@ -712,6 +712,12 @@ tests.post("/attempts/:id/finish", requireAuth, async (c) => {
           ? { percent: attempt.percent ?? null, score: attempt.score ?? null, max_score: attempt.max_score ?? null }
           : {},
       });
+      // Готовность к событию и слабые темы считаются из user_topic_progress,
+      // поэтому лучшая попытка теста обновляет освоенность его темы.
+      if (attempt?.test_id) {
+        const { recordTopicMastery } = await import("../lib/topic-mastery");
+        await recordTopicMastery(db, c.get("user").id, String(attempt.test_id), attempt.percent);
+      }
     }
     return rpcResult(c, rid, data, error, "Не удалось завершить попытку", "attempt");
   } catch {
