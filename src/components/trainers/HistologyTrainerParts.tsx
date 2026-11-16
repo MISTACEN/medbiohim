@@ -50,7 +50,7 @@ export function AtlasThumb({ id }: { id: string }) {
     return () => { alive = false; };
   }, [id]);
   if (!src) return <div className="flex h-full min-h-[100px] items-center justify-center text-xs text-slate-400">…</div>;
-  return <img src={src} alt="" className="h-full w-full object-cover" draggable={false} />;
+  return <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" draggable={false} />;
 }
 
 export function Dots({ answers, current, onSelect }: { answers: Array<{ id: string; is_correct?: boolean | null; is_skipped?: boolean }>; current: number; onSelect: (n: number) => void }) {

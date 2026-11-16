@@ -71,8 +71,11 @@ async function withTrainerImageConcurrency<T>(task: () => Promise<T>): Promise<T
 export async function getTrainerImageUrl(id: string, variant?: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const idKey = String(id);
+  // Вариант (clean/full) — часть ключа: подписанная и чистая версии одной
+  // карточки — разные картинки, их нельзя смешивать в кэше.
+  const variantKey = variant ? `#${variant}` : "";
   const userScope = currentUserScope();
-  const cacheKey = userScope === null ? null : `${userScope}|${idKey}`;
+  const cacheKey = userScope === null ? null : `${userScope}|${idKey}${variantKey}`;
   if (cacheKey) {
     const cached = trainerImageCache.get(cacheKey);
     if (cached) return cached;
@@ -84,11 +87,14 @@ export async function getTrainerImageUrl(id: string, variant?: string): Promise<
     let token = getAccessToken();
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const bust = attempt === 0 ? "" : `?retry=${attempt}-${Date.now()}`;
+        const bust = attempt === 0 ? "" : `${variant ? "&" : "?"}retry=${attempt}-${Date.now()}`;
         let imageRequestStartedAt = Date.now();
-        let res = await fetch(`${API_URL}${endpoints.content.trainerFeedImage(idKey)}${bust}`, {
+        let res = await fetch(`${API_URL}${endpoints.content.trainerFeedImage(idKey, variant)}${bust}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
-          cache: "no-store",
+          // Картинки карточек неизменяемы и отдаются с длинным cache-control —
+          // разрешаем браузеру кэшировать: без этого каждое открытие тренажёра
+          // заново качало мегабайты (главная причина «долгих электронограмм»).
+          cache: "default",
           signal: AbortSignal.timeout(15000),
         });
         logTrainerImageResponse(res, imageRequestStartedAt);
@@ -100,7 +106,7 @@ export async function getTrainerImageUrl(id: string, variant?: string): Promise<
             imageRequestStartedAt = Date.now();
             res = await fetch(`${API_URL}${endpoints.content.trainerFeedImage(idKey)}?retry=auth-${Date.now()}`, {
               headers: { Authorization: `Bearer ${token}` },
-              cache: "no-store",
+              cache: "default",
               signal: AbortSignal.timeout(15000),
             });
             logTrainerImageResponse(res, imageRequestStartedAt);
@@ -131,12 +137,15 @@ export async function getTrainerImageUrl(id: string, variant?: string): Promise<
 export async function retryTrainerImage(id: string, variant?: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const idKey = String(id);
+  const variantKey = variant ? `#${variant}` : "";
   const userScope = currentUserScope();
-  const cacheKey = userScope === null ? null : `${userScope}|${idKey}`;
+  const cacheKey = userScope === null ? null : `${userScope}|${idKey}${variantKey}`;
   const old = cacheKey ? trainerImageCache.get(cacheKey) : undefined;
   if (old) { try { URL.revokeObjectURL(old); } catch {} trainerImageCache.delete(cacheKey!); }
   if (cacheKey) trainerImageInflight.delete(cacheKey);
-  return getTrainerImageUrl(idKey);
+  // Ретраим тот же вариант, который просили: повтор clean-версии не должен
+  // приносить подписанную картинку и наоборот.
+  return getTrainerImageUrl(idKey, variant);
 }
 
 export function prefetchTrainerImages(ids: (string | null | undefined)[]): void {
@@ -374,6 +383,26 @@ export async function uploadFile(file: File, groupId?: string, specialtySlug?: s
   if (specialtySlug) fd.append("specialty_slug", specialtySlug);
   if (scope) fd.append("scope", scope);
   return api<any>(endpoints.files.upload(), { method: "POST", body: fd });
+}
+
+/**
+ * Фото карточки-пака: идёт в /storage/upload со scope=card — файл кладётся под
+ * ключ shared/cards/, который читают все авторизованные. Фото из опубликованного
+ * пака должно открываться у других студентов, поэтому маршрут /files/upload
+ * (личные ключи users/<id>/) сюда не подходит.
+ */
+export async function uploadCardPhoto(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("scope", "card");
+  return api<{ key: string; url: string; name: string; size: number; content_type: string }>(
+    endpoints.files.storageUpload(),
+    { method: "POST", body: fd },
+  );
+}
+/** Стабильный URL фото карточки: same-origin, авторизация по cookie. */
+export function cardPhotoUrl(key: string): string {
+  return `${API_URL}${endpoints.files.storageObject(String(key))}`;
 }
 export async function getFileDownload(id: string): Promise<any> { return api<any>(endpoints.files.file(id)); }
 export async function getFile(id: string): Promise<any> { return api(endpoints.files.file(id)) as any; }

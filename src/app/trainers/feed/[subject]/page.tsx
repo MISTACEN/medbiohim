@@ -76,9 +76,18 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
   }, [allCards, deepLinked]);
 
   const { data: imageUrl, loading: imageLoading } = useApiRequest<string | null>(
-    async () => (card ? getTrainerImageUrl(card.id) : null),
-    [card?.id]
+    async () => {
+      if (!card) return null;
+      // Электронограмма до ответа — «чистый» вариант без подписей: подписанная
+      // версия раскрывает правильный ответ. После ответа — полная с подписями.
+      const variant = isElectronogramCard(card) && result === null ? "clean" : undefined;
+      return getTrainerImageUrl(card.id, variant);
+    },
+    // Зависимость от result намеренная: после ответа нужна другая версия картинки.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [card?.id, result === null]
   );
+  const answered = result !== null;
 
   // --- выбор карточек ---
   const prepCount = useMemo(() => allCards.filter((c) => !isElectronogramCard(c)).length, [allCards]);
@@ -246,14 +255,18 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
                     <span className="text-xs">Медиа-файл должен быть установлен в content/histology.</span>
                   </div>
                 )}
-                <div className="absolute left-3 top-3 rounded-full bg-black/55 px-3 py-1 text-xs font-semibold backdrop-blur">{card.mode_set === "electronogram" ? "Электронограмма" : "Препарат"}</div>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3 pb-2 pt-8">
-                  <div className="text-sm font-bold text-white">{card.preparation?.name || "Препарат"}</div>
-                  {card.preparation?.stain ? <div className="text-[11px] text-white/70">{card.preparation.stain}</div> : null}
-                </div>
+                {/* Название препарата до ответа скрыто: вопрос «Что изображено?»
+                    с показанным ответом теряет смысл. */}
+                {answered && <div className="absolute left-3 top-3 rounded-full bg-black/55 px-3 py-1 text-xs font-semibold backdrop-blur">{card.mode_set === "electronogram" ? "Электронограмма" : "Препарат"}</div>}
+                {answered ? (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3 pb-2 pt-8">
+                    <div className="text-sm font-bold text-white">{card.preparation?.name || "Препарат"}</div>
+                    {card.preparation?.stain ? <div className="text-[11px] text-white/70">{card.preparation.stain}</div> : null}
+                  </div>
+                ) : null}
               </div>
               <div className="p-5 text-slate-900 sm:p-7">
-                <div className="text-xs font-semibold uppercase tracking-wider text-indigo-500">{card.preparation?.name || "Препарат"}</div>
+                {answered && <div className="text-xs font-semibold uppercase tracking-wider text-indigo-500">{card.preparation?.name || "Препарат"}</div>}
                 <h1 className="mt-2 text-xl font-extrabold sm:text-2xl">{card.question?.prompt || "Что изображено?"}</h1>
                 <div className="mt-5 grid gap-2">
                   {(card.question?.options || []).map((option: { id: string; label: string; correct?: boolean }) => {

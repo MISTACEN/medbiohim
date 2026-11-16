@@ -155,7 +155,9 @@ export const endpoints = {
     miniQuizCheck: (): string => "/questions/mini-quiz/check",
     trainersFeed: (query?: string): string => withQuery("/trainers/feed", query),
     trainerFeedCard: (id: string): string => `/trainers/feed/${enc(id)}`,
-    trainerFeedImage: (id: string): string => `/trainers/feed/${enc(id)}/image`,
+    // variant («clean»/«full») обязателен в URL и в ключе кэша: иначе после
+    // показа подписанной версии чистый вариант брался из кэша и наоборот.
+    trainerFeedImage: (id: string, variant?: string): string => variant ? `/trainers/feed/${enc(id)}/image?variant=${enc(variant)}` : `/trainers/feed/${enc(id)}/image`,
     /** Метка для журнала `mbh:api-log` (не путь запроса, но живёт в реестре). */
     trainerFeedImageLabel: (): string => "/trainers/feed/:id/image",
     trainerFeedStats: (): string => "/trainers/feed/stats",
@@ -222,6 +224,9 @@ export const endpoints = {
   /** Файлы, аватары, blob-отдача. */
   files: {
     upload: (): string => "/files/upload",
+    /** Фото карточек: shared/cards, видимое всем авторизованным (scope=card). */
+    storageUpload: (): string => "/storage/upload",
+    storageObject: (key: string): string => withQuery("/storage/object", "key=" + encodeURIComponent(String(key))),
     file: (id: string): string => `/files/${enc(id)}`,
     fileDownload: (id: string): string => `/files/${enc(id)}/download`,
     avatar: (): string => "/storage/avatar",

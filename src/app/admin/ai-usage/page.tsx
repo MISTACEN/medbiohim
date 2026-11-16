@@ -49,8 +49,9 @@ function ms(value: number): string {
   return value >= 1000 ? (value / 1000).toFixed(1) + " с" : value + " мс";
 }
 
-function SplitTable({ title, rows, labels }: { title: string; rows: SplitRow[]; labels?: Record<string, string> }) {
+function SplitTable({ title, rows, labels, formatters }: { title: string; rows: SplitRow[]; labels?: Record<string, string>; formatters?: Record<string, (key: string) => string> }) {
   if (!rows.length) return null;
+  const label = (key: string) => formatters?.[title]?.(key) ?? labels?.[key] ?? key;
   return (
     <div className="card overflow-hidden">
       <div className="border-b border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-sm font-bold">{title}</div>
@@ -66,7 +67,7 @@ function SplitTable({ title, rows, labels }: { title: string; rows: SplitRow[]; 
           <tbody>
             {rows.map((row) => (
               <tr key={row.key} className="border-t border-[var(--border)]">
-                <td className="px-3 py-2 font-semibold">{labels?.[row.key] || row.key}</td>
+                <td className="px-3 py-2 font-semibold">{label(row.key)}</td>
                 <td className="px-3 py-2 tabular-nums">{row.calls}</td>
                 <td className="px-3 py-2 tabular-nums text-[var(--status-ok-fg)]">{pct(row.ok, row.calls)}</td>
                 <td className="px-3 py-2 tabular-nums">{row.errors ? <span className="text-[var(--status-critical-fg)]">{row.errors}</span> : "0"}</td>
@@ -191,7 +192,7 @@ export default function AdminAiUsagePage() {
           <SplitTable title="По функциям" rows={stats.by_feature || []} labels={FEATURE_LABELS} />
           <SplitTable title="По провайдерам" rows={stats.by_provider || []} />
           <SplitTable title="По моделям" rows={stats.by_model || []} />
-          <SplitTable title="По дням" rows={stats.by_day || []} />
+          <SplitTable title="По дням" rows={stats.by_day || []} formatters={{ "По дням": dayLabel }} />
 
           {Object.keys(limits).length ? (
             <div className="card p-4">

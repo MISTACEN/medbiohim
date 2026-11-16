@@ -161,6 +161,20 @@ export function PrepPlan({ item, onClose }: { item: AgendaItem; onClose: () => v
                   style={{ width: `${readiness ?? 0}%` }}
                 />
               </div>
+              {totalItems ? (
+                <>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-[var(--muted)]">
+                    <span>Шаги плана</span>
+                    <span className="font-semibold">{doneItems} из {totalItems} · {Math.round((doneItems / totalItems) * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--border)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--primary)] transition-all"
+                      style={{ width: `${Math.round((doneItems / totalItems) * 100)}%` }}
+                    />
+                  </div>
+                </>
+              ) : null}
               {plan.topics.length ? (
                 <ul className="mt-2 flex flex-wrap gap-1.5">
                   {plan.topics.map((topic, index) => (

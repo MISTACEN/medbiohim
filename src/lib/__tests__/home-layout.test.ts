@@ -16,6 +16,7 @@ describe("home layout", () => {
       "today",
       "academic",
       "tests",
+      "chemistry",
       "homeworkList",
       "subjects",
       "announcements",
@@ -27,7 +28,7 @@ describe("home layout", () => {
     const copy = defaultHomeLayout();
     copy.pop();
     expect(copy).toHaveLength(DEFAULT_LAYOUT.length - 1);
-    expect(DEFAULT_LAYOUT).toHaveLength(7);
+    expect(DEFAULT_LAYOUT).toHaveLength(8);
   });
 
   it("drops unknown ids, duplicates and invalid spans", () => {

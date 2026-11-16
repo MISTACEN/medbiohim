@@ -26,7 +26,7 @@ function relation(value: any) {
   return Array.isArray(value) ? value[0] || null : value || null;
 }
 
-type PackItemInput = { front: string; back: string };
+type PackItemInput = { front: string; back: string; image_file_id: string | null };
 
 function normalizeItems(raw: unknown): PackItemInput[] | null {
   if (!Array.isArray(raw)) return null;
@@ -34,11 +34,37 @@ function normalizeItems(raw: unknown): PackItemInput[] | null {
   for (const entry of raw.slice(0, MAX_PACK_ITEMS)) {
     const front = String((entry as any)?.front ?? "").trim();
     const back = String((entry as any)?.back ?? "").trim();
-    if (!front) return null;
+    const imageRaw = String((entry as any)?.image_file_id ?? "").trim();
+    // image_file_id — необязательный UUID файла из files (кнопка «фото»).
+    const image_file_id = imageRaw && UUID.test(imageRaw) ? imageRaw : null;
+    if (!front && !image_file_id) return null;
     if (front.length > MAX_CARD_TEXT || back.length > MAX_CARD_TEXT) return null;
-    items.push({ front, back });
+    items.push({ front, back, image_file_id });
   }
   return items;
+}
+
+/**
+ * Картинки карточек не должны быть хотлинком произвольных файлов: разрешаем
+ * только свои загрузки и публичные (visibility=public — так публикуются паки).
+ */
+async function filterAllowedImageFiles(db: any, userId: string, items: PackItemInput[]): Promise<PackItemInput[]> {
+  const ids = [...new Set(items.map((item) => item.image_file_id).filter(Boolean))] as string[];
+  if (!ids.length) return items;
+  const allowed = new Set<string>();
+  const CHUNK = 50;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { data, error } = await db
+      .from("files")
+      .select("id,uploaded_by,visibility")
+      .in("id", ids.slice(i, i + CHUNK))
+      .eq("status", "active");
+    if (error) throw error;
+    for (const file of data || []) {
+      if (file.uploaded_by === userId || file.visibility === "public") allowed.add(file.id);
+    }
+  }
+  return items.map((item) => (item.image_file_id && !allowed.has(item.image_file_id) ? { ...item, image_file_id: null } : item));
 }
 
 async function insertItems(db: any, packId: string, items: PackItemInput[]) {
@@ -46,6 +72,7 @@ async function insertItems(db: any, packId: string, items: PackItemInput[]) {
     pack_id: packId,
     front: item.front,
     back: item.back,
+    image_file_id: item.image_file_id,
     order_index: index,
   }));
   // Пакетная вставка чанками — у пулера были обрывы на больших запросах.
@@ -110,7 +137,7 @@ cardPacks.get("/:id", requireAuth, async (c) => {
     if (!pack) return err(c, rid, 404, "NOT_FOUND", "Пак не найден");
     const { data: items, error: itemsError } = await db
       .from("card_pack_items")
-      .select("id,front,back,order_index")
+      .select("id,front,back,image_file_id,order_index")
       .eq("pack_id", id).order("order_index", { ascending: true }).limit(MAX_PACK_ITEMS);
     if (itemsError) throw itemsError;
     const owner = relation(pack.users);
@@ -126,7 +153,7 @@ cardPacks.get("/:id", requireAuth, async (c) => {
         owner_name: owner?.full_name || owner?.display_name || null,
         created_at: pack.created_at,
       },
-      items: (items || []).map((item: any) => ({ id: item.id, front: item.front, back: item.back, order_index: item.order_index })),
+      items: (items || []).map((item: any) => ({ id: item.id, front: item.front, back: item.back, image_file_id: item.image_file_id || null, order_index: item.order_index })),
     }, rid));
   } catch (readError) {
     console.error("[card-packs:get]", readError);
@@ -145,12 +172,13 @@ cardPacks.post("/", requireAuth, async (c) => {
   const subjectSlug = String(input?.subject_slug || "").trim().slice(0, 64) || null;
   const source = input?.source === "ai" ? "ai" : "user";
   const isPublished = input?.is_published === true;
-  const items = normalizeItems(input?.items);
-  if (!items || !items.length) return err(c, rid, 422, "VALIDATION_ERROR", "Нужны карточки (front/back), до 100 на пак");
+    const items = normalizeItems(input?.items);
+    if (!items || !items.length) return err(c, rid, 422, "VALIDATION_ERROR", "Нужны карточки (front/back), до 100 на пак");
 
-  const db = c.get("supabase");
-  try {
-    const { data: pack, error: packError } = await db
+    const db = c.get("supabase");
+    try {
+      const allowedItems = await filterAllowedImageFiles(db, c.get("user").id, items);
+      const { data: pack, error: packError } = await db
       .from("card_packs")
       .insert({
         owner_id: c.get("user").id,
@@ -164,8 +192,8 @@ cardPacks.post("/", requireAuth, async (c) => {
       .select("id,title,subject_slug,source,is_published")
       .single();
     if (packError) throw packError;
-    await insertItems(db, pack.id, items);
-    return c.json(ok({ pack, card_count: items.length }, rid), 201);
+    await insertItems(db, pack.id, allowedItems);
+    return c.json(ok({ pack, card_count: allowedItems.length }, rid), 201);
   } catch (createError) {
     console.error("[card-packs:create]", createError);
     return err(c, rid, 503, "DB_UNAVAILABLE", "Не удалось сохранить пак");
@@ -239,7 +267,7 @@ cardPacks.post("/:id/import", requireAuth, async (c) => {
     if (!source.is_published) return err(c, rid, 403, "FORBIDDEN", "Импортировать можно только опубликованные паки");
     const { data: items, error: itemsError } = await db
       .from("card_pack_items")
-      .select("front,back,order_index")
+      .select("front,back,image_file_id,order_index")
       .eq("pack_id", id).order("order_index", { ascending: true }).limit(MAX_PACK_ITEMS);
     if (itemsError) throw itemsError;
     const { data: copy, error: copyError } = await db
@@ -255,7 +283,9 @@ cardPacks.post("/:id/import", requireAuth, async (c) => {
       .select("id,title")
       .single();
     if (copyError) throw copyError;
-    await insertItems(db, copy.id, (items || []).map((item: any) => ({ front: String(item.front || ""), back: String(item.back || "") })));
+    // Картинки опубликованного пака читаемы всеми (visibility=public при
+    // загрузке) — при импорте переносим ссылку, бинарник не дублируем.
+    await insertItems(db, copy.id, (items || []).map((item: any) => ({ front: String(item.front || ""), back: String(item.back || ""), image_file_id: item.image_file_id || null })));
     return c.json(ok({ pack: copy, card_count: (items || []).length }, rid), 201);
   } catch (importError) {
     console.error("[card-packs:import]", importError);

@@ -579,8 +579,16 @@ trainers.get("/feed/:id/image", async (c) => {
     );
 
     // Temporary migration path: public Google Drive is the active histology source
-    // while the Upstash Blob bucket credential is unavailable. Image files are
-    // served at original resolution; electronogram DOCX files use Drive thumbnails.
+    // while the Upstash Blob bucket credential is unavailable.
+    //
+    // Электронограммы — самая медленная часть тренажёра: uc?export=download
+    // отдаёт оригинал в несколько МБ через медленный эндпоинт Drive. Картинки
+    // по умолчанию идут РАСТРОВЫМ thumbnail (sz=w2000 — с запасом для ретины),
+    // полный оригинал — только по ?variant=full. Кэш длинный: картинка карточки
+    // неизменяема (ключ = id карточки), повторные открытия должны браться из
+    // браузера/CDN без похода к воркеру.
+    const wantsFull = c.req.query("variant") === "full";
+    const MEDIA_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400";
     const isHistologyDriveCard =
       String((card as any).subject_slug || "") === "histology" &&
       String((card as any).specialty_slug || "") === "mbh";
@@ -591,9 +599,11 @@ trainers.get("/feed/:id/image", async (c) => {
         )
       : null;
     if (driveItem) {
-      const driveUrl = driveItem.kind === "image"
-        ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(driveItem.id)}`
-        : `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveItem.id)}&sz=w1600`;
+      const driveUrl = driveItem.kind === "image" && !wantsFull
+        ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveItem.id)}&sz=w2000`
+        : driveItem.kind === "image"
+          ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(driveItem.id)}`
+          : `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveItem.id)}&sz=w1600`;
       try {
         const driveResponse = await fetch(driveUrl, { redirect: "follow" });
         const driveContentType = driveResponse.headers.get("content-type") || driveItem.mime;
@@ -601,11 +611,11 @@ trainers.get("/feed/:id/image", async (c) => {
           return new Response(driveResponse.body, {
             headers: {
               "content-type": driveContentType,
-              "cache-control": "public, max-age=3600, s-maxage=86400",
+              "cache-control": MEDIA_CACHE,
               "x-content-type-options": "nosniff",
               "x-request-id": rid,
               "x-mbh-media-key": driveItem.path,
-              "x-mbh-image-resolver": "google-drive-temporary",
+              "x-mbh-image-resolver": wantsFull ? "google-drive-full" : "google-drive-thumbnail",
             },
           });
         }
@@ -643,7 +653,7 @@ trainers.get("/feed/:id/image", async (c) => {
           return new Response(publicResponse.body, {
             headers: {
               "content-type": publicResponse.headers.get("content-type") || imageContentType(candidate),
-              "cache-control": "public, max-age=3600",
+              "cache-control": MEDIA_CACHE,
               "x-content-type-options": "nosniff",
               "x-request-id": rid,
               "x-mbh-media-key": candidate,
@@ -689,7 +699,7 @@ trainers.get("/feed/:id/image", async (c) => {
     return new Response(image.body, {
       headers: {
         "content-type": image.contentType || imageContentType(key),
-        "cache-control": "private, max-age=300",
+        "cache-control": MEDIA_CACHE,
         "x-content-type-options": "nosniff",
         "x-request-id": rid,
         "x-mbh-media-key": resolvedKey,

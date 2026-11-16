@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Download, ImagePlus, Layers, Loader2, Plus, Sparkles, Trash2, X, Check,
 } from "lucide-react";
-import { uploadFile } from "@/lib/api";
+import { uploadCardPhoto, cardPhotoUrl } from "@/lib/api";
 import { CardText } from "@/components/cards/CardText";
 import {
   cardPacksMine, cardPacksShared, cardPack, cardPackCreate, cardPackPatch, cardPackDelete, cardPackAiGenerate, cardPackImport,
@@ -77,18 +77,20 @@ export function PacksPanel() {
     }
     setPhotoBusy(index);
     setError(null);
-    const response = await uploadFile(file, undefined, undefined, "card");
+    // /storage/upload со scope=card: ключ shared/cards/ читают все
+    // авторизованные — фото публикуемого пака открывается и у других студентов.
+    const response = await uploadCardPhoto(file);
     setPhotoBusy(null);
     if (!response.ok) {
       setError(describeApiError(response.error));
       return;
     }
-    const key = response.data?.key || response.data?.file?.object_key;
+    const key = response.data?.key;
     if (!key) {
       setError("Сервер не вернул загруженный файл — попробуйте ещё раз.");
       return;
     }
-    const url = `/api/v1/storage/object?key=${encodeURIComponent(String(key))}`;
+    const url = cardPhotoUrl(key);
     setDraftItems((current) => current.map((item, i) => (i === index ? { ...item, back: withPhoto(item.back, url) } : item)));
   }
 
