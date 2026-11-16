@@ -7,6 +7,7 @@
  * на бумаге.
  */
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Check, Circle, Loader2, Printer, TriangleAlert } from "lucide-react";
 
 export type Electronogram = {
@@ -30,6 +31,16 @@ export type NerveElectronogram = {
 };
 
 const KNOW_KEY = "study.em.know.v2";
+
+function EmImage({ file, alt, width, height, sizes, className }: { file: string; alt: string; width: number; height: number; sizes: string; className?: string }) {
+  const src = emSrc(file);
+  // SVG-схемы next/image не оптимизирует — отдаём как есть.
+  if (/\.svg$/i.test(src)) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt} loading="lazy" className={className} />;
+  }
+  return <Image src={src} alt={alt} width={width} height={height} sizes={sizes} className={className} />;
+}
 
 export function emSrc(file: string): string {
   if (/\.svg$/i.test(file)) return `/study/img/${file}`;
@@ -116,8 +127,16 @@ export function Electronograms({
             onClick={() => { setOpenId(em.id); setRevealed(false); }}
             className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] text-left transition hover:border-indigo-300"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={emSrc(em.file)} alt={`Электронограмма No${em.n}`} loading="lazy" className="h-24 w-full object-cover" />
+            {/* Превью через next/image: JPEG весит 300–500 КБ, оптимизатор
+                отдаёт WebP нужного размера и страница перестаёт ждать мегабайты. */}
+            <EmImage
+              file={em.file}
+              alt={`Электронограмма No${em.n}`}
+              width={400}
+              height={260}
+              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 22vw"
+              className="h-24 w-full object-cover"
+            />
             <span className="block px-2 py-1.5 text-xs font-semibold">
               {know[em.id] ? <Check className="mr-1 inline h-3.5 w-3.5 text-[var(--status-ok-fg)]" /> : null}
               No{em.n}
@@ -142,8 +161,14 @@ export function Electronograms({
               onClick={() => { setOpenId(em.id); setRevealed(false); }}
               className="overflow-hidden rounded-xl border border-[var(--status-warn-border)] bg-white text-left dark:bg-transparent"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={emSrc(em.file)} alt={em.title} loading="lazy" className="h-24 w-full object-cover" />
+              <EmImage
+                file={em.file}
+                alt={em.title}
+                width={400}
+                height={260}
+                sizes="(max-width: 640px) 30vw, 200px"
+                className="h-24 w-full object-cover"
+              />
               <span className="block px-2 py-1.5 text-xs font-semibold">
                 {know[em.id] ? <Check className="mr-1 inline h-3.5 w-3.5 text-[var(--status-ok-fg)]" /> : null}
                 {em.title}
@@ -166,11 +191,13 @@ export function Electronograms({
               Закрыть
             </button>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={emSrc(visible.file)}
+          <EmImage
+            file={visible.file}
             alt={"name" in visible ? visible.name : visible.title}
-            className="mt-2 max-h-[420px] w-full rounded-xl border border-[var(--border)] bg-black object-contain"
+            width={1200}
+            height={840}
+            sizes="(max-width: 768px) 100vw, 720px"
+            className="mt-2 h-auto max-h-[420px] w-full rounded-xl border border-[var(--border)] bg-black object-contain"
           />
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" onClick={() => setRevealed(true)} className="btn-primary text-sm">

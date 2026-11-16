@@ -36,7 +36,9 @@ function safeKey(value: string | null): string | null {
 }
 
 function canReadKey(key: string, userId: string): boolean {
-  return key.startsWith(`users/${userId}/`) || key.startsWith("histology/");
+  // shared/cards — фото карточек: их видят все авторизованные, иначе фото
+  // опубликованного в мастерскую пака не открывалось бы у других студентов.
+  return key.startsWith(`users/${userId}/`) || key.startsWith("histology/") || key.startsWith("shared/cards/");
 }
 
 function canDeleteKey(key: string, userId: string): boolean {
@@ -82,7 +84,12 @@ storage.post("/upload", requireAuth, async (c) => {
 
   const user = c.get("user");
   const cleanName = file.name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(-100) || "upload.bin";
-  const key = `users/${user.id}/${crypto.randomUUID()}-${cleanName}`;
+  // scope=card — фото карточек: лежат в общей папке обложек, чтобы карточку
+  // из мастерской могли открыть другие студенты.
+  const wantCardPhoto = String(form.get("scope") || "") === "card";
+  const key = wantCardPhoto
+    ? `shared/cards/${crypto.randomUUID()}-${cleanName}`
+    : `users/${user.id}/${crypto.randomUUID()}-${cleanName}`;
   try {
     await bucket.put(key, file, { contentType: file.type, cache: "no-store" });
     const signed = await bucket.signedReadUrl(key);

@@ -18,6 +18,7 @@ import {
 import { Brain, Loader2, RotateCcw, Check, Flame, ChevronLeft } from "lucide-react";
 import { resolveSubjectSlug } from "@/lib/subjectSlug";
 import { describeApiError } from "@/lib/errors";
+import { CardText } from "@/components/cards/CardText";
 
 type Rating = 1 | 2 | 3 | 4;
 
@@ -266,9 +267,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
               {flipped ? "Ответ" : "Вопрос"}
             </div>
-            <div className="whitespace-pre-wrap text-base leading-relaxed">
-              {flipped ? card.back || "—" : card.front}
-            </div>
+            <CardText text={flipped ? card.back || "—" : card.front} className="text-base leading-relaxed" />
           </button>
           {!flipped ? (
             <button

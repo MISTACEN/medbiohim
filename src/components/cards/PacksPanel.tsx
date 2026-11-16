@@ -10,8 +10,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Download, Layers, Loader2, Plus, Sparkles, Trash2, X, Check,
+  Download, ImagePlus, Layers, Loader2, Plus, Sparkles, Trash2, X, Check,
 } from "lucide-react";
+import { uploadFile } from "@/lib/api";
+import { CardText } from "@/components/cards/CardText";
 import {
   cardPacksMine, cardPacksShared, cardPack, cardPackCreate, cardPackPatch, cardPackDelete, cardPackAiGenerate, cardPackImport,
   type CardPack, type CardPackItem, type CardPackAiDraft,
@@ -19,6 +21,12 @@ import {
 import { describeApiError } from "@/lib/errors";
 
 type PackDraftItem = { front: string; back: string; source?: string };
+
+/** Фото хранится в тексте карточки markdown-ссылкой — без отдельной схемы БД. */
+function withPhoto(text: string, url: string) {
+  const clean = text.trimEnd();
+  return `${clean}${clean ? "\n" : ""}![фото](${url})`;
+}
 
 /** Очередь сессии: неизвестные возвращаются в конец (Quizlet-повторение). */
 function advance(queue: CardPackItem[], idx: number, known: boolean): { queue: CardPackItem[]; idx: number; finished: boolean } {
@@ -56,6 +64,33 @@ export function PacksPanel() {
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState<number | null>(null);
+
+  async function attachPhoto(index: number, file: File) {
+    if (!file.type.startsWith("image/")) {
+      setError("К карточке можно прикрепить только изображение.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Фото больше 8 МБ — уменьшите размер и попробуйте снова.");
+      return;
+    }
+    setPhotoBusy(index);
+    setError(null);
+    const response = await uploadFile(file, undefined, undefined, "card");
+    setPhotoBusy(null);
+    if (!response.ok) {
+      setError(describeApiError(response.error));
+      return;
+    }
+    const key = response.data?.key || response.data?.file?.object_key;
+    if (!key) {
+      setError("Сервер не вернул загруженный файл — попробуйте ещё раз.");
+      return;
+    }
+    const url = `/api/v1/storage/object?key=${encodeURIComponent(String(key))}`;
+    setDraftItems((current) => current.map((item, i) => (i === index ? { ...item, back: withPhoto(item.back, url) } : item)));
+  }
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -200,7 +235,7 @@ export function PacksPanel() {
               <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                 {flipped ? "Ответ" : "Вопрос"} · {sessionPack.pack.title}
               </div>
-              <div className="whitespace-pre-wrap text-base leading-relaxed">{flipped ? card.back || "—" : card.front}</div>
+              <CardText text={flipped ? card.back || "—" : card.front} className="text-base leading-relaxed" />
             </button>
             {!flipped ? (
               <button
@@ -303,15 +338,39 @@ export function PacksPanel() {
                   placeholder="Ответ / определение"
                   className="min-h-16 rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={() => setDraftItems((current) => current.filter((_, i) => i !== index))}
-                  disabled={draftItems.length === 1}
-                  className="h-10 rounded-lg p-2 text-slate-400 hover:text-red-600 disabled:opacity-30"
-                  aria-label="Удалить карточку"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex gap-1">
+                  <label
+                    className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-slate-400 hover:text-[var(--primary)]"
+                    title="Добавить фото к ответу"
+                  >
+                    {photoBusy === index ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) void attachPhoto(index, file);
+                      }}
+                    />
+                    <span className="sr-only">Добавить фото к карточке {index + 1}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setDraftItems((current) => current.filter((_, i) => i !== index))}
+                    disabled={draftItems.length === 1}
+                    className="h-10 w-10 rounded-lg p-2 text-slate-400 hover:text-red-600 disabled:opacity-30"
+                    aria-label="Удалить карточку"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                {/!\[[^\]]*\]\([^)]+\)/.test(item.back) ? (
+                  <div className="sm:col-span-3">
+                    <CardText text={item.back} className="text-xs text-[var(--muted)]" />
+                  </div>
+                ) : null}
               </div>
             ))}
             <button

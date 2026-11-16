@@ -367,11 +367,12 @@ export async function fetchMaterialFile(id: string): Promise<Blob | null> {
   } catch { return null; }
 }
 
-export async function uploadFile(file: File, groupId?: string, specialtySlug?: string) {
+export async function uploadFile(file: File, groupId?: string, specialtySlug?: string, scope?: "card") {
   const fd = new FormData();
   fd.append("file", file);
   if (groupId) fd.append("group_id", groupId);
   if (specialtySlug) fd.append("specialty_slug", specialtySlug);
+  if (scope) fd.append("scope", scope);
   return api<any>(endpoints.files.upload(), { method: "POST", body: fd });
 }
 export async function getFileDownload(id: string): Promise<any> { return api<any>(endpoints.files.file(id)); }
