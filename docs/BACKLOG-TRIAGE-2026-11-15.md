@@ -166,6 +166,15 @@
 timeout при работающем curl) — прогон выполнен локальным Playwright 1.64.1
 из devDependencies проекта, скриншоты в `C:\tmp\mbh-pass\`.
 
+### Постоянный инструмент прогона
+
+- `npm run test:e2e:pages` (scripts/e2e-live-pages.mjs): живой смок всех
+  основных страниц как студент — логин, сбор console-error/pageerror по
+  странице, скриншоты в E2E_OUT, отчёт report.json. Exit 1 при найденных
+  ошибках (известный auth-шум первого захода не считается). Креды — в env
+  E2E_EMAIL/E2E_PASSWORD, в репо не хранятся. Прогон 2026-11-17: 17 страниц,
+  0 ошибок.
+
 ### Проверки захода (2026-11-17)
 
 - workers/api: tsc ✓ + 489 тестов ✓ · фронт: tsc ✓ · lint 0 errors · vitest 705 ✓ · node 335 ✓ · build ✓
