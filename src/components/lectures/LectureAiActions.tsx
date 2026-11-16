@@ -62,6 +62,7 @@ export default function LectureAiActions({
   const [slidesOpen, setSlidesOpen] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const [slidesMounted, setSlidesMounted] = useState(false);
+  const [pptxBusy, setPptxBusy] = useState(false);
 
   useEffect(() => {
     setSlidesMounted(true);
@@ -96,6 +97,42 @@ export default function LectureAiActions({
     setSlides(result.data);
     setSlideIdx(0);
     setSlidesOpen(true);
+  }
+
+  /**
+   * Редактируемый PPTX по слайдам (фаза 2.5.3). pptxgenjs грузится динамически —
+   * библиотека не попадает в бандл, пока студент не нажал экспорт.
+   */
+  async function exportPptx() {
+    if (!slides || pptxBusy) return;
+    setPptxBusy(true);
+    setError(null);
+    try {
+      const { default: PptxGenJS } = await import("pptxgenjs");
+      const pptx = new PptxGenJS();
+      pptx.layout = "LAYOUT_16x9";
+      pptx.author = "Медбиохим";
+      const titleSlide = pptx.addSlide();
+      titleSlide.background = { color: "1E3A8A" };
+      titleSlide.addText(slides.title || title, { x: 0.6, y: 2.6, w: 8.8, fontSize: 32, bold: true, color: "FFFFFF" });
+      titleSlide.addText("Презентация по лекции · Медбиохим", { x: 0.6, y: 4.0, w: 8.8, fontSize: 14, color: "BFDBFE" });
+      for (const slide of slides.slides) {
+        const s = pptx.addSlide();
+        s.addText(slide.title, { x: 0.6, y: 0.5, w: 8.8, fontSize: 26, bold: true, color: "1E3A8A" });
+        if (slide.bullets.length) {
+          s.addText(slide.bullets.map((text) => ({ text, options: { bullet: { characterCode: "2022" }, breakLine: true } })), {
+            x: 0.8, y: 1.5, w: 8.4, fontSize: 18, color: "1F2937", lineSpacingMultiple: 1.4,
+          });
+        }
+        s.addText(String(slides.slides.indexOf(slide) + 1), { x: 9.2, y: 5.1, w: 0.6, fontSize: 12, color: "94A3B8", align: "right" });
+      }
+      const fileName = `презентация-${(slides.title || title || "лекция").replace(/[\\/:*?"<>|]+/g, "").slice(0, 60)}.pptx`;
+      await pptx.writeFile({ fileName });
+    } catch {
+      setError("Не удалось собрать PPTX — используйте «Печать/PDF» или попробуйте ещё раз.");
+    } finally {
+      setPptxBusy(false);
+    }
   }
 
   function printSlides() {
@@ -317,6 +354,9 @@ export default function LectureAiActions({
             <div className="flex items-center gap-2">
               <button type="button" onClick={printSlides} className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15">
                 <Printer className="h-3.5 w-3.5" /> Печать/PDF
+              </button>
+              <button type="button" onClick={() => void exportPptx()} disabled={pptxBusy} className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15 disabled:opacity-50">
+                <FileText className="h-3.5 w-3.5" /> {pptxBusy ? "Собираем PPTX…" : "Скачать PPTX"}
               </button>
               <button type="button" onClick={() => setSlidesOpen(false)} className="rounded-lg bg-white/10 p-2 hover:bg-white/15" aria-label="Закрыть">
                 <X className="h-4 w-4" />
