@@ -536,6 +536,136 @@ lectures.post("/:id/podcast", requireAuth, async (c) => {
   }
 });
 
+// Презентация по лекции (фаза 2.5.3): 8–14 слайдов {title, bullets} из текста
+// лекции. Кэшируется в site_content по хэшу текста — как конспект с пропусками.
+type SlideDraft = { title: string; bullets: string[] };
+
+function normalizeSlides(raw: unknown): SlideDraft[] | null {
+  const list = Array.isArray(raw) ? raw : Array.isArray((raw as any)?.slides) ? (raw as any).slides : null;
+  if (!list) return null;
+  const slides: SlideDraft[] = [];
+  for (const entry of list.slice(0, 16)) {
+    const title = String((entry as any)?.title ?? "").trim().slice(0, 140);
+    const bullets = (Array.isArray((entry as any)?.bullets) ? (entry as any).bullets : [])
+      .map((bullet: unknown) => String(bullet ?? "").trim().slice(0, 200))
+      .filter(Boolean)
+      .slice(0, 6);
+    if (!title || bullets.length < 1) continue;
+    slides.push({ title, bullets });
+  }
+  return slides.length >= 5 ? slides : null;
+}
+
+lectures.post("/:id/slides", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const id = String(c.req.param("id") || "");
+  const rl = await rateLimit(c.env, `lecture:slides:${user.id}`, 6, 600);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много презентаций подряд. Подождите пару минут.", 429, rid);
+    return c.json(body, status as 429);
+  }
+  try {
+    const lecture = await loadLectureForCloze(c.get("supabase"), id);
+    if (!lecture) {
+      const { body, status } = fail("NOT_FOUND", "Лекция не найдена или не опубликована", 404, rid);
+      return c.json(body, status as 404);
+    }
+    const text = String(lecture.body_markdown || "").replace(/[#*_>`]/g, " ").slice(0, 14000).trim();
+    if (text.length < 400) {
+      const { body, status } = fail("LECTURE_TOO_SHORT", "Текст лекции слишком короткий для презентации", 422, rid);
+      return c.json(body, status as 422);
+    }
+
+    const service = clozeCache(c);
+    const cacheKey = service ? `slides:v1:${id}:${await clozeBodyHash(lecture.body_markdown || "")}` : null;
+    if (service && cacheKey) {
+      const { data: cached } = await service
+        .from("site_content")
+        .select("payload")
+        .eq("key", cacheKey)
+        .maybeSingle();
+      const slides = normalizeSlides(cached?.payload?.slides);
+      if (slides) {
+        return c.json(ok({ lecture_id: id, title: lecture.title || "", slides, cached: true }, rid));
+      }
+    }
+
+    const quota = await aiDailyQuota(c.env, "lecture_slides", user.id);
+    if (!quota.allowed) {
+      await logAiQuotaRejection(c.env, {
+        route: "POST /lectures/:id/slides",
+        feature: "lecture_slides",
+        userId: user.id,
+        subjectSlug: lecture.subject_slug,
+        requestId: rid,
+      });
+      const { body, status } = fail("AI_DAILY_LIMIT", aiQuotaMessage(quota, "lecture_slides"), 429, rid);
+      return c.json(body, status as 429);
+    }
+
+    const result = await withAiCall<{ content?: string; provider?: string; model?: string }>(
+      c.env,
+      { route: "POST /lectures/:id/slides", feature: "lecture_slides", userId: user.id, subjectSlug: lecture.subject_slug, requestId: rid, attempts: [] },
+      () => generateAiCompletion(
+        c.env,
+        [
+          {
+            role: "user",
+            content: [
+              "Ты собираешь презентацию по лекции для студента-медика: 8–14 слайдов.",
+              "СТРОГОЕ ПРАВИЛО: каждый факт бери ДОСЛОВНО из текста лекции, ничего не добавляй извне.",
+              "Слайд: короткий заголовок (до 8 слов) и 3–5 пунктов-тезисов (до 14 слов каждый).",
+              "Порядок — как в лекции: от строения к функции; последний слайд — «Ключевые термины».",
+              "Формат ответа — строго JSON без markdown-обёртки:",
+              '{"slides":[{"title":"…","bullets":["…","…"]}]}',
+              "",
+              "=== ТЕКСТ ЛЕКЦИИ ===",
+              text,
+            ].join("\n"),
+          },
+        ],
+        "auto",
+        fetch,
+        { temperature: 0.15 },
+      ),
+    );
+    const rawText = String(result.content || "").replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      const match = /\{[\s\S]*"slides"[\s\S]*\}/.exec(String(result.content || ""));
+      if (match) {
+        try { parsed = JSON.parse(match[0]); } catch { /* handled below */ }
+      }
+    }
+    const slides = normalizeSlides(parsed);
+    if (!slides) {
+      const { body, status } = fail("SLIDES_BAD_OUTPUT", "ИИ не собрал презентацию — попробуйте ещё раз", 502, rid);
+      return c.json(body, status as 502);
+    }
+
+    if (service && cacheKey) {
+      try {
+        await service.from("site_content").upsert({
+          key: cacheKey,
+          payload: { lecture_id: id, slides, provider: result.provider, model: result.model, generated_at: new Date().toISOString() },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "key" });
+      } catch (cacheError) {
+        // Кэш — ускорение, а не условие работы.
+        console.warn("[lectures:slides:write]", cacheError instanceof Error ? cacheError.message : "unavailable");
+      }
+    }
+    return c.json(ok({ lecture_id: id, title: lecture.title || "", slides, cached: false, provider: result.provider, model: result.model }, rid));
+  } catch (error) {
+    console.error("[lectures:slides]", error);
+    const { body, status } = fail("SLIDES_FAILED", "Не удалось собрать презентацию", 502, rid);
+    return c.json(body, status as 502);
+  }
+});
+
 lectures.get("/:id", requireAuth, async (c) => {
   const rid = requestId();
   const supabase = c.get("supabase");

@@ -8,8 +8,9 @@
  * ```mermaid рисуется существующим кодом — отдельной схемной библиотеки нет.
  */
 import { useEffect, useState } from "react";
-import { Baby, Brain, Drama, FileText, Headphones, Loader2, Network, Printer, Sparkles, type LucideIcon } from "lucide-react";
-import { aiChat, lectureCheatsheet, lecturePodcast } from "@/lib/features-api";
+import { createPortal } from "react-dom";
+import { Baby, Brain, ChevronLeft, ChevronRight, Drama, FileText, Headphones, Loader2, Network, Presentation, Printer, Sparkles, X, type LucideIcon } from "lucide-react";
+import { aiChat, lectureCheatsheet, lecturePodcast, lectureSlides, type LectureSlides } from "@/lib/features-api";
 import { describeApiError } from "@/lib/errors";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { AI_PRESETS, buildPresetMessage, presetById, type AiPresetId } from "@/lib/ai/presets";
@@ -54,6 +55,68 @@ export default function LectureAiActions({
   // Шпаргалка: markdown от ИИ + печать на один лист в отдельном окне.
   const [cheat, setCheat] = useState<{ title: string; content: string } | null>(null);
   const [cheatBusy, setCheatBusy] = useState(false);
+
+  // Презентация по лекции (фаза 2.5.3): слайды в полноэкранном просмотрщике.
+  const [slides, setSlides] = useState<LectureSlides | null>(null);
+  const [slidesBusy, setSlidesBusy] = useState(false);
+  const [slidesOpen, setSlidesOpen] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [slidesMounted, setSlidesMounted] = useState(false);
+
+  useEffect(() => {
+    setSlidesMounted(true);
+    return () => setSlidesMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (!slidesOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight") setSlideIdx((i) => Math.min(i + 1, (slides?.slides.length || 1) - 1));
+      else if (event.key === "ArrowLeft") setSlideIdx((i) => Math.max(i - 1, 0));
+      else if (event.key === "Escape") setSlidesOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [slidesOpen, slides]);
+
+  async function makeSlides() {
+    if (!lectureId || slidesBusy) return;
+    setSlidesBusy(true);
+    setError(null);
+    const result = await lectureSlides(lectureId);
+    setSlidesBusy(false);
+    if (!result.ok) {
+      setError(describeApiError(result.error));
+      return;
+    }
+    if (!(result.data.slides || []).length) {
+      setError("ИИ не собрал слайды — попробуйте ещё раз.");
+      return;
+    }
+    setSlides(result.data);
+    setSlideIdx(0);
+    setSlidesOpen(true);
+  }
+
+  function printSlides() {
+    if (!slides) return;
+    const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const pages = slides.slides
+      .map((slide) => `<section class="slide"><h2>${escape(slide.title)}</h2><ul>${slide.bullets.map((b) => `<li>${escape(b)}</li>`).join("")}</ul></section>`)
+      .join("\n");
+    const win = window.open("", "_blank", "width=900,height=1100");
+    if (!win) return;
+    win.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${escape(slides.title || title)} — презентация</title><style>
+      body{font-family:Georgia,serif;margin:0;color:#111}
+      .slide{page-break-after:always;min-height:92vh;box-sizing:border-box;padding:48px 56px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid #ddd}
+      .slide h2{font-size:26px;margin:0 0 20px;color:#1e3a8a}
+      .slide li{font-size:18px;margin:8px 0;line-height:1.5}
+      @media print{.slide{border:0;min-height:100vh}}
+    </style></head><body><h1 style="font-size:22px;padding:24px 56px">${escape(slides.title || title)}</h1>${pages}</body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
 
   async function makeCheatsheet() {
     if (!lectureId || cheatBusy) return;
@@ -192,6 +255,24 @@ export default function LectureAiActions({
               <Printer className="h-3.5 w-3.5" /> Печать
             </button>
           ) : null}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--primary-soft)]"
+            disabled={slidesBusy}
+            onClick={() => void makeSlides()}
+          >
+            {slidesBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Presentation className="h-3.5 w-3.5" />}
+            {slidesBusy ? "Собираем слайды…" : "Презентация"}
+          </button>
+          {slides ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--primary-soft)]"
+              onClick={printSlides}
+            >
+              <Printer className="h-3.5 w-3.5" /> Печать слайдов
+            </button>
+          ) : null}
           {podcastUrl ? <audio controls src={podcastUrl} className="h-9 w-full max-w-md" /> : null}
         </div>
       ) : null}
@@ -223,6 +304,70 @@ export default function LectureAiActions({
           <LectureRenderer markdown={answer} />
         </div>
       )}
+
+      {/* Полноэкранный просмотрщик слайдов: стрелки, клавиатура, Esc, печать.
+          Портал — как в TrainerImageViewer, чтобы перекрыть шапку и навбар. */}
+      {slidesMounted && slidesOpen && slides ? createPortal(
+        <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950 text-white" role="dialog" aria-modal="true" aria-label="Презентация по лекции">
+          <header className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <span className="min-w-0 truncate text-sm text-white/70">{slides.title || title}</span>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={printSlides} className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15">
+                <Printer className="h-3.5 w-3.5" /> Печать/PDF
+              </button>
+              <button type="button" onClick={() => setSlidesOpen(false)} className="rounded-lg bg-white/10 p-2 hover:bg-white/15" aria-label="Закрыть">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </header>
+          <main className="flex min-h-0 flex-1 items-center justify-center px-4 pb-4">
+            <button
+              type="button"
+              aria-label="Предыдущий слайд"
+              disabled={slideIdx === 0}
+              onClick={() => setSlideIdx((i) => Math.max(i - 1, 0))}
+              className="shrink-0 rounded-xl bg-white/5 p-3 text-white/70 transition hover:bg-white/10 disabled:opacity-25"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <div className="mx-3 flex min-w-0 flex-1 items-center justify-center">
+              <div className="flex aspect-[16/9] max-h-full w-full max-w-4xl flex-col justify-center overflow-y-auto rounded-3xl bg-white px-8 py-10 text-slate-900 shadow-2xl sm:px-14">
+                <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">Слайд {slideIdx + 1} из {slides.slides.length}</p>
+                <h2 className="mt-2 text-2xl font-extrabold leading-snug sm:text-3xl">{slides.slides[slideIdx]?.title}</h2>
+                <ul className="mt-6 space-y-3">
+                  {(slides.slides[slideIdx]?.bullets || []).map((bullet, i) => (
+                    <li key={i} className="flex gap-3 text-base leading-relaxed sm:text-lg">
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Следующий слайд"
+              disabled={slideIdx >= slides.slides.length - 1}
+              onClick={() => setSlideIdx((i) => Math.min(i + 1, slides.slides.length - 1))}
+              className="shrink-0 rounded-xl bg-white/5 p-3 text-white/70 transition hover:bg-white/10 disabled:opacity-25"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          </main>
+          <footer className="flex items-center justify-center gap-1.5 pb-4">
+            {slides.slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Слайд ${i + 1}`}
+                onClick={() => setSlideIdx(i)}
+                className={"h-1.5 rounded-full transition-all " + (i === slideIdx ? "w-6 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50")}
+              />
+            ))}
+          </footer>
+        </div>,
+        document.body,
+      ) : null}
     </section>
   );
 }

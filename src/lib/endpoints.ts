@@ -128,6 +128,7 @@ export const endpoints = {
     lectureCloze: (id: string): string => `/lectures/${enc(id)}/cloze`,
     lecturePodcast: (id: string): string => `/lectures/${enc(id)}/podcast`,
     lectureCheatsheet: (id: string): string => `/lectures/${enc(id)}/cheatsheet`,
+    lectureSlides: (id: string): string => `/lectures/${enc(id)}/slides`,
     myLectures: (): string => "/my-lectures",
     myToolsExtractPdf: (): string => "/my-tools/extract-pdf",
     myToolsOcr: (): string => "/my-tools/ocr",

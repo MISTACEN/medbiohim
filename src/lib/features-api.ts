@@ -291,6 +291,13 @@ export async function lecturePodcast(id: string) {
   return api<LecturePodcast>(endpoints.content.lecturePodcast(id), { method: "POST", body: "{}", timeoutMs: 120000 });
 }
 
+/** Презентация по лекции (фаза 2.5.3): слайды {title, bullets}, кэш по хэшу текста. */
+export type LectureSlide = { title: string; bullets: string[] };
+export type LectureSlides = { lecture_id: string; title: string; slides: LectureSlide[]; cached: boolean; provider?: string; model?: string };
+export async function lectureSlides(id: string) {
+  return api<LectureSlides>(endpoints.content.lectureSlides(id), { method: "POST", body: "{}", timeoutMs: 120000 });
+}
+
 export async function cardPackAiGenerate(payload: { topic: string; subject_slug?: string; source_text?: string }) {
   return api<CardPackAiDraft>("/card-packs/ai-generate", { method: "POST", body: JSON.stringify(payload), timeoutMs: 90000 });
 }
