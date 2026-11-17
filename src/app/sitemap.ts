@@ -10,8 +10,11 @@ const ROUTES: Array<{ path: string; priority: number; changeFrequency: "daily" |
   { path: "/attestations", priority: 0.8, changeFrequency: "weekly" },
   { path: "/tickets", priority: 0.8, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.7, changeFrequency: "weekly" },
-  { path: "/calculators", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/library", priority: 0.7, changeFrequency: "weekly" },
+  { path: "/tools", priority: 0.6, changeFrequency: "monthly" },
   { path: "/chemistry", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/latin", priority: 0.5, changeFrequency: "monthly" },
+  { path: "/english", priority: 0.5, changeFrequency: "monthly" },
   { path: "/university", priority: 0.6, changeFrequency: "monthly" },
   { path: "/help", priority: 0.4, changeFrequency: "monthly" },
 ];
