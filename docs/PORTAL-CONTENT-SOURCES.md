@@ -1,6 +1,6 @@
 # Портал предмета: источники контента и пересборка
 
-**Обновлено: 17 ноября 2026.** Документ фиксирует, откуда взялось содержимое вкладки
+**Обновлено: 18 ноября 2026.** Документ фиксирует, откуда взялось содержимое вкладки
 «Портал» на странице предмета и как его пересобрать из исходных папок.
 
 Вкладка «Портал» — не отдельный раздел-хаб, а часть существующей страницы предмета
@@ -13,6 +13,10 @@
 | --- | --- | --- |
 | `course/bio-lec/topic1…9.html` | `public/content/portals/lectures-bio.json` | предмет `biology`, лекции |
 | `course/chem-lec/topic1…2.html` | `public/content/portals/lectures-chem.json` | предметы химии |
+| Травень Т.1–Т.3 (PDF) + канон курса Тюкавкиной | `public/content/portals/lectures-chem-organic.json` (модули `scripts/organic-lectures/org-*.mjs`, сборка `scripts/build-organic-lectures-authored.mjs`) | предметы `organic_chemistry` и `chemistry_organic_physical`, блок «lecturesOrganic» |
+| «Сборник тестов. Часть I» (tests.json) | `mc-organic-part1-*.json` — темы 1.1–1.4 целиком (122 вопроса), сборка `scripts/build-chemistry-mc-part1-full.mjs` | MC-тренажёры химии |
+| chem2/chem3 (распознанные сканы) | `mc-chem2-*.json`, `mc-chem3-*.json` — 133 вопроса с верифицированными ответами (`scripts/chem23-answers.mjs`, сборка `scripts/build-chem23-mc.mjs`) | MC-тренажёры химии |
+| B2 `medbiohim-files` (медиа-манифест) | `public/content/library-media.json` (`scripts/build-library-media.mjs`) + раздача `/api/media/<key>` (подписанные ссылки) | `/library`, вкладка «Облачный архив» |
 | `course/hoba/*` | `public/content/portals/hoba-theory.json`, `hoba-practical.json`, `hoba-tasks.json` | предмет `inorganic_chemistry`, вкладка «Коллоквиум» |
 | `course/biotestkr/test1…4.js` | `tests[parasitology-test1…4]` в `parasitology-tests.json` | предмет `biology`, таблицы протистов/гельминтов |
 | `на сайт/паразиты/script.js` | `tests[parasitology-helminths, parasitology-arthropods]` + `quiz` | предмет `biology`, режимы «Таблица», «Экзамен», «Контрольная» |

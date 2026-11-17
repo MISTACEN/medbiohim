@@ -1,0 +1,116 @@
+{
+ "generated_at": "2026-11-17T07:59:50.613Z",
+ "count": 11,
+ "items": [
+  {
+   "key": "library/histology/atlas-po-gistologii-s-l-kuznecov.pdf",
+   "title": "Атлас по гистологии — С.Л. Кузнецов",
+   "type": "PDF · атлас",
+   "subject": "Гистология",
+   "subject_slug": "histology",
+   "mime": "application/pdf",
+   "size_bytes": 72705857,
+   "sha256": "4564aeccb2eebb0cf249f9abeb0315401c86e2bf2f4724de856e51c169ab97aa"
+  },
+  {
+   "key": "library/histology/uchebnik-gistologiya-citologiya-i-embriologiya-yu-i-afanasev.pdf",
+   "title": "Гистология, цитология и эмбриология — Ю.И. Афанасьев",
+   "type": "PDF · учебник",
+   "subject": "Гистология",
+   "subject_slug": "histology",
+   "mime": "application/pdf",
+   "size_bytes": 103549990,
+   "sha256": "65952347402f3a9ba0dce93ede32e5574e4da59ed815fbd9c06b774101d7476a"
+  },
+  {
+   "key": "library/histology/gistologiya-vvodnaya-citologiya.mp4",
+   "title": "Гистология. Вводная. Цитология",
+   "type": "Видео-лекция",
+   "subject": "Гистология",
+   "subject_slug": "histology",
+   "mime": "video/mp4",
+   "size_bytes": 546011138,
+   "sha256": "9ba349c95a9c7fcb539107e7bfa78d7690bfa0361e215f28c88ac1a988f13348"
+  },
+  {
+   "key": "library/histology/gistologiya-soedinitelnye-tkani-krov.mp4",
+   "title": "Гистология. Соединительные ткани. Кровь",
+   "type": "Видео-лекция",
+   "subject": "Гистология",
+   "subject_slug": "histology",
+   "mime": "video/mp4",
+   "size_bytes": 517665878,
+   "sha256": "55d11dd2574b501ccbbea8ffcefc2c50995dda70a48b45874d58110e990fae8d"
+  },
+  {
+   "key": "library/histology/citol-i-embr-dlya-samopodgotovki-2024-g.docx",
+   "title": "Цитология и эмбриология для самоподготовки (2024)",
+   "type": "Word · методичка",
+   "subject": "Гистология",
+   "subject_slug": "histology",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size_bytes": 33743132,
+   "sha256": "27e5ae90a5203a318f7f8578402854fab5594e3d1696ac082d372d8f2769a675"
+  },
+  {
+   "key": "library/misc/course.rar",
+   "title": "Архив старой версии сайта",
+   "type": "RAR · архив",
+   "subject": "Прочее",
+   "subject_slug": "misc",
+   "mime": "application/vnd.rar",
+   "size_bytes": 101606625,
+   "sha256": "ce08f62a96ca734034171358a894f28d038c3f54f747331f150a7f2b82862fb1"
+  },
+  {
+   "key": "library/misc/zadachi.pdf",
+   "title": "Задачник (сборник задач)",
+   "type": "PDF · задачи",
+   "subject": "Прочее",
+   "subject_slug": "misc",
+   "mime": "application/pdf",
+   "size_bytes": 27365198,
+   "sha256": "1fe80bbf905037eab8c54be43582ceeed6f37a4842fbd9d3dbe274510d1de67e"
+  },
+  {
+   "key": "library/physiology/atlas-po-normalnoy-fiziologii-chesnokov.pdf",
+   "title": "Атлас по нормальной физиологии — Чесноков",
+   "type": "PDF · атлас",
+   "subject": "Физиология",
+   "subject_slug": "physiology",
+   "mime": "application/pdf",
+   "size_bytes": 119203736,
+   "sha256": "7720bb20d8a763212dfcf08752aedebe1d88be0a050f8a269454d3ac2903bb88"
+  },
+  {
+   "key": "library/physiology/sudakov-k-v-normalnaya-fiziologia.pdf",
+   "title": "Нормальная физиология — К.В. Судаков",
+   "type": "PDF · учебник",
+   "subject": "Физиология",
+   "subject_slug": "physiology",
+   "mime": "application/pdf",
+   "size_bytes": 51364876,
+   "sha256": "14d3a0e46b01514666eb5f3d6b0f951d0b746dd1b63fd3fd0d642fc69509d8d4"
+  },
+  {
+   "key": "library/physiology/fiziologia-cheloveka-v-skhemakh-i-tablitsakh-2017-avtory-brin-v.pdf",
+   "title": "Физиология человека в схемах и таблицах — В. Брин (2017)",
+   "type": "PDF · учебник",
+   "subject": "Физиология",
+   "subject_slug": "physiology",
+   "mime": "application/pdf",
+   "size_bytes": 136945971,
+   "sha256": "d02730cf3437576f720eaa885c27ed8e26ab198a88ec3e2d21ac203f9919d530"
+  },
+  {
+   "key": "library/chemistry/himiya.zip",
+   "title": "Химия: сборники тестов и лекций (сканы)",
+   "type": "ZIP · архив сканов",
+   "subject": "Химия",
+   "subject_slug": "chemistry_organic_physical",
+   "mime": "application/zip",
+   "size_bytes": 360407064,
+   "sha256": "bffe573140c4102fe2be4d22ae6716211f04083a8ff68b50cb229201a66c2795"
+  }
+ ]
+}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BookOpen, ExternalLink, Search } from "lucide-react";
+import { BookOpen, CloudDownload, ExternalLink, Loader2, Search } from "lucide-react";
 import UserFiles from "@/components/library/UserFiles";
 import { LIBRARY_FILES, searchLibrary } from "@/lib/library";
 import {
@@ -19,9 +19,34 @@ const availabilityClass: Record<ResourceAvailability, string> = {
   unknown: "bg-[var(--border)] text-[var(--muted)]",
 };
 
+/** Облачная медиа-библиотека (B2): метаданные + allowlist ключей. */
+type LibraryMediaItem = { key: string; title: string; type: string; subject: string; size_bytes: number };
+type LibraryMediaIndex = { count: number; items: LibraryMediaItem[] };
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} ГБ`;
+  if (bytes >= 1024 * 1024) return `${Math.round(bytes / (1024 * 1024))} МБ`;
+  return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
+}
+
+function useLibraryMedia() {
+  const [media, setMedia] = useState<LibraryMediaIndex | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/content/library-media.json", { cache: "no-cache" })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((data) => alive && setMedia(data))
+      .catch(() => alive && setMedia({ count: 0, items: [] }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return media;
+}
+
 export default function LibraryBrowser() {
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<"internal" | "external" | "mine">("internal");
+  const [tab, setTab] = useState<"internal" | "cloud" | "external" | "mine">("internal");
 
   const internal = useMemo(() => {
     if (!query.trim()) return LIBRARY_FILES;
@@ -35,6 +60,18 @@ export default function LibraryBrowser() {
   }, [query]);
 
   const external = useMemo(() => searchExternalResources(query), [query]);
+  const mediaIndex = useLibraryMedia();
+  const cloud = useMemo(() => {
+    const items = mediaIndex?.items ?? [];
+    if (!query.trim()) return items;
+    const normalized = query.trim().toLowerCase();
+    return items.filter(
+      (item) =>
+        item.title.toLowerCase().includes(normalized) ||
+        item.subject.toLowerCase().includes(normalized) ||
+        item.type.toLowerCase().includes(normalized),
+    );
+  }, [mediaIndex, query]);
 
   return (
     <div className="space-y-5">
@@ -55,6 +92,7 @@ export default function LibraryBrowser() {
           {(
             [
               ["internal", "Материалы MEDBIOHIM"],
+              ["cloud", "Облачный архив"],
               ["external", "Внешние каталоги"],
               ["mine", "Мои файлы"],
             ] as const
@@ -75,7 +113,45 @@ export default function LibraryBrowser() {
         </div>
       </div>
 
-      {tab === "mine" ? (
+      {tab === "cloud" ? (
+        <div className="space-y-3">
+          <p className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-xs leading-5 text-[var(--muted)]">
+            Учебники, атласы и видео-лекции в облачном архиве курса. Файлы выдаются по
+            подписанной ссылке прямо из хранилища — откроются в новой вкладке.
+          </p>
+          {!mediaIndex ? (
+            <p className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-sm text-[var(--muted)]">
+              <Loader2 className="h-4 w-4 animate-spin" /> Загружаем архив…
+            </p>
+          ) : cloud.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-sm text-[var(--muted)]">
+              По запросу «{query}» в облачном архиве ничего не найдено.
+            </p>
+          ) : (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {cloud.map((item) => (
+                <li key={item.key}>
+                  <a
+                    href={`/api/media/${encodeURIComponent(item.key)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-full items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:border-[var(--primary)]"
+                  >
+                    <CloudDownload className="mt-0.5 h-5 w-5 shrink-0 text-[var(--primary)]" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold">{item.title}</span>
+                      <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                        {item.subject} · {item.type} · {formatSize(item.size_bytes)}
+                      </span>
+                    </span>
+                    <ExternalLink className="ml-auto h-4 w-4 shrink-0 text-[var(--muted)]" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : tab === "mine" ? (
         <UserFiles />
       ) : tab === "internal" ? (
         <div className="space-y-3">

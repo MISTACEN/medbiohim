@@ -1,6 +1,6 @@
 # Карта проекта MEDBIOHIM — где что лежит
 
-Обновлена: 2026-11-07. Ориентир для человека, который открыл репозиторий впервые.
+Обновлена: 2026-11-18. Ориентир для человека, который открыл репозиторий впервые.
 
 Сопутствующие главные документы: [ROADMAP.md](ROADMAP.md) — план/этапы/остаток; [docs/HISTORY.md](docs/HISTORY.md) — история. Технические контракты: [docs/WORKERS-TOPOLOGY.md](docs/WORKERS-TOPOLOGY.md), [docs/COOKIES-RFC-E1.md](docs/COOKIES-RFC-E1.md), [docs/architecture/SHARED-COMPONENT-REGISTRY.md](docs/architecture/SHARED-COMPONENT-REGISTRY.md). Архив старых документов: [docs/archive/](docs/archive/).
 
