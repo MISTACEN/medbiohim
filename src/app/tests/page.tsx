@@ -180,11 +180,35 @@ function TestsPageInner() {
         })}
       </nav>
 
+      {view === "tests" && (
+        <Link
+          href="/tests/methodical/chemistry-alcohols-phenols-ethers"
+          className="card flex flex-col gap-4 border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 transition hover:border-indigo-400 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Полный тест из методички · 80 вопросов</p>
+            <h2 className="mt-1 text-lg font-extrabold text-slate-950">Спирты. Фенолы. Простые эфиры</h2>
+            <p className="mt-1 text-sm text-slate-600">Отдельный полный вариант, не короткая тренировка темы.</p>
+          </div>
+          <span className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white">Открыть тест →</span>
+        </Link>
+      )}
       {view === "tests" && <RecommendedTests />}
       {view === "tests" && <TestsHub highlightTestId={openTestId} />}
 
       {view === "chemistry" && (
         <section className="space-y-4">
+          <Link
+            href="/tests/methodical/chemistry-alcohols-phenols-ethers"
+            className="card flex flex-col gap-4 border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 transition hover:border-indigo-400 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Полный вариант из методички · 80 вопросов</p>
+              <h2 className="mt-1 text-lg font-extrabold text-slate-950">Спирты. Фенолы. Простые эфиры</h2>
+              <p className="mt-1 text-sm text-slate-600">Отдельный от тематической подборки заданий по химии.</p>
+            </div>
+            <span className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white">Начать полный тест →</span>
+          </Link>
           <header className="rounded-2xl border border-[var(--status-ok-border)] bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">

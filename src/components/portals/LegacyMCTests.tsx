@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, ChevronLeft, Loader2, XCircle } from "lucide-react";
 import {
   loadMcIndex,
@@ -27,13 +27,14 @@ function isQuestionCorrect(question: PortalMcQuestion, value: number | string | 
 }
 
 /** Легаси MC-тесты (биология, физика, математика, история, оргхим, физиология). */
-export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] }) {
+export default function LegacyMCTests({ subjectIds, initialTestId }: { subjectIds?: string[]; initialTestId?: string }) {
   const [index, setIndex] = useState<PortalMcIndexEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<PortalMcQuestion[] | null>(null);
   const [picks, setPicks] = useState<Record<string, number | string>>({});
   const [checked, setChecked] = useState(false);
+  const initialTestOpened = useRef<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -65,6 +66,16 @@ export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] })
       setActiveId(null);
     }
   }
+
+  useEffect(() => {
+    if (!initialTestId || !index || initialTestOpened.current === initialTestId) return;
+    initialTestOpened.current = initialTestId;
+    if (!index.some((test) => test.id === initialTestId)) {
+      setError("Этот тест не найден в каталоге.");
+      return;
+    }
+    void open(initialTestId);
+  }, [index, initialTestId]);
 
   if (error) return <div className="card p-5 text-sm text-[var(--status-critical-fg)]">{error}</div>;
   if (!index) {
