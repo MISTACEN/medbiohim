@@ -6,7 +6,7 @@ import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { loadLectureSet, type PortalLectureSet } from "@/lib/portalContent";
 
 /** Архивные HTML-лекции старого портала course/ — внутри вкладки «Портал». */
-export default function ArchiveLectures({ setId }: { setId: "bio" | "math" | "chem" | "chem-organic" | "phys" }) {
+export default function ArchiveLectures({ setId }: { setId: "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin" }) {
   const [set, setSet] = useState<PortalLectureSet | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
