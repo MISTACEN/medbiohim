@@ -1,0 +1,22 @@
+[
+ {
+  "id": "bio-parasitology-lifecycles",
+  "title": "Справочник: строение и жизненные циклы простейших",
+  "text": "tmp/pdf-text/bio-parasitology-lifecycles.txt"
+ },
+ {
+  "id": "bio-parasitology-classification",
+  "title": "Справочник: классификация простейших",
+  "text": "tmp/pdf-text/bio-parasitology-classification.txt"
+ },
+ {
+  "id": "bio-parasitology-diseases",
+  "title": "Справочник: паразитарные болезни — пути заражения, диагностика, профилактика",
+  "text": "tmp/pdf-text/bio-parasitology-diseases.txt"
+ },
+ {
+  "id": "bio-parasitology-diagnostics",
+  "title": "Справочник: диагностика простейших и таблица самоконтроля",
+  "text": "tmp/pdf-text/bio-parasitology-diagnostics.txt"
+ }
+]
