@@ -46,9 +46,9 @@ describe("ArchiveLectures (реальный контент)", () => {
   it("поиск фильтрует конспекты по названию", async () => {
     const { container } = render(<ArchiveLectures setId="bio" />);
     const search = await screen.findByPlaceholderText("Поиск конспекта по названию…", {}, { timeout: 5000 });
-    const before = screen.getAllByRole("button").filter((b) => b.type === "button").length;
+    const before = screen.getAllByRole("button").filter((b) => b.tagName === "BUTTON").length;
     fireEvent.change(search, { target: { value: "менделя" } });
-    const after = screen.getAllByRole("button").filter((b) => b.type === "button").length;
+    const after = screen.getAllByRole("button").filter((b) => b.tagName === "BUTTON").length;
     expect(after).toBeGreaterThan(0);
     expect(after).toBeLessThan(before);
     expect(container.innerHTML).toMatch(/Менделя/i);
