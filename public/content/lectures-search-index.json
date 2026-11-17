@@ -1,0 +1,698 @@
+{
+ "count": 99,
+ "items": [
+  {
+   "id": "english:eng-letter-topic",
+   "setId": "english",
+   "subject": "Английский",
+   "title": "Письмо студента-медика: топик и лексика",
+   "href": "/english"
+  },
+  {
+   "id": "english:eng-biochemist-topic",
+   "setId": "english",
+   "subject": "Английский",
+   "title": "Doctor-biochemist: топик о профессии врача-биохимика",
+   "href": "/english"
+  },
+  {
+   "id": "english:eng-dvgmu-history",
+   "setId": "english",
+   "subject": "Английский",
+   "title": "From the history of DVGMSU (ДВГМУ) — топик об университете",
+   "href": "/english"
+  },
+  {
+   "id": "english:eng-profession-topic",
+   "setId": "english",
+   "subject": "Английский",
+   "title": "Our Future Profession — наша будущая профессия",
+   "href": "/english"
+  },
+  {
+   "id": "bio:bio-biosynthesis-slides",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Биосинтез белка: презентация",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-chromosome-theory",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Генетика и наследственность: хромосомная теория",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-genetics-sex",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Генетика пола: наследование, сцепленное с полом, закон Моргана",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-genetics-notes",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Генетика: законы Менделя, наследование, мутации, оперон",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-genetics-basics",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Генетика: основные понятия и задачи",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-gene-mutations",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Генные мутации и энзимопатии: генеалогический метод",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-karyotype",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Кариотип человека: мутации, хромосомные болезни, идиограмма",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-topic5",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Медицинская энтомология",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-topic4",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Медицинское значение клещей (Acarina)",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-human-genetics",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Методы генетики человека и наследственные болезни обмена",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-topic2",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Общая экология",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-topic3",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Основы медицинской паразитологии",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-topic7",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "План работы для самостоятельной подготовки при дистанционном обучении",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-population-genetics",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Популяционная генетика: закон Харди–Вайнберга, факторы эволюции",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-reproduction",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Размножение организмов: бесполое, половое, партеногенез, мейоз",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-replication-slides",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Репликация ДНК: презентация",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-parasitology-diagnostics",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Справочник: диагностика простейших и таблица самоконтроля",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-parasitology-classification",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Справочник: классификация простейших",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-parasitology-diseases",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Справочник: паразитарные болезни — пути заражения, диагностика, профилактика",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-parasitology-lifecycles",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Справочник: строение и жизненные циклы простейших",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-topic6",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Сравнительная анатомия хордовых",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-gene-structure",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Строение гена у прокариот и эукариот: оперон, сплайсинг",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-genetics-linkage",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Третий закон Менделя: сцепление генов, кроссинговер, хромосомная теория",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-topic1",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Формы и виды изменчивости",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-human-genetics-syndromes",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Хромосомные синдромы: диагностика",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-genetics-segregation",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Цитогенетические основы расщепления 3:1 и механизмы определения пола",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-cytology",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Цитология: клеточная теория, происхождение жизни, митоз",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-cytology-cell",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Цитология: строение клетки, ДНК и РНК",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-ecology",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Экология: биогеоценоз, ноосфера, законы Коммонера",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "bio:bio-embryology",
+   "setId": "bio",
+   "subject": "Биология",
+   "title": "Эмбриология: онтогенез, дробление, гаструляция, критические периоды",
+   "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "history:hist-state-18c",
+   "setId": "history",
+   "subject": "История",
+   "title": "Государственный аппарат России в первой половине XVIII века",
+   "href": "/subjects/history?tab=portal"
+  },
+  {
+   "id": "history:hist-mongol-invasion",
+   "setId": "history",
+   "subject": "История",
+   "title": "Монгольское нашествие на Русь: краткий обзор",
+   "href": "/subjects/history?tab=portal"
+  },
+  {
+   "id": "history:hist-unified-rus",
+   "setId": "history",
+   "subject": "История",
+   "title": "Образование единого Русского государства: роль Ивана III и Василия III",
+   "href": "/subjects/history?tab=portal"
+  },
+  {
+   "id": "history:hist-ww1-report",
+   "setId": "history",
+   "subject": "История",
+   "title": "Первая мировая война (1914–1918): доклад",
+   "href": "/subjects/history?tab=portal"
+  },
+  {
+   "id": "history:hist-ww1-historiography",
+   "setId": "history",
+   "subject": "История",
+   "title": "Первая мировая война: ход событий и современная историография",
+   "href": "/subjects/history?tab=portal"
+  },
+  {
+   "id": "history:hist-historiography-slides",
+   "setId": "history",
+   "subject": "История",
+   "title": "Развитие и зарождение исторического знания: презентация",
+   "href": "/subjects/history?tab=portal"
+  },
+  {
+   "id": "history:hist-rus-13-15",
+   "setId": "history",
+   "subject": "История",
+   "title": "Русь в XIII–XV вв.: накануне и после нашествия",
+   "href": "/subjects/history?tab=portal"
+  },
+  {
+   "id": "latin:latin-greek-roots",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Греческие слова (основы) и терминоэлементы",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-aphorisms",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Латинские афоризмы с переводом",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-diagnoses",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Латинские диагнозы: русский ↔ латинский",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-plants",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Лекарственные растения: латинские наименования",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-minimum-105",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Лексический минимум (§ 105): русско-латинские термины",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-minimum-63",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Лексический минимум (§ 63): терминоэлементы",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-muscles-minimum",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Лексический минимум: мышцы по их функции (§ 73)",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-pharma-terms",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Фармацевтическая терминология: лекарственные средства",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-pharma-phrases",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Фармацевтические выражения: русский ↔ латинский",
+   "href": "/latin"
+  },
+  {
+   "id": "latin:latin-elements",
+   "setId": "latin",
+   "subject": "Латынь",
+   "title": "Химические элементы: русские и латинские названия",
+   "href": "/latin"
+  },
+  {
+   "id": "math:math-vectors",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Векторы: основные определения и операции",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-matrices",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Матрицы: полная таблица формул",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-limits",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Пределы и функции: основные определения",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-slau",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Системы линейных уравнений (СЛАУ)",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic1",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 1. Матрицы и определители",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic2",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 2. Системы линейных алгебраических уравнений (СЛАУ)",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic3",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 3. Векторная алгебра",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic4",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 4. Функции одной переменной",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic5",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 5. Функции нескольких переменных",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic6",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 6. Производная функции одной переменной",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic7",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 7. Частные производные функции нескольких переменных",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic8",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 8. Интегральное исчисление",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "math:math-topic9",
+   "setId": "math",
+   "subject": "Математика",
+   "title": "Тема 9. Дифференциальные уравнения",
+   "href": "/subjects/math?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-1-alkany-cikloalkany",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Алканы и циклоалканы",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-2-alkeny-alkiny-dieny",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Алкены, алкины и диены",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-8-aldegidy-ketony",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Альдегиды и кетоны",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-6-aminy-diazosoedineniya",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Амины и диазосоединения",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-3-areny",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Ароматические углеводороды (арены)",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-4-galogenuglevodorody",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Галогенпроизводные углеводородов",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-10-geterofunkcionalnye",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Гетерофункциональные соединения",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-11-geterocikly-alkaloidy",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Гетероциклические соединения и алкалоиды",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-1-4-stereoizomeriya",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Изомерия и стереоизомерия: хиральность, энантиомеры, R/S-номенклатура",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-9-karbonovye-kisloty",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Карбоновые кислоты и их производные",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-1-3-kislotnost-osnovnost",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Кислотность и основность органических соединений",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-1-1-klassifikaciya-nomenklatura",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Классификация органических соединений и номенклатура",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-3-5-spirty-fenoly-efiry",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Спирты, фенолы и простые эфиры",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem-organic:org-1-2-svyaz-elektronnye-effekty",
+   "setId": "chem-organic",
+   "subject": "Органическая химия",
+   "title": "Химическая связь и электронные эффекты",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "phys:phys-oscillations-qa",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Колебания: ответы на контрольные вопросы",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-oscillations",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Колебательные процессы и гармонический осциллятор",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-cycles",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Круговой процесс (цикл): обратимые и необратимые процессы",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-cycles-slides",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Круговой процесс (цикл): презентация",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-liquids-mkt",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Молекулярное строение жидкостей: ближний порядок и тепловое движение",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-surface-tension-slides",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Поверхностное натяжение: презентация",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-surface-tension",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Поверхностное натяжение: фундаментальные свойства жидкостей",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-oscillations-composition",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Сложение взаимно-перпендикулярных гармонических колебаний",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-waves",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Упругие механические волны и связанные явления",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-mechanics-formulas",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Физика: единая сводная таблица формул по механике",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-surface-tension-formulas",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Физика: формулы — поверхностное натяжение и капиллярные явления",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-waves-formulas",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Физика: формулы — упругие механические волны",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "phys:phys-electrolysis-slides",
+   "setId": "phys",
+   "subject": "Физика",
+   "title": "Электрический ток в жидкостях. Закон электролиза: презентация",
+   "href": "/subjects/physics?tab=portal"
+  },
+  {
+   "id": "chem:chem-lab-acid-base",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Лабораторная: кислотно-основные свойства органических соединений",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem:chem-lab-1",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Лабораторная: константа диссоциации слабого электролита",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem:chem-lab-alcohols-phenols-ethers",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Лабораторная: спирты, фенолы и простые эфиры",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem:chem-inorganic-basics",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Неорганическая химия: классы соединений, законы, эквиваленты",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem:chem-inorganic-tables",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Неорганическая химия: шпаргалка по модулям 4–5",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem:chem-kinetics-notes",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Химическая кинетика — конспект с задачами",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem:chem-topic1",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Химическая кинетика — полный конспект",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  },
+  {
+   "id": "chem:chem-topic2",
+   "setId": "chem",
+   "subject": "Химия",
+   "title": "Химическая кинетика — часть 2: цепные реакции, катализ, гетерогенные процессы",
+   "href": "/subjects/organic_chemistry?tab=portal"
+  }
+ ]
+}

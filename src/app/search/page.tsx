@@ -138,12 +138,42 @@ function librarySuggestions(query: string): SearchSuggestion[] {
   }));
 }
 
+/** Конспекты портала: лёгкий индекс (id/предмет/название/ссылка), грузится один раз. */
+type LectureSearchItem = { id: string; setId: string; subject: string; title: string; href: string };
+let lectureIndexCache: LectureSearchItem[] | null = null;
+
+async function loadLectureIndex(): Promise<LectureSearchItem[]> {
+  if (lectureIndexCache) return lectureIndexCache;
+  try {
+    const response = await fetch("/content/lectures-search-index.json", { cache: "no-cache" });
+    if (!response.ok) return [];
+    const data = (await response.json()) as { items: LectureSearchItem[] };
+    lectureIndexCache = data.items ?? [];
+  } catch {
+    lectureIndexCache = [];
+  }
+  return lectureIndexCache;
+}
+
+function searchLectures(items: LectureSearchItem[], query: string): LectureSearchItem[] {
+  const normalized = query.trim().toLowerCase().replace(/[–—−]/g, "-");
+  if (!normalized) return [];
+  const tight = normalized.replace(/[^a-zа-яё0-9]/gi, "");
+  return items
+    .filter((item) => {
+      const title = item.title.toLowerCase().replace(/[–—−]/g, "-");
+      return title.includes(normalized) || title.replace(/[^a-zа-яё0-9]/gi, "").includes(tight);
+    })
+    .slice(0, 8);
+}
+
 function SearchPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<SearchHit[]>([]);
+  const [lectureHits, setLectureHits] = useState<LectureSearchItem[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -171,6 +201,8 @@ function SearchPageInner() {
     setSuggestEmpty(false);
     const res = await globalSearch(qq, { limit: 30, type: type || undefined, subject_slug: subjectFilter || undefined });
     setLoading(false);
+    // конспекты ищутся на клиенте по лёгкому индексу — независимо от API
+    void loadLectureIndex().then((index) => setLectureHits(searchLectures(index, qq)));
     if (!res.ok) {
       setError(describeApiError(res.error));
       const fallback = withLibrary([], qq, type, subjectFilter);
@@ -458,6 +490,32 @@ function SearchPageInner() {
           {total > 0 ? `Найдено: ${total}` : "Ничего не найдено"}
           {intentHint ? ` · ${intentHint}` : ""}
         </p>
+      )}
+
+      {searched && !loading && lectureHits.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-slate-400">
+            Конспекты портала
+          </h2>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {lectureHits.map((hit) => (
+              <li key={hit.id}>
+                <Link
+                  href={hit.href}
+                  className="flex h-full items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:border-[var(--primary)]"
+                >
+                  <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-[var(--primary)]" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{hit.title}</span>
+                    <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                      {hit.subject} · конспект портала
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {searched && !loading && items.length === 0 && !error && (
