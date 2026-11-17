@@ -97,6 +97,8 @@ export type LegacyPortalConfig = {
   sdf?: boolean;
   /** Архивные HTML-лекции course/: "bio" | "math" | "chem". */
   lectures?: "bio" | "math" | "chem";
+  /** Авторские лекции по органической химии (курс МБХ-201): lectures-chem-organic.json. */
+  lecturesOrganic?: boolean;
   /** subjectId легаси MC-тестов, которые относятся к этому предмету. */
   mcSubjectIds?: string[];
 };
@@ -105,9 +107,15 @@ export type LegacyPortalConfig = {
 export const LEGACY_PORTALS: Record<string, LegacyPortalConfig> = {
   inorganic_chemistry: { tabLabel: "Коллоквиум", hoba: true, sdf: true },
   // Канонический slug предмета в каталоге: химия живёт внутри предмета.
-  chemistry_organic_physical: { tabLabel: "Химия", sdf: true, lectures: "chem", mcSubjectIds: ["chemistry"] },
+  chemistry_organic_physical: {
+    tabLabel: "Химия",
+    sdf: true,
+    lectures: "chem",
+    lecturesOrganic: true,
+    mcSubjectIds: ["chemistry"],
+  },
   biology: { tabLabel: "Портал", parasitology: true, lectures: "bio", mcSubjectIds: ["biology"] },
-  organic_chemistry: { tabLabel: "Тренажёры", lectures: "chem", mcSubjectIds: ["chemistry"] },
+  organic_chemistry: { tabLabel: "Тренажёры", lectures: "chem", lecturesOrganic: true, mcSubjectIds: ["chemistry"] },
   physics: { tabLabel: "Тренажёры", mcSubjectIds: ["physics"] },
   math: { tabLabel: "Тренажёры", lectures: "math", mcSubjectIds: ["math"] },
   history: { tabLabel: "Тренажёры", mcSubjectIds: ["history"] },
@@ -126,7 +134,9 @@ const cache = new Map<string, unknown>();
 async function getJson<T>(url: string): Promise<T> {
   const cached = cache.get(url);
   if (cached) return cached as T;
-  const response = await fetch(url, { cache: "force-cache" });
+  // no-cache, а не force-cache: после деплоя контента браузер обязан
+  // ревалидировать файл по ETag, иначе пользователи видят старые тесты и лекции.
+  const response = await fetch(url, { cache: "no-cache" });
   if (!response.ok) throw new Error(`Не удалось загрузить материал (${response.status})`);
   const data = (await response.json()) as T;
   cache.set(url, data);
@@ -201,7 +211,7 @@ export function loadChemSdf() {
 
 /** Архивные HTML-лекции course/. */
 export type PortalLectureSet = { subject: string; items: { id: string; title: string; html: string }[] };
-export function loadLectureSet(setId: "bio" | "math" | "chem") {
+export function loadLectureSet(setId: "bio" | "math" | "chem" | "chem-organic") {
   return getJson<PortalLectureSet>(`/content/portals/lectures-${setId}.json`);
 }
 

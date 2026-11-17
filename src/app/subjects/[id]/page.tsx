@@ -615,6 +615,7 @@ function SubjectPageInner({ params }: { params: Promise<{ id: string }> }) {
             {portal?.sdf && <ChemSdf />}
             {portal?.parasitology && <MatchingTrainer />}
             {portal?.lectures && <ArchiveLectures setId={portal.lectures} />}
+            {portal?.lecturesOrganic && <ArchiveLectures setId="chem-organic" />}
             {portal?.mcSubjectIds?.length ? (
               <section className="space-y-3">
                 <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-slate-400">Тестовые тренировки</h2>

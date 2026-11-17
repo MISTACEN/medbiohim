@@ -556,15 +556,23 @@ function MiniQuizBlock({ raw, lectureId }: { raw: string; lectureId?: string }) 
 function sanitizeLectureHtml(raw: string): string {
   if (typeof window === "undefined") return "";
   const doc = new DOMParser().parseFromString(raw, "text/html");
-  const allowed = new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","H1","H2","H3","H4","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN","FONT"]);
+  // Таблицы, индексы и код нужны химическим и медицинским конспектам:
+  // без них из DOCX пропадают таблицы свойств и формулы вида H₂SO₄.
+  const allowed = new Set(["P","DIV","BR","STRONG","B","EM","I","U","S","STRIKE","H1","H2","H3","H4","H5","H6","UL","OL","LI","BLOCKQUOTE","A","IMG","VIDEO","IFRAME","HR","SPAN","FONT","TABLE","THEAD","TBODY","TFOOT","TR","TH","TD","CAPTION","COLGROUP","COL","CODE","PRE","SUP","SUB","DL","DT","DD"]);
   const walk=(root: Node)=>{
     [...root.childNodes].forEach(node=>{
       if(node.nodeType!==Node.ELEMENT_NODE){ if(node.parentNode) walk(node); return; }
       const el=node as HTMLElement;
       if(!allowed.has(el.tagName)){ const p=el.parentNode; if(p){while(el.firstChild)p.insertBefore(el.firstChild,el);p.removeChild(el);} return; }
       [...el.attributes].forEach(a=>{
-        const keep=["href","src","alt","title","target","rel","width","height","size","style"].includes(a.name);
+        const keep=["href","src","alt","title","target","rel","width","height","size","style","class"].includes(a.name);
         if(!keep) el.removeAttribute(a.name);
+        if(a.name==="class"){
+          // Классы нужны рендеру формул (lec-math) и диаграмм (mermaid).
+          // Оставляем только известные токены, чужие — выкидываем.
+          const tokens=a.value.split(/\s+/).filter(x=>/^(lec-[a-z-]+|mermaid|katex|formula|chem-[a-z-]+)$/i.test(x));
+          if(tokens.length)el.setAttribute("class",tokens.join(" "));else el.removeAttribute("class");
+        }
         if(a.name==="style"){
           // Разрешаем ещё и положение фото в тексте (обтекание, ширина, отступы),
           // иначе картинку можно было вставить только «во всю ширину».
@@ -880,6 +888,11 @@ export function LectureRenderer({ markdown, html, lectureId, activeBlock }: {
         .lec-table th, .lec-table td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; }
         .lec-table th { background: #f8fafc; font-weight: 600; }
         .lec-math { margin: 0.75rem 0; overflow-x: auto; }
+        .lec-def { border-left: 4px solid #0f766e; background: rgba(13,148,136,0.07); border-radius: 0.85rem; margin: 1rem 0; padding: 0.8rem 1.1rem; }
+        .lec-def em { color: #0f766e; font-weight: 600; }
+        .dark .lec-def { background: rgba(13,148,136,0.12); }
+        .lec-simple { border-left: 4px solid #f59e0b; background: rgba(245,158,11,0.08); border-radius: 0.85rem; margin: 1rem 0; padding: 0.8rem 1.1rem; }
+        .dark .lec-simple { background: rgba(245,158,11,0.12); }
         .lecture-body .prose > div { margin-bottom: 0.95rem; }
         .lecture-body .prose > div > div { margin-bottom: 0.9rem; }
         .lecture-body h1 { font-size: 1.45rem; font-weight: 800; margin: 1.4rem 0 0.6rem; line-height: 1.3; }

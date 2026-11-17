@@ -2,7 +2,8 @@
  "generated_at": "2026-11-17T07:59:50.613Z",
  "source_roots": [
   "C:\\Users\\MISTACEN\\Documents\\deepseek-harness\\default-workspace\\на сайт",
-  "C:\\Users\\MISTACEN\\Documents\\deepseek-harness\\default-workspace\\физиологии"
+  "C:\\Users\\MISTACEN\\Documents\\deepseek-harness\\default-workspace\\физиологии",
+  "C:\\Users\\MISTACEN\\Desktop\\вуз\\учебники\\физиологии"
  ],
  "min_size_bytes": 20971520,
  "total_files": 11,
@@ -37,7 +38,7 @@
    "sha256": "bffe573140c4102fe2be4d22ae6716211f04083a8ff68b50cb229201a66c2795"
   },
   {
-   "source": "C:\\Users\\MISTACEN\\Documents\\deepseek-harness\\default-workspace\\физиологии\\Fiziologia_cheloveka_v_skhemakh_i_tablitsakh_2017_Avtory_Brin_V.pdf",
+   "source": "C:\\Users\\MISTACEN\\Desktop\\вуз\\учебники\\физиологии\\Fiziologia_cheloveka_v_skhemakh_i_tablitsakh_2017_Avtory_Brin_V.pdf",
    "relative": "Fiziologia_cheloveka_v_skhemakh_i_tablitsakh_2017_Avtory_Brin_V.pdf",
    "subject": "physiology",
    "object_key": "library/physiology/fiziologia-cheloveka-v-skhemakh-i-tablitsakh-2017-avtory-brin-v.pdf",
@@ -46,7 +47,7 @@
    "sha256": "d02730cf3437576f720eaa885c27ed8e26ab198a88ec3e2d21ac203f9919d530"
   },
   {
-   "source": "C:\\Users\\MISTACEN\\Documents\\deepseek-harness\\default-workspace\\физиологии\\Atlas_po_normalnoy_fiziologii_Chesnokov.pdf",
+   "source": "C:\\Users\\MISTACEN\\Desktop\\вуз\\учебники\\физиологии\\Atlas_po_normalnoy_fiziologii_Chesnokov.pdf",
    "relative": "Atlas_po_normalnoy_fiziologii_Chesnokov.pdf",
    "subject": "physiology",
    "object_key": "library/physiology/atlas-po-normalnoy-fiziologii-chesnokov.pdf",
@@ -82,7 +83,7 @@
    "sha256": "4564aeccb2eebb0cf249f9abeb0315401c86e2bf2f4724de856e51c169ab97aa"
   },
   {
-   "source": "C:\\Users\\MISTACEN\\Documents\\deepseek-harness\\default-workspace\\физиологии\\Sudakov_K_V_Normalnaya_fiziologia.pdf",
+   "source": "C:\\Users\\MISTACEN\\Desktop\\вуз\\учебники\\физиологии\\Sudakov_K_V_Normalnaya_fiziologia.pdf",
    "relative": "Sudakov_K_V_Normalnaya_fiziologia.pdf",
    "subject": "physiology",
    "object_key": "library/physiology/sudakov-k-v-normalnaya-fiziologia.pdf",

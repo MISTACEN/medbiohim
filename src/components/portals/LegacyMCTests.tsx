@@ -177,7 +177,7 @@ export default function LegacyMCTests({ subjectIds, initialTestId }: { subjectId
                       </p>
                     )}
                     {checked && q.note && (
-                      <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{q.note}</p>
+                      <p className="mt-2 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-xs text-[var(--status-warn-fg)]">{q.note}</p>
                     )}
                   </article>
                 );

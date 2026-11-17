@@ -16,7 +16,37 @@ export default function ChemistryPage() {
   return (
     <div className="space-y-6">
       <SubjectContextBanner />
+      <div className="mx-auto w-full max-w-6xl rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-900 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-200">
+        Материалы по химии (неорганическая, физическая и органическая) подготовлены только для
+        группы <span className="font-extrabold">МБХ-201</span> — по программе ДВГМУ.
+      </div>
       <ChemistryWorkbench />
+
+      <section className="mx-auto w-full max-w-6xl rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--muted)]">Что нового</h2>
+        <ul className="mt-2 space-y-1.5 text-sm">
+          <li>
+            <strong>14 лекций по органической химии</strong> (курс МБХ-201, часть I и часть II) — от
+            классификации и номенклатуры до гетероциклов и алкалоидов; база — Травень, дополнения —
+            канонический курс Тюкавкиной. Плюс 8 конспектов по неорганике, кинетике и две
+            лабораторные по органике. Всё открывается прямо в браузере — без PDF и Word.
+          </li>
+          <li>
+            <strong>14 банков тестов (350 вопросов)</strong> с проверкой ответа и разбором: темы 1.1–1.4
+            части I сборника портированы полностью (включая вопросы-соответствия и открытые), методы
+            идентификации, алкены/алкины/диены, арены, галогенпроизводные, амины, спирты/фенолы/эфиры.
+          </li>
+          <li>
+            <strong>Виртуальная лаборатория</strong>: титрование, элемент Нернста, Бугер–Ламберт–Бер и
+            кондуктометрия («Константа диссоциации слабого электролита»: таблица, æ, λ, α, K и 5
+            графиков) — с протоколом, графиками и выгрузкой CSV.
+          </li>
+          <li>
+            Формулы и уравнения в конспектах набраны <strong>в LaTeX</strong>, поэтому структуры читаются
+            без скриншотов из методички.
+          </li>
+        </ul>
+      </section>
 
       <nav aria-label="Разделы химии" className="mx-auto grid max-w-6xl gap-3 sm:grid-cols-2">
         <Link
@@ -71,7 +101,8 @@ export default function ChemistryPage() {
           <span className="min-w-0 flex-1">
             <span className="block text-base font-semibold">Виртуальная лаборатория</span>
             <span className="mt-0.5 block text-sm" style={{ color: "var(--muted)" }}>
-              Титрование с индикатором, элемент Нернста, Бугер–Ламберт–Бер: протокол, график и CSV.
+              Титрование с индикатором, элемент Нернста, Бугер–Ламберт–Бер, кондуктометрия
+              (константа диссоциации): протокол, график и CSV.
             </span>
           </span>
           <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
