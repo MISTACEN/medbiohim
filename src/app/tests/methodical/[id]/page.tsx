@@ -1,20 +1,42 @@
-import Link from "next/link";
-import LegacyMCTests from "@/components/portals/LegacyMCTests";
+"use client";
 
-export default async function MethodicalTestPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+import { use, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { listTests } from "@/lib/api/tests";
+
+const LEGACY_ID = "chemistry-alcohols-phenols-ethers";
+const SOURCE_KEY = "manual:chemistry-alcohols-phenols-ethers:full-80";
+
+export default function MethodicalTestRedirect({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+
+  useEffect(() => {
+    let active = true;
+    const openCommonTest = async () => {
+      if (id !== LEGACY_ID) {
+        router.replace("/tests?view=chemistry");
+        return;
+      }
+
+      const result = await listTests(undefined, undefined, "chemistry_organic_physical", 2, 3);
+      if (!active) return;
+      const test = result.ok
+        ? result.data.items.find((item: any) => item.source_key === SOURCE_KEY)
+        : null;
+
+      router.replace(test
+        ? `/tests/preparation/${test.id}?mode=prepare&count=80&subject=chemistry_organic_physical&return=${encodeURIComponent("/tests?view=chemistry")}`
+        : "/tests?view=chemistry");
+    };
+
+    void openCommonTest();
+    return () => { active = false; };
+  }, [id, router]);
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-5 px-4 py-5 sm:px-6">
-      <Link href="/tests?view=chemistry" className="inline-flex min-h-10 items-center text-sm font-semibold text-indigo-700 hover:text-indigo-900">
-        ← Ко всем тестам по химии
-      </Link>
-      <header className="card p-5 sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Полный тест из методички · 80 вопросов</p>
-        <h1 className="mt-1 text-2xl font-extrabold text-slate-950">Спирты. Фенолы. Простые эфиры</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">Отдельный полный вариант по ключам источника. Он не заменяет тематическую тренировку по плану занятий.</p>
-      </header>
-      <LegacyMCTests initialTestId={id} />
+    <main className="mx-auto flex min-h-[40vh] w-full max-w-3xl items-center justify-center px-4 py-10 text-center">
+      <p className="text-sm font-semibold text-slate-600">Открываем тест в общем тренажёре…</p>
     </main>
   );
 }

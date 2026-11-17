@@ -8,6 +8,29 @@ import { normalizeQuestion, publicOptions } from "../../../../integrations/cloud
 const tests = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SAFE_ATTEMPT_FIELDS = ["id", "test_id", "user_id", "status", "score", "max_score", "percent", "started_at", "finished_at", "group_id", "session_id", "context_version"];
+function testQuestionFingerprint(question: any, fallbackId: string): string {
+  if (!question || typeof question !== "object") return `id:${fallbackId}`;
+  const normalize = (value: unknown) => String(value ?? "").normalize("NFC").trim().toLocaleLowerCase("ru-RU").replace(/\s+/g, " ");
+  let options = question.options;
+  if (typeof options === "string") {
+    try { options = JSON.parse(options); } catch { options = []; }
+  }
+  const parsedOptions = Array.isArray(options) ? options.map((option: any) => ({
+    label: normalize(typeof option === "string" ? option : option?.label ?? option?.text ?? option?.value),
+    correct: typeof option === "object" && option?.correct === true,
+  })).filter((option) => option.label) : [];
+  const answer = normalize(question.answer);
+  const explicitCorrect = parsedOptions.some((option) => option.correct);
+  if (!explicitCorrect && answer) {
+    for (const option of parsedOptions) {
+      if (option.label === answer) option.correct = true;
+    }
+  }
+  const choices = parsedOptions.map((option) => `${option.label}\u0000${option.correct ? "1" : "0"}`).sort();
+  const questionType = parsedOptions.length >= 2 ? "closed" : "open";
+  const unmatchedAnswer = questionType === "open" || !parsedOptions.some((option) => option.correct) ? answer : "";
+  return JSON.stringify([normalize(question.text ?? question.body), questionType, choices, unmatchedAnswer]);
+}
 function invalid(c: any, rid: string, message: string) {
   const { body, status } = fail("VALIDATION", message, 422, rid);
   return c.json(body, status as 422);
@@ -195,7 +218,7 @@ tests.get("/", requireAuth, async (c) => {
       const PAGE = 900;
       for (let from = 0; ; from += PAGE) {
         const { data: links, error: linkError } = await db.from("test_questions")
-          .select("test_id,question_id,questions!inner(id,is_published,archived_at)")
+          .select("test_id,question_id,questions!inner(id,text,answer,options,is_published,archived_at)")
           .in("test_id", ids)
           .eq("questions.is_published", true)
           .is("questions.archived_at", null)
@@ -211,7 +234,8 @@ tests.get("/", requireAuth, async (c) => {
           counts.set(tid, (counts.get(tid) || 0) + 1);
           let set = questionSets.get(tid);
           if (!set) { set = new Set<string>(); questionSets.set(tid, set); }
-          set.add(String((link as any).question_id));
+          const question = Array.isArray((link as any).questions) ? (link as any).questions[0] : (link as any).questions;
+          set.add(testQuestionFingerprint(question, String((link as any).question_id)));
         }
         if (!links || links.length < PAGE) break;
       }
