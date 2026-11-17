@@ -95,8 +95,8 @@ export type LegacyPortalConfig = {
   parasitology?: boolean;
   /** Химия-шпаргалка sdf: тесты с пояснениями, билеты, шпаргалка. */
   sdf?: boolean;
-  /** Архивные HTML-лекции course/: "bio" | "math" | "chem". */
-  lectures?: "bio" | "math" | "chem";
+  /** Архивные HTML-лекции course/ + конспекты: "bio" | "math" | "chem" | "phys". */
+  lectures?: "bio" | "math" | "chem" | "phys";
   /** Авторские лекции по органической химии (курс МБХ-201): lectures-chem-organic.json. */
   lecturesOrganic?: boolean;
   /** subjectId легаси MC-тестов, которые относятся к этому предмету. */
@@ -116,7 +116,7 @@ export const LEGACY_PORTALS: Record<string, LegacyPortalConfig> = {
   },
   biology: { tabLabel: "Портал", parasitology: true, lectures: "bio", mcSubjectIds: ["biology"] },
   organic_chemistry: { tabLabel: "Тренажёры", lectures: "chem", lecturesOrganic: true, mcSubjectIds: ["chemistry"] },
-  physics: { tabLabel: "Тренажёры", mcSubjectIds: ["physics"] },
+  physics: { tabLabel: "Тренажёры", lectures: "phys", mcSubjectIds: ["physics"] },
   math: { tabLabel: "Тренажёры", lectures: "math", mcSubjectIds: ["math"] },
   history: { tabLabel: "Тренажёры", mcSubjectIds: ["history"] },
   // У этих предметов вкладку создаёт только блок внешних платформ.
@@ -211,7 +211,7 @@ export function loadChemSdf() {
 
 /** Архивные HTML-лекции course/. */
 export type PortalLectureSet = { subject: string; items: { id: string; title: string; html: string }[] };
-export function loadLectureSet(setId: "bio" | "math" | "chem" | "chem-organic") {
+export function loadLectureSet(setId: "bio" | "math" | "chem" | "chem-organic" | "phys") {
   return getJson<PortalLectureSet>(`/content/portals/lectures-${setId}.json`);
 }
 

@@ -152,7 +152,9 @@ async function docxToHtml(file) {
 }
 
 const config = JSON.parse(fs.readFileSync(CFG_PATH, "utf8"));
-const lectures = JSON.parse(fs.readFileSync(TARGET, "utf8"));
+const lectures = fs.existsSync(TARGET)
+  ? JSON.parse(fs.readFileSync(TARGET, "utf8"))
+  : { subject: "Лекции", items: [], stats: {} };
 lectures.items ??= [];
 
 for (const entry of config) {

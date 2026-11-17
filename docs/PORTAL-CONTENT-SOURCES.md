@@ -14,6 +14,8 @@
 | `course/bio-lec/topic1…9.html` | `public/content/portals/lectures-bio.json` | предмет `biology`, лекции |
 | `course/chem-lec/topic1…2.html` | `public/content/portals/lectures-chem.json` | предметы химии |
 | Травень Т.1–Т.3 (PDF) + канон курса Тюкавкиной | `public/content/portals/lectures-chem-organic.json` (модули `scripts/organic-lectures/org-*.mjs`, сборка `scripts/build-organic-lectures-authored.mjs`) | предметы `organic_chemistry` и `chemistry_organic_physical`, блок «lecturesOrganic» |
+| Конспекты физики (DOCX, `Desktop/вуз/документы/матиматика и физика`) | `lectures-phys.json` — 10 лекций (колебания, циклы, поверхностное натяжение, волны, МКТ, формулы), конфиг `scripts/phys-lectures.config.json` | предмет `physics`, вкладка «Портал» |
+| Конспекты математики (DOCX, там же) | `lectures-math.json` — +4 лекции (векторы, СЛАУ, пределы, матрицы), конфиг `scripts/math-lectures.config.json` | предмет `math`, вкладка «Портал» |
 | Конспекты биологии (DOCX, `Desktop/вуз/документы/биология`) | `lectures-bio.json` — 16 лекций (генетика, цитология, эмбриология, экология), конфиг `scripts/bio-lectures.config.json`, сборка `node scripts/build-chem-lectures.mjs scripts/bio-lectures.config.json public/content/portals/lectures-bio.json` | предмет `biology`, вкладка «Портал» |
 | «Сборник тестов. Часть I» (tests.json) | `mc-organic-part1-*.json` — темы 1.1–1.4 целиком (122 вопроса), сборка `scripts/build-chemistry-mc-part1-full.mjs` | MC-тренажёры химии |
 | chem2/chem3 (распознанные сканы) | `mc-chem2-*.json`, `mc-chem3-*.json` — 133 вопроса с верифицированными ответами (`scripts/chem23-answers.mjs`, сборка `scripts/build-chem23-mc.mjs`) | MC-тренажёры химии |

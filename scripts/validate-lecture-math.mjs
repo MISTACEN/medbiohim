@@ -13,6 +13,7 @@ const FILES = [
   "public/content/portals/lectures-chem-organic.json",
   "public/content/portals/lectures-bio.json",
   "public/content/portals/lectures-math.json",
+  "public/content/portals/lectures-phys.json",
 ];
 
 let total = 0;
