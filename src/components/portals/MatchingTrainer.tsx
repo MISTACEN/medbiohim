@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Eye, EyeOff, GraduationCap, Loader2, RotateCcw, Search, Table2, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, GraduationCap, ListChecks, Loader2, RotateCcw, Search, Table2, XCircle } from "lucide-react";
+import { AnswerOption } from "@/components/questions/AnswerOption";
 import {
   loadParasitologyBank,
   type PortalMatchingBank,
@@ -157,6 +158,100 @@ function ExamView({ test }: { test: PortalMatchingTest }) {
   );
 }
 
+/** Вопросы контрольной работы из банка предмета: ответ проверяется сразу,
+ *  как в исходном тренажёре «Паразитология» (buildQuiz + attachEvents). */
+function KrQuizView({ test }: { test: PortalMatchingTest }) {
+  const questions = useMemo(() => test.quiz ?? [], [test]);
+  const [picks, setPicks] = useState<Record<number, string>>({});
+  const answered = Object.keys(picks).length;
+  const correctCount = questions.reduce((n, q, i) => n + (picks[i] === q.correct ? 1 : 0), 0);
+
+  if (!questions.length) {
+    return <div className="card p-5 text-sm text-slate-500">В этом наборе нет вопросов контрольной.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-slate-500">
+          Вопросы контрольной по набору «{test.title}». Ответ проверяется сразу.
+        </p>
+        <button
+          type="button"
+          onClick={() => setPicks({})}
+          className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200"
+        >
+          <RotateCcw className="size-3.5" /> Сбросить
+        </button>
+      </div>
+
+      <div className="grid gap-3">
+        {questions.map((q, qi) => {
+          const pick = picks[qi];
+          const done = pick !== undefined;
+          return (
+            <fieldset key={`${qi}-${q.text.slice(0, 16)}`} className="card p-4">
+              <legend className="mb-2 flex w-full flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="text-xs font-normal text-slate-400">
+                  Вопрос {qi + 1}
+                  {q.species ? ` · ${q.species}` : ""}
+                </span>
+                <span className="font-semibold text-slate-800">{q.text}</span>
+              </legend>
+              <div className="grid gap-2">
+                {q.options.map((opt, oi) => {
+                  const isCorrect = opt === q.correct;
+                  const state = done ? (isCorrect ? "correct" : opt === pick ? "wrong" : "idle") : "idle";
+                  return (
+                    <AnswerOption
+                      key={opt}
+                      variant="choice"
+                      state={state}
+                      align="center"
+                      badge={String.fromCharCode(65 + oi)}
+                      leading={
+                        <input
+                          type="radio"
+                          name={`kr-${qi}`}
+                          value={opt}
+                          checked={pick === opt}
+                          disabled={done}
+                          onChange={() => setPicks((p) => ({ ...p, [qi]: opt }))}
+                          className="mt-0.5 size-4 shrink-0 accent-indigo-600"
+                        />
+                      }
+                    >
+                      {opt}
+                    </AnswerOption>
+                  );
+                })}
+              </div>
+              {done && (
+                <p
+                  role="status"
+                  className={
+                    "mt-2 text-xs font-semibold " +
+                    (pick === q.correct ? "text-[var(--status-ok-fg)]" : "text-[var(--status-critical-fg)]")
+                  }
+                >
+                  {pick === q.correct ? "Верно" : `Ошибка. Правильный ответ: ${q.correct}`}
+                </p>
+              )}
+            </fieldset>
+          );
+        })}
+      </div>
+
+      <div className="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white/95 p-3 shadow-lg backdrop-blur">
+        <span className="text-sm font-semibold text-slate-600">
+          Отвечено {answered} из {questions.length}
+          {answered > 0 ? ` · верно ${correctCount}` : ""}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** Тренажёр таблиц соответствия: колонки скрываются, ячейка открывается
  *  кликом — самопроверка по любой характеристике возбудителя. */
 export default function MatchingTrainer() {
@@ -166,7 +261,7 @@ export default function MatchingTrainer() {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<"table" | "exam">("table");
+  const [mode, setMode] = useState<"table" | "exam" | "kr">("table");
 
   useEffect(() => {
     let alive = true;
@@ -261,6 +356,18 @@ export default function MatchingTrainer() {
           >
             <GraduationCap className="size-3.5" /> Экзамен
           </button>
+          {(test.quiz?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => setMode("kr")}
+              className={
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition " +
+                (mode === "kr" ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200")
+              }
+            >
+              <ListChecks className="size-3.5" /> Контрольная · {test.quiz?.length}
+            </button>
+          )}
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
           {bank.tests.map((t) => (
@@ -281,6 +388,8 @@ export default function MatchingTrainer() {
 
       {mode === "exam" ? (
         <ExamView test={test} />
+      ) : mode === "kr" ? (
+        <KrQuizView test={test} />
       ) : (
         <>
           <section className="card p-4">

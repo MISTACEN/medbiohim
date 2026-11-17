@@ -15,6 +15,7 @@
 - [ARCHITECTURE.md](ARCHITECTURE.md) — схема приложения и API.
 - [architecture/SHARED-COMPONENT-REGISTRY.md](architecture/SHARED-COMPONENT-REGISTRY.md) + [architecture/registry/](architecture/registry/) — реестр общих компонентов (контракт, проверяется тестом).
 - [architecture/MODULE-ARCHITECTURE.md](architecture/MODULE-ARCHITECTURE.md) — модульная схема: реестр модулей, «предметы вместо химии», правила общей папки, этапы и оценка в токенах.
+- [PORTAL-CONTENT-SOURCES.md](PORTAL-CONTENT-SOURCES.md) — источники вкладки «Портал» (лекции, hoba, паразитология), генератор банка и что сознательно не влито.
 
 ## Инструкции ИИ-агентов
 

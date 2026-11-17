@@ -87,6 +87,22 @@
    "subjectId": "physiology",
    "topic": "Сердечно-сосудистая система",
    "count": 4
+  },
+  {
+   "id": "biology-parasitology-arthropods-mc",
+   "title": "Паразитология · членистоногие — тест",
+   "subject": "Биология",
+   "subjectId": "biology",
+   "topic": "Паразитология",
+   "count": 59
+  },
+  {
+   "id": "chemistry-alcohols-phenols-ethers",
+   "title": "Спирты. Фенолы. Простые эфиры — полный тест",
+   "subject": "Органическая и физическая химия",
+   "subjectId": "chemistry",
+   "topic": "Тема 3.5",
+   "count": 80
   }
  ]
 }

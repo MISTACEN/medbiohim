@@ -1,23 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, ChevronDown, FlaskConical, Loader2, PencilRuler, Search } from "lucide-react";
+import { BookOpen, ChevronDown, ClipboardList, FlaskConical, Loader2, PencilRuler, Search } from "lucide-react";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import {
+  loadHobaExtra,
   loadHobaPractical,
   loadHobaTasks,
   loadHobaTheory,
+  type PortalHobaExtra,
   type PortalHobaPractical,
   type PortalHobaTasks,
   type PortalHobaTheory,
 } from "@/lib/portalContent";
 
-type Mode = "theory" | "practical" | "tasks";
+type Mode = "theory" | "practical" | "tasks" | "extra";
 
 const MODES: { id: Mode; label: string; Icon: typeof BookOpen }[] = [
   { id: "theory", label: "Теория", Icon: BookOpen },
   { id: "practical", label: "Практика", Icon: FlaskConical },
   { id: "tasks", label: "Задачи", Icon: PencilRuler },
+  { id: "extra", label: "Оценка", Icon: ClipboardList },
 ];
 
 function useReveal() {
@@ -37,6 +40,7 @@ export default function HobaPortal() {
   const [theory, setTheory] = useState<PortalHobaTheory | null>(null);
   const [practical, setPractical] = useState<PortalHobaPractical | null>(null);
   const [tasks, setTasks] = useState<PortalHobaTasks | null>(null);
+  const [extra, setExtra] = useState<PortalHobaExtra | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("theory");
   const [module, setModule] = useState<number | null>(null);
@@ -46,12 +50,18 @@ export default function HobaPortal() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([loadHobaTheory(), loadHobaPractical().catch(() => null), loadHobaTasks().catch(() => null)])
-      .then(([t, p, k]) => {
+    Promise.all([
+      loadHobaTheory(),
+      loadHobaPractical().catch(() => null),
+      loadHobaTasks().catch(() => null),
+      loadHobaExtra().catch(() => null),
+    ])
+      .then(([t, p, k, e]) => {
         if (!alive) return;
         setTheory(t);
         setPractical(p);
         setTasks(k);
+        setExtra(e);
       })
       .catch((e) => alive && setError(String(e?.message || e)));
     return () => {
@@ -62,6 +72,7 @@ export default function HobaPortal() {
   const activeItems = useMemo(() => {
     if (mode === "theory") return theory?.items ?? [];
     if (mode === "practical") return practical?.items ?? [];
+    if (mode === "extra") return [];
     return tasks?.items ?? [];
   }, [mode, theory, practical, tasks]);
 
@@ -118,7 +129,11 @@ export default function HobaPortal() {
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {MODES.map(({ id, label, Icon }) => {
-            const available = id === "theory" || (id === "practical" && practical) || (id === "tasks" && tasks);
+            const available =
+              id === "theory" ||
+              (id === "practical" && practical) ||
+              (id === "tasks" && tasks) ||
+              (id === "extra" && extra);
             if (!available) return null;
             const IconC = Icon;
             return (
@@ -142,6 +157,7 @@ export default function HobaPortal() {
         </div>
       </section>
 
+      {mode !== "extra" && (
       <section className="card p-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-56">
@@ -194,7 +210,36 @@ export default function HobaPortal() {
           </div>
         )}
       </section>
+      )}
 
+      {mode === "extra" && (
+        <div className="grid gap-3">
+          {!extra && <div className="card p-5 text-sm text-slate-500">Загружаем оценочные материалы…</div>}
+          {extra && (
+            <>
+              <ExtraCard
+                title={extra.criteria.title}
+                subtitle="Структура билета и требования к ответу"
+                html={extra.criteria.html}
+                open={reveal.revealed.has(CRITERIA_ID)}
+                onToggle={() => reveal.toggle(CRITERIA_ID)}
+              />
+              {extra.modules.map((m) => (
+                <ExtraCard
+                  key={m.module}
+                  title={m.title}
+                  subtitle="Темы, цели изучения и лабораторные работы"
+                  html={m.html}
+                  open={reveal.revealed.has(CRITERIA_ID + m.module)}
+                  onToggle={() => reveal.toggle(CRITERIA_ID + m.module)}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {mode !== "extra" && (
       <div className="grid gap-3">
         {filtered.length === 0 && <div className="card p-5 text-sm text-slate-500">Ничего не найдено.</div>}
         {filtered.map((item: any) => {
@@ -244,6 +289,48 @@ export default function HobaPortal() {
           );
         })}
       </div>
+      )}
     </div>
+  );
+}
+
+const CRITERIA_ID = 1000;
+
+function ExtraCard({
+  title,
+  subtitle,
+  html,
+  open,
+  onToggle,
+}: {
+  title: string;
+  subtitle: string;
+  html: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <article className="card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-slate-800">{title}</h3>
+          <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="shrink-0 inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200"
+        >
+          <ChevronDown className={"size-3.5 transition " + (open ? "rotate-180" : "")} />
+          {open ? "Скрыть" : "Открыть"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 rounded-xl bg-slate-50 p-3">
+          <ChemRichText text={html} asHtml />
+        </div>
+      )}
+    </article>
   );
 }

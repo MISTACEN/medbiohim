@@ -9,13 +9,30 @@ import {
   type PortalMcQuestion,
 } from "@/lib/portalContent";
 
+function normalizeAnswer(value: string) {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase("ru")
+    .replace(/ё/g, "е")
+    .replace(/[\s\u00a0.,;:()–—-]+/g, "");
+}
+
+function isQuestionCorrect(question: PortalMcQuestion, value: number | string | undefined) {
+  if (question.kind === "text") {
+    if (typeof value !== "string") return false;
+    const submitted = normalizeAnswer(value);
+    return Boolean(submitted && question.acceptedAnswers?.some((answer) => normalizeAnswer(answer) === submitted));
+  }
+  return typeof question.correct === "number" && value === question.correct;
+}
+
 /** Легаси MC-тесты (биология, физика, математика, история, оргхим, физиология). */
 export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] }) {
   const [index, setIndex] = useState<PortalMcIndexEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<PortalMcQuestion[] | null>(null);
-  const [picks, setPicks] = useState<Record<string, number>>({});
+  const [picks, setPicks] = useState<Record<string, number | string>>({});
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
@@ -59,9 +76,8 @@ export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] })
   }
 
   if (activeId) {
-    const answeredCount = Object.keys(picks).length;
-    const correctCount =
-      questions?.filter((q) => typeof q.correct === "number" && picks[String(q.id)] === q.correct).length ?? 0;
+    const answeredCount = Object.values(picks).filter((value) => typeof value === "number" || value.trim().length > 0).length;
+    const correctCount = questions?.filter((q) => isQuestionCorrect(q, picks[String(q.id)])).length ?? 0;
     return (
       <div className="space-y-4">
         <button
@@ -89,8 +105,34 @@ export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] })
                 return (
                   <article key={String(q.id)} className="card p-4">
                     <h3 className="font-semibold text-slate-800">{qi + 1}. {q.text}</h3>
+                    {q.kind === "text" ? (
+                      <label className="mt-3 block">
+                        <span className="sr-only">Ответ на вопрос {qi + 1}</span>
+                        <input
+                          type="text"
+                          value={typeof pick === "string" ? pick : ""}
+                          disabled={checked}
+                          onChange={(event) => setPicks((current) => ({ ...current, [String(q.id)]: event.target.value }))}
+                          placeholder="Введите ответ"
+                          autoComplete="off"
+                          className={
+                            "w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 " +
+                            (checked
+                              ? isQuestionCorrect(q, pick)
+                                ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]"
+                                : "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]"
+                              : "border-slate-200")
+                          }
+                        />
+                        {checked && (
+                          <span className={"mt-2 block text-xs font-semibold " + (isQuestionCorrect(q, pick) ? "text-[var(--status-ok-fg)]" : "text-[var(--status-critical-fg)]")}>
+                            {isQuestionCorrect(q, pick) ? "Верно" : "Ответ не совпал с эталоном"}
+                          </span>
+                        )}
+                      </label>
+                    ) : (
                     <div className="mt-3 grid gap-2">
-                      {q.options.map((opt, oi) => {
+                      {(q.options ?? []).map((opt, oi) => {
                         const isPick = pick === oi;
                         const isCorrect = q.correct === oi;
                         let cls = "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40";
@@ -117,8 +159,14 @@ export default function LegacyMCTests({ subjectIds }: { subjectIds?: string[] })
                         );
                       })}
                     </div>
+                    )}
                     {checked && q.answer && (
-                      <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">{q.answer}</p>
+                      <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                        {q.kind === "text" ? "Эталонный ответ: " : "Ответ: "}{q.answer}
+                      </p>
+                    )}
+                    {checked && q.note && (
+                      <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{q.note}</p>
                     )}
                   </article>
                 );

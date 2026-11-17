@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Beaker, Download, FlaskConical, Printer, Zap } from "lucide-react";
+import { Activity, Beaker, Download, FlaskConical, Printer, Zap } from "lucide-react";
+
+import ConductometryLab from "./ConductometryLab";
 
 import {
   ANALYTE_LABEL,
@@ -19,12 +21,13 @@ import {
 import { csvFilename, downloadCsv, printCurrentView, toCsv } from "@/lib/chemistry/export";
 import { Tabs } from "@/components/ui/Tabs";
 
-type Tab = "titration" | "electrochemistry" | "spectroscopy";
+type Tab = "titration" | "electrochemistry" | "spectroscopy" | "conductometry";
 
 const TABS: Array<{ id: Tab; label: string; Icon: typeof Beaker }> = [
   { id: "titration", label: "Титрование", Icon: Beaker },
   { id: "electrochemistry", label: "Электрохимия", Icon: Zap },
   { id: "spectroscopy", label: "Спектроскопия", Icon: FlaskConical },
+  { id: "conductometry", label: "Кондуктометрия", Icon: Activity },
 ];
 
 function fmt(value: number, digits = 2): string {
@@ -500,6 +503,7 @@ export function LabBench() {
         {tab === "titration" && <TitrationTab />}
         {tab === "electrochemistry" && <ElectrochemistryTab />}
         {tab === "spectroscopy" && <SpectroscopyTab />}
+        {tab === "conductometry" && <ConductometryLab />}
       </div>
 
       <p className="text-xs text-[var(--muted)]">

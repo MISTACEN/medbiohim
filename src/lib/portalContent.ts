@@ -36,13 +36,31 @@ export type PortalHobaTheory = { subject: string; course: number; semester: numb
 export type PortalHobaPractical = { subject: string; course: number; semester: number; kind: string; items: PortalHobaPracticalItem[] };
 export type PortalHobaTasks = { subject: string; course: number; semester: number; kind: string; items: PortalHobaTaskItem[] };
 
+export type PortalHobaExtraModule = { module: number; title: string; html: string };
+/** Оценочные материалы и обзоры модулей из hoba/pages + hoba/modules. */
+export type PortalHobaExtra = {
+  subject: string;
+  kind: string;
+  criteria: { title: string; html: string };
+  modules: PortalHobaExtraModule[];
+};
+
 export type PortalMatchingColumn = { key: string; label: string };
 export type PortalMatchingRow = Record<string, string>;
+/** Готовый вопрос контрольной работы по конкретному виду. */
+export type PortalMatchingQuizQuestion = {
+  species?: string;
+  text: string;
+  options: string[];
+  correct: string;
+};
 export type PortalMatchingTest = {
   id: string;
   title: string;
   columns: PortalMatchingColumn[];
   rows: PortalMatchingRow[];
+  /** Вопросы КР из исходного банка предмета (если есть). */
+  quiz?: PortalMatchingQuizQuestion[];
 };
 export type PortalMatchingBank = { subject: string; tests: PortalMatchingTest[] };
 
@@ -50,8 +68,11 @@ export type PortalMcQuestion = {
   id: string | number;
   text: string;
   options: string[];
+  kind?: "choice" | "text";
   correct?: number;
   answer?: string;
+  acceptedAnswers?: string[];
+  note?: string;
   topic?: string;
 };
 export type PortalMcTest = {
@@ -120,6 +141,9 @@ export function loadHobaPractical() {
 }
 export function loadHobaTasks() {
   return getJson<PortalHobaTasks>("/content/portals/hoba-tasks.json");
+}
+export function loadHobaExtra() {
+  return getJson<PortalHobaExtra>("/content/portals/hoba-extra.json");
 }
 export function loadParasitologyBank() {
   return getJson<PortalMatchingBank>("/content/portals/parasitology-tests.json");
