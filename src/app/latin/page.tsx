@@ -21,6 +21,12 @@ export default function LatinPage() {
       <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-700">
         <ArrowLeft className="size-4" /> На главную
       </Link>
+      <Link
+        href="/english"
+        className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline"
+      >
+        Английский язык: топики и лексика →
+      </Link>
       <div className="flex flex-wrap gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-1">
         {(
           [

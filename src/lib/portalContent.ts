@@ -95,8 +95,8 @@ export type LegacyPortalConfig = {
   parasitology?: boolean;
   /** Химия-шпаргалка sdf: тесты с пояснениями, билеты, шпаргалка. */
   sdf?: boolean;
-  /** Архивные HTML-лекции course/ + конспекты: "bio" | "math" | "chem" | "phys" | "latin". */
-  lectures?: "bio" | "math" | "chem" | "phys" | "latin";
+  /** Архивные HTML-лекции course/ + конспекты: "bio" | "math" | "chem" | "phys" | "latin" | "english". */
+  lectures?: "bio" | "math" | "chem" | "phys" | "latin" | "english";
   /** Авторские лекции по органической химии (курс МБХ-201): lectures-chem-organic.json. */
   lecturesOrganic?: boolean;
   /** subjectId легаси MC-тестов, которые относятся к этому предмету. */
@@ -211,7 +211,7 @@ export function loadChemSdf() {
 
 /** Архивные HTML-лекции course/. */
 export type PortalLectureSet = { subject: string; items: { id: string; title: string; html: string }[] };
-export function loadLectureSet(setId: "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin") {
+export function loadLectureSet(setId: "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin" | "english") {
   return getJson<PortalLectureSet>(`/content/portals/lectures-${setId}.json`);
 }
 
