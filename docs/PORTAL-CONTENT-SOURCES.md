@@ -15,6 +15,7 @@
 | `course/chem-lec/topic1…2.html` | `public/content/portals/lectures-chem.json` | предметы химии |
 | Травень Т.1–Т.3 (PDF) + канон курса Тюкавкиной | `public/content/portals/lectures-chem-organic.json` (модули `scripts/organic-lectures/org-*.mjs`, сборка `scripts/build-organic-lectures-authored.mjs`) | предметы `organic_chemistry` и `chemistry_organic_physical`, блок «lecturesOrganic» |
 | Конспекты физики (DOCX, `Desktop/вуз/документы/матиматика и физика`) | `lectures-phys.json` — 10 лекций (колебания, циклы, поверхностное натяжение, волны, МКТ, формулы), конфиг `scripts/phys-lectures.config.json` | предмет `physics`, вкладка «Портал» |
+| Конспекты истории (DOCX, `Desktop/вуз/документы/истр`) | `lectures-history.json` — 6 лекций, конфиг `scripts/history-lectures.config.json` | предмет `history`, вкладка «Портал» |
 | Топики английского (DOCX, там же) | `lectures-english.json` — 4 топика, конфиг `scripts/english-lectures.config.json` | `/english` |
 | Конспекты латыни (DOCX, `Desktop/вуз/документы/англ и латин`) | `lectures-latin.json` — 10 лекций (лексминимумы, афоризмы, диагнозы, фарма, элементы, растения), конфиг `scripts/latin-lectures.config.json` | `/latin`, вкладка «Конспекты» |
 | PPTX-презентации физики (там же) | `lectures-phys.json` — +3 лекции (слайды + картинки в `public/content/lectures-assets/`), сборка `node scripts/build-pptx-lectures.mjs scripts/phys-presentations.config.json public/content/portals/lectures-phys.json` | предмет `physics`, вкладка «Портал» |
