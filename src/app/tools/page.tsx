@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Atom, Bot, Calculator, Droplets, Microscope } from "lucide-react";
+import { Atom, Bot, Calculator, Droplets, Languages, Microscope } from "lucide-react";
 import clsx from "clsx";
 import { AtlasView } from "@/components/tools/AtlasView";
 import { CalculatorsView } from "@/components/tools/CalculatorsView";
@@ -16,7 +16,7 @@ import { StudyAssistant } from "@/components/study/StudyAssistant";
 import { PeriodicTableView } from "@/components/tools/PeriodicTableView";
 import { SolubilityTableView } from "@/components/tools/SolubilityTableView";
 
-type Tab = "atlas" | "calculators" | "tutor" | "periodic" | "solubility";
+type Tab = "atlas" | "calculators" | "tutor" | "periodic" | "solubility" | "languages";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; hint: string }> = [
   { id: "atlas", label: "Атлас", icon: Microscope, hint: "препараты и электронограммы" },
@@ -24,6 +24,7 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; hint: string }> = 
   { id: "tutor", label: "ИИ-тьютор", icon: Bot, hint: "чат с контекстом предметов" },
   { id: "periodic", label: "Периодическая таблица", icon: Atom, hint: "118 элементов, массы и группы" },
   { id: "solubility", label: "Растворимость", icon: Droplets, hint: "катионы × анионы" },
+  { id: "languages", label: "Языки", icon: Languages, hint: "латынь: рецепты и термины, английский: топики" },
 ];
 
 function isValidTab(value: string | null): value is Tab {
@@ -32,7 +33,8 @@ function isValidTab(value: string | null): value is Tab {
     value === "calculators" ||
     value === "tutor" ||
     value === "periodic" ||
-    value === "solubility"
+    value === "solubility" ||
+    value === "languages"
   );
 }
 
@@ -85,6 +87,33 @@ function ToolsPageInner() {
       {tab === "solubility" ? <SolubilityTableView /> : null}
       {tab === "atlas" ? <AtlasView /> : null}
       {tab === "calculators" ? <CalculatorsView /> : null}
+      {tab === "languages" ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/latin"
+            className="card flex items-start gap-3 p-4 hover:border-[var(--primary)]"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-semibold">Латынь</span>
+              <span className="mt-0.5 block text-sm text-[var(--muted)]">
+                100 рецептов по Чернявскому, лексические минимумы, афоризмы, фарма-терминология,
+                диагнозы.
+              </span>
+            </span>
+          </Link>
+          <Link
+            href="/english"
+            className="card flex items-start gap-3 p-4 hover:border-[var(--primary)]"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-semibold">Английский</span>
+              <span className="mt-0.5 block text-sm text-[var(--muted)]">
+                Топики с лексикой: письмо студента-медика, будущая профессия, ДВГМУ, врач-биохимик.
+              </span>
+            </span>
+          </Link>
+        </div>
+      ) : null}
       {tab === "tutor" ? (
         <div className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
