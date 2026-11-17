@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ArchiveLectures from "../ArchiveLectures";
@@ -41,5 +41,16 @@ describe("ArchiveLectures (реальный контент)", () => {
       expect(screen.getAllByRole("button").length).toBeGreaterThanOrEqual(20);
     }, { timeout: 5000 });
     expect(container.innerHTML).toContain("h2");
+  });
+
+  it("поиск фильтрует конспекты по названию", async () => {
+    const { container } = render(<ArchiveLectures setId="bio" />);
+    const search = await screen.findByPlaceholderText("Поиск конспекта по названию…", {}, { timeout: 5000 });
+    const before = screen.getAllByRole("button").filter((b) => b.type === "button").length;
+    fireEvent.change(search, { target: { value: "менделя" } });
+    const after = screen.getAllByRole("button").filter((b) => b.type === "button").length;
+    expect(after).toBeGreaterThan(0);
+    expect(after).toBeLessThan(before);
+    expect(container.innerHTML).toMatch(/Менделя/i);
   });
 });
