@@ -8,10 +8,11 @@
  * жирный/курсив, верхние и нижние индексы (химические формулы вроде H₂SO₄).
  *
  * Использование:
- *   node scripts/build-chem-lectures.mjs <config.json>
+ *   node scripts/build-chem-lectures.mjs <config.json> [target.json]
  *
- * Конфиг — массив { file, id, title } (файл существует → добавляем/заменяем
- * лекцию с этим id в public/content/portals/lectures-chem.json).
+ * Второй аргумент — целевой лекционный JSON (по умолчанию
+ * public/content/portals/lectures-chem.json). Конфиг — массив
+ * { file, id, title }: файл существует → лекция добавляется/заменяется.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -22,7 +23,7 @@ if (!CFG_PATH) {
   console.error("usage: node build-chem-lectures.mjs <config.json>");
   process.exit(2);
 }
-const TARGET = "public/content/portals/lectures-chem.json";
+const TARGET = process.argv[3] ?? "public/content/portals/lectures-chem.json";
 
 const escapeHtml = (text) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -33,13 +34,17 @@ const escapeHtml = (text) =>
  */
 function headingLevel(text) {
   const numbered = text.match(/^(\d+(?:\.\d+)*)\.?\s+\S/);
-  if (numbered && text.length <= 100 && !/[.;:]$/.test(text)) {
+  // точка в конце разрешена (конспекты биологии: «1. Первое правило Менделя.»),
+  // но «;» и «:» — признак контентной строки
+  if (numbered && text.length <= 110 && !/[;:]$/.test(text)) {
     return Math.min(numbered[1].split(".").length + 1, 4);
   }
   const letters = text.replace(/[^A-Za-zА-Яа-яЁё]/g, "");
   const upper = text.replace(/[^A-ZА-ЯЁ]/g, "");
   if (text.length <= 90 && letters.length > 6 && upper.length / letters.length > 0.85) return 3;
   if (/^(глава|раздел|тема|модуль)\b/i.test(text) && text.length <= 100) return 2;
+  // экзаменационные конспекты: «Вопрос 1: Онтогенез и его этапы»
+  if (/^вопрос\s+\d+/i.test(text) && text.length <= 100) return 2;
   return 0;
 }
 
