@@ -89,6 +89,14 @@
    "count": 80
   },
   {
+   "id": "chemistry-organic-part2-aldegidy-ketony",
+   "title": "Альдегиды и кетоны — самопроверка (по лекции МБХ-201)",
+   "subject": "Органическая и физическая химия",
+   "subjectId": "chemistry",
+   "topic": "Лекция 3.8",
+   "count": 15
+  },
+  {
    "id": "chemistry-organic-part2-alkany-cikloalkany",
    "title": "Алканы. Циклоалканы — тесты (сборник, часть II)",
    "subject": "Органическая и физическая химия",
@@ -103,6 +111,30 @@
    "subjectId": "chemistry",
    "topic": "Сборник часть II · 3.6",
    "count": 12
+  },
+  {
+   "id": "chemistry-organic-part2-geterocikly",
+   "title": "Гетероциклы и алкалоиды — самопроверка (по лекции МБХ-201)",
+   "subject": "Органическая и физическая химия",
+   "subjectId": "chemistry",
+   "topic": "Лекция 3.11–3.13",
+   "count": 15
+  },
+  {
+   "id": "chemistry-organic-part2-geterofunkcionalnye",
+   "title": "Гетерофункциональные соединения — самопроверка (по лекции МБХ-201)",
+   "subject": "Органическая и физическая химия",
+   "subjectId": "chemistry",
+   "topic": "Лекция 3.10",
+   "count": 15
+  },
+  {
+   "id": "chemistry-organic-part2-karbonovye-kisloty",
+   "title": "Карбоновые кислоты и их производные — самопроверка (по лекции МБХ-201)",
+   "subject": "Органическая и физическая химия",
+   "subjectId": "chemistry",
+   "topic": "Лекция 3.9",
+   "count": 15
   },
   {
    "id": "history-hist-intro",
