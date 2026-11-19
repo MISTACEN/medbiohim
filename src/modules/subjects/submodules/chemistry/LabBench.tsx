@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, Beaker, Download, FlaskConical, Printer, Zap } from "lucide-react";
+import { Activity, Beaker, BookOpen, Download, FlaskConical, Printer, Zap } from "lucide-react";
 
 import ConductometryLab from "./ConductometryLab";
+import OrganicLabs from "./OrganicLabs";
 
 import {
   ANALYTE_LABEL,
@@ -21,13 +22,14 @@ import {
 import { csvFilename, downloadCsv, printCurrentView, toCsv } from "@/lib/chemistry/export";
 import { Tabs } from "@/components/ui/Tabs";
 
-type Tab = "titration" | "electrochemistry" | "spectroscopy" | "conductometry";
+type Tab = "titration" | "electrochemistry" | "spectroscopy" | "conductometry" | "organic";
 
 const TABS: Array<{ id: Tab; label: string; Icon: typeof Beaker }> = [
   { id: "titration", label: "Титрование", Icon: Beaker },
   { id: "electrochemistry", label: "Электрохимия", Icon: Zap },
   { id: "spectroscopy", label: "Спектроскопия", Icon: FlaskConical },
   { id: "conductometry", label: "Кондуктометрия", Icon: Activity },
+  { id: "organic", label: "Органика · методичка", Icon: BookOpen },
 ];
 
 function fmt(value: number, digits = 2): string {
@@ -504,11 +506,14 @@ export function LabBench() {
         {tab === "electrochemistry" && <ElectrochemistryTab />}
         {tab === "spectroscopy" && <SpectroscopyTab />}
         {tab === "conductometry" && <ConductometryLab />}
+        {tab === "organic" && <OrganicLabs />}
       </div>
 
       <p className="text-xs text-[var(--muted)]">
-        Это расчётная симуляция, а не запись реального эксперимента: результаты показывают, что должно получиться при
-        указанных параметрах. Вводя другие значения, проверяйте, что они физически возможны.
+        Опыты 5.1–5.6, 9.1–9.5, 10.3 и 11.1–11.3 — конспект методички для группы МБХ-201: уравнения,
+        объяснения и ответы на вопросы. Вкладки с титрованием, элементом Нернста, спектроскопией и
+        кондуктометрией — расчётные симуляции, а не запись реального эксперимента: они показывают,
+        что должно получиться при указанных параметрах.
       </p>
     </section>
   );

@@ -5,7 +5,7 @@ import { BookOpen, Loader2, Search, X } from "lucide-react";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { loadLectureSet, type PortalLectureSet } from "@/lib/portalContent";
 
-type LectureSetId = "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin" | "english" | "history";
+type LectureSetId = "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin" | "english" | "history" | "hist";
 
 /** Статические конспекты (course/ + перенесённые материалы) — внутри вкладки «Портал». */
 export default function ArchiveLectures({ setId }: { setId: LectureSetId }) {
@@ -102,7 +102,15 @@ export default function ArchiveLectures({ setId }: { setId: LectureSetId }) {
       </div>
       {active && (
         <article className="card p-5">
-          <h3 className="mb-3 text-base font-bold text-slate-800">{active.title}</h3>
+          <h3 className="mb-1 text-base font-bold text-slate-800">{active.title}</h3>
+          {active.source || active.note ? (
+            <p className="mb-3 text-xs text-slate-500">
+              {active.source ? <>Источник: {active.source}. </> : null}
+              {active.note}
+            </p>
+          ) : (
+            <div className="mb-3" />
+          )}
           <LectureRenderer markdown="" html={active.html} />
         </article>
       )}

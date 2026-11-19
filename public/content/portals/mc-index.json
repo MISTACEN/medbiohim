@@ -231,6 +231,46 @@
    "subjectId": "physiology",
    "topic": "Сердечно-сосудистая система",
    "count": 4
+  },
+  {
+   "id": "physiology-physio-excitable",
+   "title": "Возбудимые ткани и мембраны — базовый",
+   "subject": "Физиология",
+   "subjectId": "physiology",
+   "topic": "Возбудимые ткани",
+   "count": 20
+  },
+  {
+   "id": "physiology-physio-respiration",
+   "title": "Дыхание — базовый",
+   "subject": "Физиология",
+   "subjectId": "physiology",
+   "topic": "Дыхательная система",
+   "count": 20
+  },
+  {
+   "id": "physiology-physio-digestion",
+   "title": "Пищеварение — базовый",
+   "subject": "Физиология",
+   "subjectId": "physiology",
+   "topic": "Пищеварительная система",
+   "count": 20
+  },
+  {
+   "id": "histology-cito-embriologiya",
+   "title": "Цитология и эмбриология — контрольная",
+   "subject": "Гистология, цитология и эмбриология",
+   "subjectId": "histology",
+   "topic": "Цитология и эмбриология",
+   "count": 25
+  },
+  {
+   "id": "histology-obschaya",
+   "title": "Общая гистология — контрольная",
+   "subject": "Гистология, цитология и эмбриология",
+   "subjectId": "histology",
+   "topic": "Общая гистология",
+   "count": 26
   }
  ],
  "count": 0

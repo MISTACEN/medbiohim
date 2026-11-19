@@ -16,6 +16,7 @@ const LECTURE_SETS = [
   "lectures-bio.json",
   "lectures-math.json",
   "lectures-phys.json",
+  "lectures-hist.json",
   "lectures-latin.json",
   "lectures-english.json",
   "lectures-history.json",

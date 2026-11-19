@@ -1,5 +1,5 @@
 {
- "count": 99,
+ "count": 103,
  "items": [
   {
    "id": "english:eng-letter-topic",
@@ -238,6 +238,48 @@
    "subject": "Биология",
    "title": "Эмбриология: онтогенез, дробление, гаструляция, критические периоды",
    "href": "/subjects/biology?tab=portal"
+  },
+  {
+   "id": "hist:hist-kontrolnaya-1-opredeleniya",
+   "setId": "hist",
+   "subject": "Гистология, цитология и эмбриология",
+   "title": "Контрольная · I. Определения понятий",
+   "href": "/subjects/histology?tab=portal"
+  },
+  {
+   "id": "hist:hist-kontrolnaya-2-klassifikacii",
+   "setId": "hist",
+   "subject": "Гистология, цитология и эмбриология",
+   "title": "Контрольная · II. Классификации",
+   "href": "/subjects/histology?tab=portal"
+  },
+  {
+   "id": "hist:hist-kontrolnaya-3-gemogramma",
+   "setId": "hist",
+   "subject": "Гистология, цитология и эмбриология",
+   "title": "Контрольная · III. Гемограмма и лейкоцитарная формула",
+   "href": "/subjects/histology?tab=portal"
+  },
+  {
+   "id": "hist:hist-kontrolnaya-4-struktury",
+   "setId": "hist",
+   "subject": "Гистология, цитология и эмбриология",
+   "title": "Контрольная · IV. Слои, структуры и локализация",
+   "href": "/subjects/histology?tab=portal"
+  },
+  {
+   "id": "hist:hist-kontrolnaya-5-shemy",
+   "setId": "hist",
+   "subject": "Гистология, цитология и эмбриология",
+   "title": "Контрольная · V. Схемы для рисования",
+   "href": "/subjects/histology?tab=portal"
+  },
+  {
+   "id": "hist:hist-kontrolnaya-6-osevye-organy",
+   "setId": "hist",
+   "subject": "Гистология, цитология и эмбриология",
+   "title": "Контрольная · VI. Осевые органы и зародышевые листки",
+   "href": "/subjects/histology?tab=portal"
   },
   {
    "id": "history:hist-state-18c",
@@ -488,7 +530,7 @@
    "id": "chem-organic:org-3-4-galogenuglevodorody",
    "setId": "chem-organic",
    "subject": "Органическая химия",
-   "title": "Галогенпроизводные углеводородов",
+   "title": "Галогенопроизводные углеводородов",
    "href": "/subjects/organic_chemistry?tab=portal"
   },
   {
@@ -674,24 +716,10 @@
    "href": "/subjects/organic_chemistry?tab=portal"
   },
   {
-   "id": "chem:chem-kinetics-notes",
+   "id": "chem:chem-kinetics",
    "setId": "chem",
    "subject": "Химия",
-   "title": "Химическая кинетика — конспект с задачами",
-   "href": "/subjects/organic_chemistry?tab=portal"
-  },
-  {
-   "id": "chem:chem-topic1",
-   "setId": "chem",
-   "subject": "Химия",
-   "title": "Химическая кинетика — полный конспект",
-   "href": "/subjects/organic_chemistry?tab=portal"
-  },
-  {
-   "id": "chem:chem-topic2",
-   "setId": "chem",
-   "subject": "Химия",
-   "title": "Химическая кинетика — часть 2: цепные реакции, катализ, гетерогенные процессы",
+   "title": "Химическая кинетика: теория, цепные реакции, катализ и задачи",
    "href": "/subjects/organic_chemistry?tab=portal"
   }
  ]

@@ -11,6 +11,7 @@ export { ChemistryWorkbench } from "./ChemistryWorkbench";
 export { LabBench } from "./LabBench";
 export { MechanismView } from "./MechanismView";
 export { Mol3DView } from "./Mol3DView";
+export { OrganicLabs } from "./OrganicLabs";
 export { PeriodicTable } from "./PeriodicTable";
 export { PracticeRunner } from "./PracticeRunner";
 export { ProjectionView } from "./ProjectionView";

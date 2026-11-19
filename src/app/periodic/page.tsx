@@ -1,9 +1,13 @@
 "use client";
 
-/** Отдельный адрес справочника: та же таблица, что во вкладке «Инструменты». */
+/**
+ * Отдельный адрес справочника. Таблица одна на весь сайт — модульная
+ * (`PeriodicTable`), а не вторая копия во «Инструментах»: раньше здесь жила
+ * `PeriodicTableView`, и правки в двух таблицах расходились.
+ */
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PeriodicTableView } from "@/components/tools/PeriodicTableView";
+import { PeriodicTable } from "@/modules/subjects/submodules/chemistry";
 
 export default function PeriodicPage() {
   return (
@@ -11,7 +15,7 @@ export default function PeriodicPage() {
       <Link href="/tools?tab=periodic" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)]">
         <ArrowLeft className="h-3.5 w-3.5" /> Все инструменты
       </Link>
-      <PeriodicTableView />
+      <PeriodicTable />
     </main>
   );
 }

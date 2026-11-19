@@ -13,7 +13,7 @@ import clsx from "clsx";
 import { AtlasView } from "@/components/tools/AtlasView";
 import { CalculatorsView } from "@/components/tools/CalculatorsView";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
-import { PeriodicTableView } from "@/components/tools/PeriodicTableView";
+import { PeriodicTable } from "@/modules/subjects/submodules/chemistry";
 import { SolubilityTableView } from "@/components/tools/SolubilityTableView";
 
 type Tab = "atlas" | "calculators" | "tutor" | "periodic" | "solubility" | "languages";
@@ -83,7 +83,7 @@ function ToolsPageInner() {
         ))}
       </div>
 
-      {tab === "periodic" ? <PeriodicTableView /> : null}
+      {tab === "periodic" ? <PeriodicTable /> : null}
       {tab === "solubility" ? <SolubilityTableView /> : null}
       {tab === "atlas" ? <AtlasView /> : null}
       {tab === "calculators" ? <CalculatorsView /> : null}

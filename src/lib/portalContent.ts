@@ -95,8 +95,8 @@ export type LegacyPortalConfig = {
   parasitology?: boolean;
   /** Химия-шпаргалка sdf: тесты с пояснениями, билеты, шпаргалка. */
   sdf?: boolean;
-  /** Архивные HTML-лекции course/ + конспекты: "bio" | "math" | "chem" | "phys" | "latin" | "english" | "history". */
-  lectures?: "bio" | "math" | "chem" | "phys" | "latin" | "english" | "history";
+  /** Архивные HTML-лекции course/ + конспекты: "bio" | "math" | "chem" | "phys" | "latin" | "english" | "history" | "hist". */
+  lectures?: "bio" | "math" | "chem" | "phys" | "latin" | "english" | "history" | "hist";
   /** Авторские лекции по органической химии (курс МБХ-201): lectures-chem-organic.json. */
   lecturesOrganic?: boolean;
   /** subjectId легаси MC-тестов, которые относятся к этому предмету. */
@@ -121,7 +121,7 @@ export const LEGACY_PORTALS: Record<string, LegacyPortalConfig> = {
   history: { tabLabel: "Тренажёры", lectures: "history", mcSubjectIds: ["history"] },
   // У этих предметов вкладку создаёт только блок внешних платформ.
   physiology: { tabLabel: "Портал" },
-  histology: { tabLabel: "Портал" },
+  histology: { tabLabel: "Портал", lectures: "hist", mcSubjectIds: ["histology"] },
   first_aid: { tabLabel: "Портал" },
 };
 
@@ -210,9 +210,21 @@ export function loadChemSdf() {
 }
 
 /** Архивные HTML-лекции course/. */
-export type PortalLectureSet = { subject: string; items: { id: string; title: string; html: string }[] };
+export type PortalLectureSet = {
+  subject: string;
+  group?: string;
+  items: {
+    id: string;
+    title: string;
+    html: string;
+    /** Источник конспекта: какой учебник лёг в основу. */
+    source?: string;
+    /** Предупреждение о качестве (например, автоматическое распознавание PDF). */
+    note?: string;
+  }[];
+};
 export function loadLectureSet(
-  setId: "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin" | "english" | "history",
+  setId: "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin" | "english" | "history" | "hist",
 ) {
   return getJson<PortalLectureSet>(`/content/portals/lectures-${setId}.json`);
 }

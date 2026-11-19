@@ -4,7 +4,7 @@
  "subject": "Органическая и физическая химия",
  "subjectId": "chemistry",
  "topic": "Сборник chem3 · 3.2",
- "count": 30,
+ "count": 24,
  "questions": [
   {
    "id": 1,
@@ -151,78 +151,6 @@
    ],
    "correct": 3,
    "note": "Хлоропрен (2-хлорбутадиен-1,3) получают присоединением HCl к винилацетилену — димеру ацетилена.",
-   "topic": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ"
-  },
-  {
-   "id": 7,
-   "kind": "text",
-   "text": "",
-   "options": [],
-   "answer": "с изолированными связями — CH2=CH-CH2-CH2-CH=CH2 (гексадиен-1,5); с сопряженными связями — CH2=CH-CH=CH2 (бутадиен-1,3)",
-   "acceptedAnswers": [
-    "с изолированными связями — CH2=CH-CH2-CH2-CH=CH2 (гексадиен-1,5); с сопряженными связями — CH2=CH-CH=CH2 (бутадиен-1,3)"
-   ],
-   "note": "Изолированные двойные связи разделены sp3-атомами; в бутадиене-1,3 связи сопряжены.",
-   "topic": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ"
-  },
-  {
-   "id": 9,
-   "kind": "text",
-   "text": "",
-   "options": [],
-   "answer": "CH2=CH-CH2-CH3 — CH3-CHBr-CH2-CH3; CH2=CH-COOH — CH2Br-CH2-COOH",
-   "acceptedAnswers": [
-    "CH2=CH-CH2-CH3 — CH3-CHBr-CH2-CH3; CH2=CH-COOH — CH2Br-CH2-COOH"
-   ],
-   "note": "Бутен-1 гидробромируется по Марковникову; в акриловой кислоте COOH — электроноакцептор, присоединение идёт против правила Марковникова (Br — к концевому углероду).",
-   "topic": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ"
-  },
-  {
-   "id": 11,
-   "kind": "text",
-   "text": "",
-   "options": [],
-   "answer": "CH2=CH-OCH3 — CH3-CHBr-OCH3; CH2=CH-COH — CH2Br-CH2-COH",
-   "acceptedAnswers": [
-    "CH2=CH-OCH3 — CH3-CHBr-OCH3; CH2=CH-COH — CH2Br-CH2-COH"
-   ],
-   "note": "OCH3 — +M-донор (присоединение по Марковникову); CHO — -M-акцептор, направление противоположно правилу Марковникова.",
-   "topic": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ"
-  },
-  {
-   "id": 13,
-   "kind": "text",
-   "text": "",
-   "options": [],
-   "answer": "CH2=CH-NO2 — CH2Br-CH2-NO2; CH2=CH-NH2 — CH3-CHBr-NH2",
-   "acceptedAnswers": [
-    "CH2=CH-NO2 — CH2Br-CH2-NO2; CH2=CH-NH2 — CH3-CHBr-NH2"
-   ],
-   "note": "NO2 — сильный электроноакцептор (anti-Марковников); NH2 — донор, галоген идёт к более замещённому углероду (Марковников).",
-   "topic": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ"
-  },
-  {
-   "id": 15,
-   "kind": "text",
-   "text": "",
-   "options": [],
-   "answer": "CH2=CH-CH3 — CH3-CHBr-CH3; CH2=CH-OCH3 — CH3-CHBr-OCH3",
-   "acceptedAnswers": [
-    "CH2=CH-CH3 — CH3-CHBr-CH3; CH2=CH-OCH3 — CH3-CHBr-OCH3"
-   ],
-   "note": "Оба заместителя (CH3 и OCH3) — электронодоноры, гидробромирование идёт по правилу Марковникова.",
-   "topic": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ"
-  },
-  {
-   "id": 17,
-   "kind": "text",
-   "text": "",
-   "options": [],
-   "answer": "CH2=CH-COOH — CH2Br-CH2-COOH; CH2=CH-OCH3 — CH3-CHBr-OCH3",
-   "acceptedAnswers": [
-    "CH2=CH-COOH — CH2Br-CH2-COOH; CH2=CH-OCH3 — CH3-CHBr-OCH3"
-   ],
-   "note": "COOH — акцептор (Br к концевому углероду), OCH3 — донор (Br к внутреннему углероду, Марковников).",
    "topic": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ"
   },
   {
