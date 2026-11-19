@@ -20,6 +20,8 @@ const eslintConfig = [
       ".next/**",
       "node_modules/**",
       "**/node_modules/**",
+      // Scratch владельца: черновики и утилиты вне сборки.
+      "tmp/**",
       "backend/**",
       "integrations/**",
       "out/**",
