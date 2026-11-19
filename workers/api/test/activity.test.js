@@ -1,6 +1,11 @@
+import { readHomeworkDomain } from "./homework-source.js";
+import { readSrsDomain } from "./srs-source.js";
+import { readLecturesDomain } from "./lectures-source.js";
+import { readTestsDomain } from "./tests-source.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readAiDomain } from "./ai-source.js";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -29,18 +34,18 @@ test("event writes use the service client and never break the main action", asyn
 });
 
 test("all six write points are wired", async () => {
-  const tests = await source("../src/routes/tests.ts");
+  const tests = await readTestsDomain();
   assert.match(tests, /kind: "test_finished"/);
-  const srs = await source("../src/routes/srs.ts");
+  const srs = await readSrsDomain();
   assert.match(srs, /kind: "srs_review"/);
   assert.ok((srs.match(/kind: "srs_review"/g) || []).length >= 2, "both review routes log");
-  const ai = await source("../src/routes/ai.ts");
+  const ai = await readAiDomain();
   assert.match(ai, /kind: "tutor_message"/);
-  const lectures = await source("../src/routes/lectures.ts");
+  const lectures = await readLecturesDomain();
   assert.match(lectures, /kind: "lecture_opened"/);
   const assignments = await source("../src/routes/assignments.ts");
   assert.match(assignments, /kind: "assignment_updated"/);
-  const homework = await source("../src/routes/homework.ts");
+  const homework = await readHomeworkDomain();
   assert.match(homework, /kind: "homework_marked"/);
 });
 

@@ -78,7 +78,7 @@ function collect() {
   try {
     for (let i = 0; i < entries.length; i += CHUNK) {
       const part = entries.slice(i, i + CHUNK);
-      const values = part.map(([key, answer], j) => `($${j * 2 + 1}, $${j * 2 + 2})`).join(", ");
+      const values = part.map((_, j) => `($${j * 2 + 1}, $${j * 2 + 2})`).join(", ");
       const params = part.flatMap(([key, answer]) => [key, answer]);
       const res = await client.query(
         `update questions q set answer = v.answer

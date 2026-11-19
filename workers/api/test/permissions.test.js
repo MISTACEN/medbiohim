@@ -1,8 +1,16 @@
+import { readAdminScheduleDomain } from "./admin-schedule-source.js";
+import { readHomeworkDomain } from "./homework-source.js";
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
+// admin-parity разнесён по доменам; контракт собираем в порядке регистрации.
+const adminParitySource = async () => (await Promise.all(
+  ["shared", "community", "homeworks", "materials", "problem-center", "content", "audit", "index"]
+    .map((file) => source(`../src/routes/admin-parity/${file}.ts`)),
+)).join("\n");
 
 /**
  * Контракт серверных полномочий (план §10).
@@ -46,7 +54,7 @@ test("submissions: проверка работы требует принадле
 });
 
 test("schedule: разрушительные операции расписания — только admin", async () => {
-  const route = await source("../src/routes/admin-schedule.ts");
+  const route = await readAdminScheduleDomain();
   assert.match(route, /async function isAdmin\(c: any\): Promise<boolean>/);
   assert.match(route, /return roles\.includes\("admin"\);/);
   assert.match(route, /const allowed = await isAdmin\(c\);/);
@@ -56,7 +64,7 @@ test("schedule: разрушительные операции расписани
 });
 
 test("admin overview: только администратор платформы", async () => {
-  const route = await source("../src/routes/admin.ts");
+  const route = await adminRoutesSource();
   assert.match(
     route,
     /admin\.get\("\/overview", requireAuth, async \(c\) => \{[\s\S]*?if \(!await gate\(c, STRICT_ADMINS\)\) return;/,
@@ -64,8 +72,8 @@ test("admin overview: только администратор платформы
 });
 
 test("homework: преподаватель видит сдачи только в своей области", async () => {
-  const route = await source("../src/routes/homework.ts");
-  assert.match(route, /import \{ loadTeacherScope, isWithinTeachingScope \} from "\.\.\/lib\/teacher-scope"/);
+  const route = await readHomeworkDomain();
+  assert.match(route, /import \{ loadTeacherScope, isWithinTeachingScope \} from "\.\.\/(?:\.\.\/)?lib\/teacher-scope"/);
   assert.match(route, /const scope = await loadTeacherScope\(db, user\.id\)/);
   assert.match(route, /isWithinTeachingScope\(scope, \{/);
   assert.match(route, /Задание вне вашей области проверки/);
@@ -97,7 +105,7 @@ test("workshop: преподаватель не получает capability и �
 });
 
 test("admin: общий банк вопросов правит только admin и moderator", async () => {
-  const route = await source("../src/routes/admin.ts");
+  const route = await adminRoutesSource();
   const start = route.indexOf('admin.put("/question-bank/:id"');
   assert.ok(start >= 0, "question-bank route существует");
   const slice = route.slice(start, route.indexOf('admin.post("/tests/build-variants"'));
@@ -115,7 +123,7 @@ test("groups: преподаватель не видит каталог плат
 });
 
 test("admin: билеты, лекции и AI-генерация — только admin и moderator", async () => {
-  const route = await source("../src/routes/admin.ts");
+  const route = await adminRoutesSource();
   const questions = route.slice(
     route.indexOf('admin.get("/questions"'),
     route.indexOf('admin.put("/question-bank/:id"'),
@@ -134,7 +142,7 @@ test("admin: билеты, лекции и AI-генерация — тольк�
 });
 
 test("admin: расписание и присутствие — только администратор платформы", async () => {
-  const route = await source("../src/routes/admin.ts");
+  const route = await adminRoutesSource();
   const schedule = route.slice(
     route.indexOf('admin.get("/schedule"'),
     route.indexOf('admin.get("/schedule"') + 400,
@@ -149,7 +157,7 @@ test("admin: расписание и присутствие — только а�
 });
 
 test("admin-parity: сводка ДЗ со сдачами всех групп — только admin и moderator", async () => {
-  const parity = await source("../src/routes/admin-parity.ts");
+  const parity = await adminParitySource();
   const slice = parity.slice(
     parity.indexOf('parity.get("/homeworks"'),
     parity.indexOf('parity.post("/homeworks"'),
@@ -159,7 +167,7 @@ test("admin-parity: сводка ДЗ со сдачами всех групп �
 });
 
 test("admin-parity: преподаватель создаёт ДЗ только для назначенных групп", async () => {
-  const parity = await source("../src/routes/admin-parity.ts");
+  const parity = await adminParitySource();
   const slice = parity.slice(
     parity.indexOf('parity.post("/homeworks"'),
     parity.indexOf('parity.delete("/homeworks/:id"'),

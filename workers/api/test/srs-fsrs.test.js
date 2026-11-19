@@ -1,8 +1,7 @@
+import { readSrsDomain } from "./srs-source.js";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 
-const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 /**
  * FSRS-планирование: чистая функция nextReviewState проверяется через
@@ -16,7 +15,7 @@ try {
   // Математику FSRS вырезаем из srs.ts точечно (блок от FSRS_W до reviewCard):
   // сам srs.ts — роут воркера с Hono/Supabase-окружением, его целиком тест не
   // импортирует, а дублировать формулы в тесте нельзя (разойдутся).
-  const src = await source("../src/routes/srs.ts");
+  const src = await readSrsDomain();
   const start = src.indexOf("const FSRS_W");
   const end = src.indexOf("async function reviewCard");
   if (start >= 0 && end > start) {
@@ -38,7 +37,7 @@ try {
 const hasFsrs = (text) => text.includes("FSRS_W") && text.includes("stability");
 
 test("srs scheduling switches to FSRS state columns", async () => {
-  const srs = await source("../src/routes/srs.ts");
+  const srs = await readSrsDomain();
   assert.ok(hasFsrs(srs), "FSRS math must be present in srs.ts");
   assert.match(srs, /stability: next\.stability/);
   assert.match(srs, /difficulty: next\.difficulty/);

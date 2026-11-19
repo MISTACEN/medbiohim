@@ -215,3 +215,525 @@ cd workers/api && npm run check
 ```
 
 Плюс вручную: открыть затронутый раздел на проде, проверить консоль и один реальный запрос модуля.
+
+---
+
+## 12. П2: реестр подмодулей, fitness-тесты, кэш списков, ADR
+
+Сделано 2026-11-19. Решения зафиксированы в [adr/](adr/README.md): 0001 —
+реестр подмодулей, 0002 — кэш списков.
+
+### 12.1. Реестр подмодулей предмета
+
+```text
+src/modules/subjects/
+  registry.json      данные: slug, title, summary, subjectSlugs, tabs[{key,label,hint,href}]
+  registry.ts        типы + доступ: getSubmodule, requireSubmodule, submoduleForSubject, submoduleTab
+  index.ts           публичная поверхность модуля (единственный вход снаружи)
+  submodules/<slug>/ подмодуль: index.ts + <Pascal>Module.tsx
+```
+
+- Источник истины — `registry.json`. Карточка предмета берёт подмодуль через
+  `submoduleForSubject(slug)`; регулярка по названию осталась только запасным
+  вариантом для предметов, которых в реестре нет.
+- Новый подмодуль: `node scripts/new-module.mjs math --title "Математика" --subject math_analysis --tab limits:Пределы`.
+  Генератор пишет каталог, баррель, скелет UI (вкладки читает из реестра) и
+  запись в реестр; занятый слаг, занятый предмет или существующий каталог — отказ.
+  `--dry-run` показывает план без записи.
+- Инварианты (`test/subject-submodules.test.mjs`): уникальные слаги и вкладки,
+  предмет не принадлежит двум подмодулям, каждая `href` ведёт на существующую
+  `page.tsx`, вкладки химии совпадают с `SECTIONS` в `ChemistryModule` по
+  порядку и дословно.
+
+### 12.2. Architecture fitness-тесты
+
+`test/architecture-fitness.test.mjs` + `scripts/audit-loc.mjs`:
+
+| Правило | Лимит | Baseline |
+|---|---|---|
+| `src/app/**/page.tsx` | 200 строк | 48 файлов зафиксированы, расти нельзя |
+| файл `workers/api/src/routes/**/*.ts` | 400 | 21 файл зафиксирован |
+| файл `src/modules/**/*.{ts,tsx}` | 400 | 2 файла зафиксированы |
+| каждый файл маршрутов | — | должен импортироваться из `workers/api/src/index.ts` |
+| `src/modules` | — | без циклов импортов, без импортов `src/app` и чужих модулей |
+
+Baseline — «крыса»: файл, уже превысивший лимит, записан в
+`docs/architecture/registry/loc-budgets.json` по текущему размеру. Обновлять
+только осознанно: `node scripts/audit-loc.mjs --write` (сначала посмотреть отчёт
+без `--write`). Удалённый файл из baseline убирается — на это есть отдельная
+проверка. Так правило работает сразу и не требует сначала разнести все монолиты.
+
+Текущее состояние на момент записи: 40 страниц, 22 файла маршрутов и 2 файла
+модулей сверх лимита; крупнейшие страницы — `tutor` (561), `teacher` (556),
+`admin/teachers` (533), `tests/bank/[id]` (526); из воркера — `tests.ts` (991),
+`lectures.ts` (792), `telegram-trainer.ts` (789). Эти файлы — очередь на
+разнесение, а не разрешение расти. Из очереди выбыли `schedule` (959 → 83, §12.5),
+`subjects/[id]` (884 → 55, §12.6), `ai.ts` (1366 → 21), `study-prep.ts`
+(1301 → 28), главная, подготовка к тестам, `admin/attestations`, `workshop`,
+`university/import` и `search` (§12.7).
+
+### 12.3. Кэш и пагинация списков
+
+- `workers/api/src/lib/cache.ts`: именованные политики `{ttlSeconds, staleSeconds}`.
+  Свежая запись — из кэша, устаревшая — сразу из кэша + обновление в
+  `waitUntil`, промах — загрузчик. Нет Redis / ошибка чтения или записи —
+  fail-open, запрос идёт в БД. Ключ `cache:v1:<политика>:<hash>` не зависит от
+  порядка параметров.
+- `workers/api/src/lib/pagination.ts`: `limit`/`offset` необязательные.
+  Без них тело ответа прежнее (`{items}`); с ними — `{items, page:{limit,offset,total,has_more}}`.
+  Мусор в параметрах зажимается, а не роняет запрос.
+- Применено к `GET /subjects` (каталог): кэшируется выборка из Supabase,
+  дедупликация по слагу выполняется после кэша. Контракт без `limit`/offset не
+  изменился.
+
+**Ограничение:** политику нельзя включать для ответов, зависящих от роли или
+персональных данных (сдачи, оценки, сообщения) — ключ кэша роли не знает.
+
+### 12.4. ADR
+
+`docs/architecture/adr/`: `README.md` (индекс и правила), `0000-template.md`,
+`0001-submodule-registry.md`, `0002-list-cache-policy.md`. Запись после принятия
+не переписывается — изменение оформляется новым ADR.
+
+### 12.5. Разнесение `schedule/page.tsx`
+
+`src/app/schedule/page.tsx` 959 → 83 строки. Перенос без изменения поведения и
+разметки:
+
+| Файл | Строк | Что внутри |
+|---|---:|---|
+| `components/schedule/model.ts` | 122 | чистые правила: статусы ДЗ (`homeworkState`/`homeworkStateLabel`), группировка по датам, фильтры планировщика, ДЗ занятия, недели семестра, подписи видов событий |
+| `components/schedule/useSchedulePage.ts` | 507 | состояние, запросы (`getScheduleMeta` → `listSchedule` + `getStudentPlanner`, `getLessonPlan`), обработчики ДЗ/посещаемости, производные значения; тип `ScheduleController` |
+| `components/schedule/ScheduleHeader.tsx` | 39 | группа/курс/семестр, источник данных, время Хабаровска, переключение недели |
+| `components/schedule/HomeworkPlanner.tsx` | 111 | свёрнутый планировщик: поиск, фильтр по предмету и статусу, перенос срока |
+| `components/schedule/RecoveryPanel.tsx` | 23 | «что нужно подтянуть» |
+| `components/schedule/WeekView.tsx` | 75 | недельная сетка, карточки, линия «сейчас» |
+| `components/schedule/DayView.tsx` | 70 | pill-дни и список занятий дня |
+| `components/schedule/MonthView.tsx` | 86 | календарь месяца и колонка выбранного дня |
+| `components/schedule/SemesterView.tsx` | 44 | метрики, прогресс, таймлайн недель |
+| `components/schedule/LessonDrawer.tsx` | 201 | панель занятия: ДЗ, ответ и вложения, добавление ДЗ с умной вставкой, план, посещение |
+
+Правила, которые держат перенос:
+
+- `components/schedule/model.ts` не импортирует React — правила проверяемы отдельно;
+- `test/now-parts.test.mjs` следит за цепочкой расчёта времени: хук → `components/schedule/utils` → `@/lib/now-parts` (свой расчёт времени в расписании запрещён);
+- LOC-бюджет страницы обновлён вниз: `schedule/page.tsx` больше не в `loc-budgets.json`, лимит 200 применяется к нему как к обычной странице.
+
+Живьём страница не открывалась: проверены типы, тесты и статический бюджет; визуальную сверку нужно сделать в браузере.
+
+### 12.6. Разнесение `subjects/[id]/page.tsx`
+
+Карточка предмета: 884 → 55 строк. Перенос без изменения поведения и разметки:
+
+| Файл | Строк | Что внутри |
+|---|---:|---|
+| `useSubjectPage.ts` | 416 | состояние страницы, вкладка из `?tab=`/`#hash`, цикл статуса темы, открытие лекции/материала, навигация разделов; тип `SubjectController` |
+| `subject-loaders.ts` | 176 | две волны загрузки: `loadSubjectCore` (каталог, предмет, план, тесты) и `loadSubjectAux` (зачётка, материалы, прогресс, лекции); типы `Subject`, `Module`, `SubjectCoreLoad` |
+| `SubjectHeader.tsx` | 101 | шапка: название, нагрузка, зачётка, верхняя навигация и чипсы подразделов |
+| `SubjectPortalPanels.tsx` | 65 | вкладки «Платформы», «Рецепты», «Структуры», «Коллоквиум», «Занятия» |
+| `SubjectStudyPanels.tsx` | 164 | вкладки «План», «Экзамен / Билеты», «Тесты», «База вопросов», «Лекции», «Материалы» |
+| `SubjectPracticePanels.tsx` | 102 | вкладки «Тренажёры», «Препараты», «Лабораторные», «Аттестации», «Прогресс» |
+| `MaterialReader.tsx` | 46 | модальная читалка материала |
+
+Правила, которые держат перенос:
+
+- панели вкладок не знают о загрузке: всё приходит через `SubjectController`;
+- вкладка по-прежнему одна на страницу: каждая панель рендерит только свою `tab` и не дублирует условия;
+- `test/d9-cancelled-pages.test.mjs` собирает исходник страницы **и файлы её домена, которые она импортирует** (явная карта «страница → домен»), поэтому проверка `useApiRequest` действует и после переноса, а старые компоненты домена в проверку не попадают; расписание добавлено в список проверяемых страниц;
+- карточка предмета ушла из `loc-budgets.json` (71 → 69 записей) и теперь подчиняется общему лимиту 200 строк.
+
+Живьём страница не открывалась: проверены типы, тесты и статический бюджет.
+
+
+### 12.7. Разнесение очереди: страницы, воркеры, импорт и поиск
+
+Восемь целей из списка разнесены механически — разметка и поведение
+перенесены один-в-один, изменилось только расположение кода.
+
+| Было | Стало | Строк | Куда |
+|---|---:|---:|---|
+| `src/app/page.tsx` | 55 | 846 | `components/home/`: `dashboard-model.ts`, `useHomeDashboard.ts`, `HomeHero.tsx`, `HomeSignedOut.tsx`, `HomeWidgets.tsx` |
+| `tests/preparation/[id]/page.tsx` | 65 | 1114 | `components/test-prep/`: `answers.ts`, `view.ts`, `usePreparation.ts`, `PreparationModePicker`, `PreparationResults`, `QuestionNavigator`, `ChoiceAnswer`, `OtherAnswers`, `AnswerVerdict`, `QuestionCard`, `PreparationRunner` |
+| `workers/api/src/routes/ai.ts` | 21 | 1366 | `routes/ai/`: `helpers.ts`, `study-context.ts`, `providers.ts`, `conversations.ts`, `chat.ts`, `notes.ts` |
+| `workers/api/src/routes/study-prep.ts` | 28 | 1301 | `routes/study-prep/`: `planning.ts`, `daily-quests.ts`, `plan-routes.ts`, `quest-routes.ts` |
+| `admin/attestations/page.tsx` | 87 | 745 | `components/admin/attestations/`: `model.ts`, `useAttestationEditor.ts`, `AttestationListPanel`, `StageItemEditor`, `AttestationEditorPanel` |
+| `workshop/page.tsx` | 160 | 713 | `components/workshop/`: `model.ts`, `WorkshopFile.tsx`, `useWorkshopPage.ts`, `WorkshopComposer.tsx`, `WorkshopDetail.tsx` |
+| `university/import/page.tsx` | 114 | 635 | `components/university/import/`: `model.ts`, `useUniversityImport.ts`, `UploadCard`, `DestinationCard`, `PreviewSection` |
+| `search/page.tsx` | 76 | 606 | `components/search/`: `model.ts`, `useSearchPage.ts`, `SearchForm.tsx`, `SearchSuggestions.tsx`, `SearchResults.tsx` |
+| `useSubjectPage.ts` | 416 | 541 | загрузка вынесена в `components/subjects/subject-loaders.ts` |
+
+Правила, которые держат перенос:
+
+- баррели воркеров по-прежнему называются `ai` и `studyPrep` и реэкспортируют
+  публичные хелперы (`buildLectureContext`, `normalizeChatMode`, `PREP_KINDS`,
+  `prepReadinessForEvents`), поэтому имена импортов не менялись;
+- тесты, читавшие текст одного файла, получают актуальный источник:
+  `workers/api/test/ai-source.js` и `domain-source.js` для воркеров,
+  `page-source.js` для страниц. Хелпер страниц теперь раскрывает импорты
+  `@/components/...` рекурсивно (до трёх уровней), иначе проверки по тексту
+  «проходили» бы по пустому месту после второго переноса;
+- сами проверки не ослаблены: те же строки ищутся в тех же по смыслу местах;
+- из `loc-budgets.json` ушли все разнесённые страницы (69 → 64 записи), лимит
+  200 строк применяется к ним как к обычным страницам.
+
+Проверки: `npx tsc --noEmit` — чисто; `npm test` — 366/367 (падает только
+`histology-content` из-за отсутствующих исходников методички в worktree);
+`npm run test:unit` — 721/721; `cd workers/api && npm run check` — 515/515;
+`node --test test/architecture-fitness.test.mjs` — 6/6; eslint по изменённым
+каталогам — 0 ошибок и 0 предупреждений.
+
+Проверено дополнительно: dev-сервер (`next dev`) отдаёт 200 для всех восьми
+маршрутов (`/`, `/search`, `/university/import`, `/subjects/[id]`,
+`/tests/preparation/[id]`, `/workshop`, `/admin/attestations`, `/tests`) — в
+HTML нет ошибок рендера, лог dev-сервера чистый; разнесённые виды (`SearchForm`,
+`SearchResults`, `PreparationResults`) рендерятся в jsdom из своих данных.
+Полная визуальная сверка в браузере недоступна без `.env.local`: клиентский
+`AuthProvider` уводит неавторизованного пользователя на `/login`, а Supabase в
+рабочей копии не настроен, поэтому страницы под авторизацией не открываются.
+
+### 12.8. Очередь на разнесение (снимок 2026-11-19, base `fab432d9`)
+
+Восемь целей §12.7 закрыты; ниже — всё, что осталось сверх LOC-лимитов на
+ту же дату. Цифры сняты командой `node scripts/audit-loc.mjs` и продублированы
+машиночитаемо в `docs/architecture/registry/loc-budgets.json` (baseline: файл
+зафиксирован по текущему размеру, расти ему нельзя).
+
+Итого: **40 страниц** сверх 200 строк, **22 файла маршрутов** сверх 400,
+**2 файла модулей** сверх 400. Крупнейшие: `tutor` (561), `teacher` (556),
+`tests.ts` (991).
+
+**Страницы (`src/app/**/page.tsx`)** — 40 файлов сверх лимита 200 строк.
+
+| № | Файл | Строк |
+|---:|---|---:|
+| 1 | `src/app/tutor/page.tsx` | 561 |
+| 2 | `src/app/teacher/page.tsx` | 556 |
+| 3 | `src/app/admin/teachers/page.tsx` | 533 |
+| 4 | `src/app/tests/bank/[id]/page.tsx` | 526 |
+| 5 | `src/app/admin/tests/page.tsx` | 518 |
+| 6 | `src/app/admin/schedule/page.tsx` | 509 |
+| 7 | `src/app/subjects/[id]/lesson/[n]/page.tsx` | 503 |
+| 8 | `src/app/admin/test-questions/page.tsx` | 484 |
+| 9 | `src/app/admin/test-import/page.tsx` | 455 |
+| 10 | `src/app/admin/academic/page.tsx` | 441 |
+| 11 | `src/app/login/page.tsx` | 440 |
+| 12 | `src/app/admin/access/page.tsx` | 416 |
+| 13 | `src/app/teacher/preview/[id]/page.tsx` | 410 |
+| 14 | `src/app/tests/page.tsx` | 384 |
+| 15 | `src/app/settings/data/page.tsx` | 382 |
+| 16 | `src/app/homework/page.tsx` | 359 |
+| 17 | `src/app/admin/moderation/page.tsx` | 325 |
+| 18 | `src/app/subjects/page.tsx` | 314 |
+| 19 | `src/app/admin/audit/page.tsx` | 313 |
+| 20 | `src/app/study/page.tsx` | 313 |
+| 21 | `src/app/trainers/feed/[subject]/page.tsx` | 310 |
+| 22 | `src/app/admin/tools/page.tsx` | 302 |
+| 23 | `src/app/group/page.tsx` | 264 |
+| 24 | `src/app/study/import/page.tsx` | 260 |
+| 25 | `src/app/admin/telegram/page.tsx` | 259 |
+| 26 | `src/app/admin/groups/page.tsx` | 253 |
+| 27 | `src/app/admin/users/page.tsx` | 249 |
+| 28 | `src/app/curriculum/page.tsx` | 247 |
+| 29 | `src/app/tests/attempt/[testId]/page.tsx` | 247 |
+| 30 | `src/app/materials/page.tsx` | 238 |
+| 31 | `src/app/lectures/[id]/learn/page.tsx` | 235 |
+| 32 | `src/app/lectures/page.tsx` | 234 |
+| 33 | `src/app/admin/content-package/page.tsx` | 230 |
+| 34 | `src/app/university/page.tsx` | 230 |
+| 35 | `src/app/bookmarks/page.tsx` | 228 |
+| 36 | `src/app/tickets/page.tsx` | 227 |
+| 37 | `src/app/admin/announcements/page.tsx` | 226 |
+| 38 | `src/app/admin/ai-usage/page.tsx` | 221 |
+| 39 | `src/app/journal/page.tsx` | 209 |
+| 40 | `src/app/admin/workshop/page.tsx` | 202 |
+
+**Файлы маршрутов воркера** — 22 файлов сверх лимита 400 строк.
+
+| № | Файл | Строк |
+|---:|---|---:|
+| 1 | `workers/api/src/routes/tests.ts` | 991 |
+| 2 | `workers/api/src/routes/lectures.ts` | 792 |
+| 3 | `workers/api/src/routes/telegram-trainer.ts` | 789 |
+| 4 | `workers/api/src/routes/trainers.ts` | 716 |
+| 5 | `workers/api/src/routes/settings.ts` | 667 |
+| 6 | `workers/api/src/routes/search.ts` | 659 |
+| 7 | `workers/api/src/routes/staff.ts` | 658 |
+| 8 | `workers/api/src/routes/srs.ts` | 618 |
+| 9 | `workers/api/src/routes/homework.ts` | 590 |
+| 10 | `workers/api/src/routes/export.ts` | 571 |
+| 11 | `workers/api/src/routes/study-prep/plan-routes.ts` | 562 |
+| 12 | `workers/api/src/routes/auth.ts` | 550 |
+| 13 | `workers/api/src/routes/card-packs.ts` | 542 |
+| 14 | `workers/api/src/routes/teacher/assigned-tests.ts` | 512 |
+| 15 | `workers/api/src/routes/labs.ts` | 469 |
+| 16 | `workers/api/src/routes/study-prep/planning.ts` | 460 |
+| 17 | `workers/api/src/routes/materials.ts` | 455 |
+| 18 | `workers/api/src/routes/community.ts` | 451 |
+| 19 | `workers/api/src/routes/ai/helpers.ts` | 421 |
+| 20 | `workers/api/src/routes/telegram-ingest.ts` | 404 |
+| 21 | `workers/api/src/routes/admin-schedule.ts` | 402 |
+| 22 | `workers/api/src/routes/block8.ts` | 401 |
+
+**Файлы модулей (`src/modules/**`)** — 2 файлов сверх лимита 400 строк.
+
+| № | Файл | Строк |
+|---:|---|---:|
+| 1 | `src/modules/subjects/submodules/chemistry/PeriodicTable.tsx` | 614 |
+| 2 | `src/modules/subjects/submodules/chemistry/LabBench.tsx` | 517 |
+
+Порядок разумного захода: сначала маршруты воркера (`tests.ts`, `lectures.ts`,
+`telegram-trainer.ts`, `trainers.ts`) — они повторяют уже отработанный шаблон
+баррель + домены и проверяются тестами воркера; затем страницы админки
+(`admin/teachers`, `admin/tests`, `admin/schedule`, `admin/test-questions`,
+`admin/test-import`, `admin/academic`) — у них общий паттерн «панель + хук +
+модель»; `tutor`/`teacher` — в последнюю очередь, там больше всего поведения.
+
+Инварианты при разнесении те же, что в §12.5–§12.7: переносы механические,
+тесты читают домен, имена роутеров и публичные реэкспорты сохраняются,
+LOC-бюджет обновляется только вниз.
+
+### 12.8.1. Прогресс разнесения — 2026-11-19
+
+Разнесено **22 файлов маршрутов воркера** (проверено: `npx tsc --noEmit` чисто,
+`cd workers/api && npm run check` — 529/529):
+
+| Файл | Было | Стало | Куда |
+|---|---:|---:|---|
+| `tests.ts` | 991 | **17** | tests/: 01-catalog, 02-history, 03-banks, 04-attempts, shared, types |
+| `telegram-trainer.ts` | 789 | **21** | telegram-trainer/: 01-cards, 02-review, 03-challenge, 04-prefs, 05-formula, 06-morning, shared, types |
+| `lectures.ts` | 792 | **19** | lectures/: 01-cloze, 02-catalog, 03-media, 04-slides, 05-detail, shared, types |
+| `trainers.ts` | 716 | **15** | trainers/: 01-feed, 02-answer, 03-image, shared, types |
+| `settings.ts` | 667 | **17** | settings/: 01-profile, 02-identities, 03-telegram, 04-sessions + profile/identities/telegram/shared/types |
+| `search.ts` | 659 | **13** | search/: 01-search, 02-suggest, collect, shared, types + sources/{subjects,preparations,materials,lectures,questions,tickets,packs,tests} |
+| `staff.ts` | 658 | **19** | staff/: 01-groups, 02-requests, 03-fixes, 04-topics, 05-notifications, shared, types |
+| `srs.ts` | 618 | **23** | srs/: 01-summary, 02-cards, 03-review, 04-delete, 05-due, 06-root, fsrs, shared, types |
+| `homework.ts` | 590 | **17** | homework/: 01-create, 02-submit, 03-submissions, 04-edit, shared, types |
+| `export.ts` | 571 | **14** | export/: 01-export, 02-deletion, shared, types |
+| `study-prep/plan-routes.ts` | 562 | **15** | study-prep/plan/: 01-plan, 02-agent, 03-achievements, shared, types |
+| `auth.ts` | 550 | **15** | auth/: 01-session, 02-telegram, 03-me, shared, types |
+| `card-packs.ts` | 542 | **17** | card-packs/: 01-list, 02-crud, 03-import, 04-ai, shared, types |
+| `teacher/assigned-tests.ts` | 512 | **19** | teacher/assigned-tests/: 01-create, 02-list, 03-delete, 04-analytics, 05-export, types |
+| `labs.ts` | 469 | **21** | labs/: 01-templates, 02-start, 03-session, 04-checkpoints, 05-finish, 06-results, shared, types |
+| `materials.ts` | 455 | **17** | materials/: 01-list, 02-file, 03-detail, 04-open, shared, types |
+| `community.ts` | 451 | **17** | community/: 01-posts, 02-comments, 03-moderation, 04-admin-reports, shared, types |
+| `admin-schedule.ts` | 402 | **23** | admin-schedule/: 01-resolve, 02-versions, 03-save, 04-rollback, 05-entry-update, 06-entry-delete, 07-analytics, shared, types |
+| `telegram-ingest.ts` | 404 | **12** | telegram-ingest/: 01-health, 02-ingest, shared, types |
+| `block8.ts` | 401 | **17** | block8/: 01-invites, 02-invite-accept, 03-join-requests, 04-sos, shared, types |
+| `ai/helpers.ts` | 421 | **4** | ai/helpers/: text, media, providers, lecture (баррель переэкспортирует) |
+| `study-prep/planning.ts` | 460 | **7** | study-prep/planning/: constants, types, dates, topics, readiness, days, store |
+
+Общий шаблон: баррель (`routes/<name>.ts`) только импортирует домены и регистрирует их в исходном
+порядке; обработчики перенесены построчно; общие хелперы и типы — в `shared.ts`/`types.ts`.
+Порядок регистрации сохранён, поэтому статичные пути по-прежнему выигрывают у параметрических.
+
+Отдельно `search.ts`: `collect()` на 410 строк стал оркестратором, каждый источник
+(предметы, препараты, материалы, лекции, вопросы, билеты, паки, тесты) — в
+`search/sources/<kind>.ts` с общим `SourceContext`. Порядок источников и все фильтры
+(`include`/`allowed`, `materialHint`, `subjectSlug`) сохранены без изменений.
+
+Тесты, читавшие текст одного файла, переведены на `workers/api/test/<name>-source.js`
+(баррель + все файлы домена, рекурсивно). `domain-source.js` рекурсивный — вложенные домены
+(`study-prep/plan`, `teacher/assigned-tests`) попадают в проверки. Assert'ы не ослаблены:
+там, где сравнивалась *глубина относительного пути* импорта, теперь принимается `..`, `../..`
+и т.д. — сам импорт по-прежнему обязателен.
+
+#### Осталось (полный список, 0 + 40 + 2)
+
+Файлы маршрутов сверх 400 строк:
+
+
+
+Страницы сверх 200 строк:
+
+- `src/app/tutor/page.tsx` — 561
+- `src/app/teacher/page.tsx` — 556
+- `src/app/admin/teachers/page.tsx` — 533
+- `src/app/tests/bank/[id]/page.tsx` — 526
+- `src/app/admin/tests/page.tsx` — 518
+- `src/app/admin/schedule/page.tsx` — 509
+- `src/app/subjects/[id]/lesson/[n]/page.tsx` — 503
+- `src/app/admin/test-questions/page.tsx` — 484
+- `src/app/admin/test-import/page.tsx` — 455
+- `src/app/admin/academic/page.tsx` — 441
+- `src/app/login/page.tsx` — 440
+- `src/app/admin/access/page.tsx` — 416
+- `src/app/teacher/preview/[id]/page.tsx` — 410
+- `src/app/tests/page.tsx` — 384
+- `src/app/settings/data/page.tsx` — 382
+- `src/app/homework/page.tsx` — 359
+- `src/app/admin/moderation/page.tsx` — 325
+- `src/app/subjects/page.tsx` — 314
+- `src/app/admin/audit/page.tsx` — 313
+- `src/app/study/page.tsx` — 313
+- `src/app/trainers/feed/[subject]/page.tsx` — 310
+- `src/app/admin/tools/page.tsx` — 302
+- `src/app/group/page.tsx` — 264
+- `src/app/study/import/page.tsx` — 260
+- `src/app/admin/telegram/page.tsx` — 259
+- `src/app/admin/groups/page.tsx` — 253
+- `src/app/admin/users/page.tsx` — 249
+- `src/app/curriculum/page.tsx` — 247
+- `src/app/tests/attempt/[testId]/page.tsx` — 247
+- `src/app/materials/page.tsx` — 238
+- `src/app/lectures/[id]/learn/page.tsx` — 235
+- `src/app/lectures/page.tsx` — 234
+- `src/app/admin/content-package/page.tsx` — 230
+- `src/app/university/page.tsx` — 230
+- `src/app/bookmarks/page.tsx` — 228
+- `src/app/tickets/page.tsx` — 227
+- `src/app/admin/announcements/page.tsx` — 226
+- `src/app/admin/ai-usage/page.tsx` — 221
+- `src/app/journal/page.tsx` — 209
+- `src/app/admin/workshop/page.tsx` — 202
+
+Модули сверх 400 строк:
+
+- `src/modules/subjects/submodules/chemistry/PeriodicTable.tsx` — 614
+- `src/modules/subjects/submodules/chemistry/LabBench.tsx` — 517
+
+### 12.8.2. Дубли и страницы — 2026-11-19
+
+#### Слитые дубли (было в §12.8.1 как «зафиксировано, ничего не слито»)
+
+| Функция | Было копий | Куда слито |
+|---|---:|---|
+| `constantTimeEqual` | 6 (4 в маршрутах + 2 в lib) | `lib/timing.ts`; маршруты (`telegram`, `telegram-digest`, `telegram-ingest/shared`, `telegram-trainer/shared`) импортируют/реэкспортируют из lib |
+| `escapeHtml` | 2 | `lib/html-escape.ts` |
+| `getCallerRoles` | 2 (`labs`, `admin-schedule`) | `lib/caller-roles.ts` |
+| `bodyJson` | 4 (`admin/shared`, `my-lectures`, `my-questions`, `my-tools`) | `lib/request-body.ts` |
+
+Осознанное исключение: `lib/telegram-initdata.ts` и `lib/telegram-widget.ts` остаются
+самодостаточными (без импортов) — это зафиксировано тестом
+`telegram initData module stays dependency-free and log-free`. Их локальные
+`constantTimeEqual`/`hmacSha256`/`normalizeUserId` — часть инварианта, а не дубли.
+
+Осталось не слито: `getJson` (`histologyContent` ↔ `physiologyContent`), `readJson`
+(`study/page` ↔ `StudySection`, разные слои — сервер/клиент), storage-хелперы во фронтенде
+(4 файла), `postHttps`/`unauthorized` в GigaChat-пути (сейчас не находятся как отдельные
+функции — проверять при следующем проходе).
+
+#### Страницы: разнесено 40 из 40 (вторая волна — 2026-11-20)
+
+Вторая волна разнесла оставшиеся 38 страниц по единому паттерну
+(page.tsx = тонкая shell, `useXxxPage.ts` = состояние/запросы, компоненты секций,
+`model.ts` = общие типы). Первая волна — journal, ai-usage (см. ниже).
+
+| Кластер | Страниц | Куда вынесено |
+|---|---:|---|
+| admin/tests (bank, admin tests/questions/import/academic, catalog, attempt) | 7 | `src/components/tests-hub/`, `src/components/admin/tests-hub/`, `src/components/test-prep/` |
+| admin-панели (teachers, schedule, access, moderation, audit, tools, telegram, groups, users, announcements, content-package, workshop) | 12 | `src/components/admin/panels/`, `src/components/admin/schedule-hub/` |
+| студенческие (tutor, teacher, preview, login, homework, study, study/import, group, curriculum) | 9 | `src/components/tutor/`, `src/components/teacher/`, `src/components/auth/`, `src/components/homework/`, `src/components/study/`, `src/components/group/`, `src/components/curriculum/` |
+| контентные (subjects lesson/catalog, settings/data, trainers/feed, materials, lectures, lectures/learn, university, bookmarks, tickets) | 10 | `src/components/subjects/lesson|catalog/`, `src/components/settings/`, `src/components/trainers/`, `src/components/materials/`, `src/components/lectures/`, `src/components/university/`, `src/components/bookmarks/`, `src/components/tickets/` |
+
+Крупнейшая из страниц после сплита — 126 строк (teacher). Все ≤ 200.
+
+#### Модули: разнесено 2 из 2
+
+| Модуль | Было | Стало | Куда |
+|---|---:|---:|---|
+| `chemistry/PeriodicTable.tsx` | 614 | **21** (обёртка) | `chemistry/periodic/` (model, usePeriodicTable, ячейка/сетка/фильтры/легенда/детали) |
+| `chemistry/LabBench.tsx` | 517 | **48** (обёртка) | `chemistry/lab/` (model, ui, Titration/Electrochemistry/Spectroscopy) |
+
+#### Маршруты воркера
+
+0 файлов сверх лимита 400: все домены разнесены на подпапки
+(`admin/`, `admin-parity/`, `admin-schedule/`, `ai/`, `auth/`, `block8/`, `card-packs/`,
+`community/`, `export/`, `homework/`, `labs/`, `lectures/`, `materials/`, `search/`,
+`settings/`, `srs/`, `staff/`, `study-prep/`, `teacher/`, `telegram-*`, `tests/`,
+`trainers/`, `workshop/` и др.).
+
+#### Бюджеты и стражи
+
+- `registry/loc-budgets.json` v2: исключений нет, лимиты: страницы 200,
+  маршруты 400, модули 400. Новые исключения — только через ADR.
+- `test/architecture-fitness.test.mjs` (6 тестов): бюджеты, достижимость маршрутов,
+  циклы импортов в modules, границы модулей.
+- D9-страж (`test/d9-cancelled-pages.test.mjs`) обходит транзитивный граф
+  импортов домена (до 3 хопов) и дополнен картой второй волны;
+  `SubjectAssignments.tsx` мигрирован на `useApiRequest` (последний ручной
+  `cancelled`-флаг в графе страниц).
+- Контракт-тесты воркера читают страницы через `test/page-source.js`
+  (`readPageWithDomain`, транзитивный обход) — код вызовов API теперь в хуках,
+  контракты продолжают проверяться.
+
+#### Дедупликация хелперов (§12.8.1) — итог
+
+| Хелпер | Дубли | Канон |
+|---|---:|---|
+| `constantTimeEqual` | 3 | `lib/timing.ts`; telegram-initdata/widget — намеренные копии (parity-инвариант, тест `dependency-free`) |
+| `hmacSha256` | 2 | `lib/timing.ts` (канон); telegram-либы — намеренные копии |
+| `escapeHtml` | 4 | `lib/html-escape.ts` |
+| `bodyJson` | 4 | `lib/request-body.ts` |
+| `getCallerRoles` | 4 | `lib/caller-roles.ts` |
+| `readJson` | 2 | не дубль: разные функции (Request vs Response) |
+
+Слито 2026-11-20 (вторая волна дедупликации):
+- `getJson` ×4 (histology/physiology/portal/subject-plan) → канон
+  `src/lib/content-json.ts` (`fetchContentJson`, no-cache + signal);
+  политики кэша остались у каждого модуля;
+- download-хелпер ×4 (features-api / api/teacher / chemistry/export /
+  lectures/exportLecture) → канон `src/lib/download.ts` (`downloadBlob`);
+  URL-кэши картинок (files.ts, workshop.ts) — не скачивания, не тронуты;
+- `escapeHtml` ×3 фронтенда (LectureRenderer / chemistry/formula /
+  exportLecture) → канон `src/lib/html-escape.ts` (concat-форма).
+
+Кандидат «periodic-table.ts осиротел» снят: файл используется страницами
+`/periodic` и `/tools` (PeriodicTableView смонтирован).
+
+#### Исправленные по ходу дефекты
+
+- `moduleGate`: опция `denyRoles` принималась, но игнорировалась (workshop
+  закрывался для teacher «случайно», через общую teacher-ветку). Опция реализована
+  после специализированных веток — исходы для текущих вызывающих не изменились.
+- ESM-импорты типов как значений (`AuthVariables`, `TeacherEnv`) в сплит-файлах —
+  tsc их прощает, а node ESM падает; переведены на `type`-импорты.
+- lint: 294 warnings (после сплитов) → 38 (7 осознанных `<img>`, остальное —
+  немые параметры/пропуски верификатора).
+
+## 13. Правила добавления новых функций (2026-11-20)
+
+Главная цель: новая функция добавляется независимо, без правки десятков
+несвязанных файлов. Куда что ложится:
+
+### Новый подмодуль предмета
+```bash
+node scripts/new-module.mjs <slug> --title "Название" \
+  [--subject <slug-предмета>] --tab <key>:<Label> [--dry-run]
+```
+Генератор создаёт `submodules/<slug>/` и дописывает в `registry.json`.
+Скелет читает вкладки из реестра — код модуля править не нужно.
+Проверка: smoke-цикл 2026-11-20 (генерация → typecheck + subject-submodules
+11/11 + fitness 6/6 → откат). Подсказка вкладки обязательна: генератор
+подставляет дефолт, если `--tab-hint` не передан.
+
+### Новая страница
+1. `src/app/<route>/page.tsx` — тонкая shell (≤200 строк, цель ≤130):
+   композиция, Suspense, гейты входа. Server-компонент с metadata —
+   metadata остаётся в shell.
+2. `src/components/<домен>/use<Feature>.ts` — состояние и запросы через
+   `useApiRequest` (D9: никаких ручных `cancelled`-флагов).
+3. `src/components/<домен>/model.ts` — общие типы и чистые хелперы.
+4. Секции UI — отдельные компоненты с явными props.
+Стражи: `audit-loc.mjs` (лимит 200), `test/d9-cancelled-pages.test.mjs`
+(транзитивный обход домена до 3 хопов).
+
+### Новый маршрут воркера
+1. Файл в `workers/api/src/routes/<домен>/` (лимит 400 строк) или субфайлы
+   `01-<crud>.ts` + `shared.ts` + `types.ts` по образцу существующих доменов.
+2. Guard обязателен: `requireAuth`/`requireAdmin`/`requireTeachingCapability`
+   для закрытых, `rateLimit` для публичных по замыслу. Страж:
+   `workers/api/test/route-guards.test.js` (allowlist — только с комментарием
+   почему).
+3. Эндпоинт — в реестр эндпоинтов (`src/lib/endpoints.ts`), контракт-тест —
+   в `workers/api/test/contracts.test.js`.
+
+### Новые общие хелперы
+Один канонический файл в `lib/` (как `timing.ts`, `html-escape.ts`,
+`request-body.ts`, `caller-roles.ts`, `cache.ts`, `pagination.ts`). Дубли
+функций запрещены исключением: самодостаточные parity-копии (см. §12.8.1,
+telegram-initdata/widget) — только с тестом-инвариантом.
+
+### Кэш списков
+Только для ответов, одинаковых для всех ролей и редко меняющихся
+(ADR-0002): политика в `CACHE_POLICIES`, `cached(...)` в маршруте,
+`store: getRedis(c.env)`. Свежесть/оценки/сообщения кэшировать нельзя.

@@ -1,13 +1,21 @@
+import { readAuthDomain } from "./auth-source.js";
+import { readMaterialsDomain } from "./materials-source.js";
+import { readSettingsDomain } from "./settings-source.js";
+import { readTrainersDomain } from "./trainers-source.js";
+import { readLecturesDomain } from "./lectures-source.js";
+import { readTestsDomain } from "./tests-source.js";
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 import test from "node:test";
+import { readPageWithDomain } from "./page-source.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const materialsSource = await readFile(new URL("../src/routes/materials.ts", import.meta.url), "utf8");
-const trainersSource = await readFile(new URL("../src/routes/trainers.ts", import.meta.url), "utf8");
+const materialsSource = await readMaterialsDomain();
+const trainersSource = await readTrainersDomain();
 const histologyDriveIndexSource = await readFile(new URL("../src/data/histology-drive-index.json", import.meta.url), "utf8");
 const curriculumSource = await readFile(new URL("../src/routes/curriculum.ts", import.meta.url), "utf8");
-const curriculumPageSource = await readFile(new URL("../../../src/app/curriculum/page.tsx", import.meta.url), "utf8");
-const settingsSource = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
+const curriculumPageSource = readPageWithDomain("app/curriculum/page.tsx");
+const settingsSource = await readSettingsDomain();
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
 const filesSource = await readFile(new URL("../src/routes/files.ts", import.meta.url), "utf8");
@@ -15,21 +23,21 @@ const storageSource = await readFile(new URL("../src/routes/storage.ts", import.
 const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const telegramMigration = await readFile(new URL("../../../database/migrations/20261017120000_telegram_account_linking_rpc.sql", import.meta.url), "utf8");
 const groupsSource = await readFile(new URL("../src/routes/groups.ts", import.meta.url), "utf8");
-const authSource = await readFile(new URL("../src/routes/auth.ts", import.meta.url), "utf8");
+const authSource = await readAuthDomain();
 const meSource = await readFile(new URL("../src/routes/me.ts", import.meta.url), "utf8");
 const dashboardSource = await readFile(new URL("../src/routes/dashboard.ts", import.meta.url), "utf8");
 const mySource = await readFile(new URL("../src/routes/my.ts", import.meta.url), "utf8");
-const adminSource = await readFile(new URL("../src/routes/admin.ts", import.meta.url), "utf8");
+const adminSource = await adminRoutesSource();
 const plansSource = await readFile(new URL("../src/routes/plans.ts", import.meta.url), "utf8");
-const lecturesSource = await readFile(new URL("../src/routes/lectures.ts", import.meta.url), "utf8");
-const testsSource = await readFile(new URL("../src/routes/tests.ts", import.meta.url), "utf8");
+const lecturesSource = await readLecturesDomain();
+const testsSource = await readTestsDomain();
 const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.meta.url), "utf8");
 const subjectsRouteSource = await readFile(new URL("../src/routes/subjects.ts", import.meta.url), "utf8");
-const subjectPageSource = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
+const subjectPageSource = readPageWithDomain("app/subjects/[id]/page.tsx");
 const ticketGeneratorSource = await readFile(new URL("../../../src/components/subjects/TicketGenerator.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const testsHubSource = await readFile(new URL("../../../src/components/tests/TestsHub.tsx", import.meta.url), "utf8");
-const testPreparationPageSource = await readFile(new URL("../../../src/app/tests/preparation/[id]/page.tsx", import.meta.url), "utf8");
+const testPreparationPageSource = readPageWithDomain("app/tests/preparation/[id]/page.tsx");
 // D5: клиент API разложен на модули — контрактные тесты читают всю поверхность.
 const apiClientSource = await (async () => {
   const { readdir } = await import("node:fs/promises");
@@ -63,7 +71,8 @@ test("histology temporary Google Drive index covers all original preparation pho
   assert.equal(index.items.filter((item) => item.kind === "image").length, 178);
   assert.equal(index.items.filter((item) => item.kind === "document").length, 31);
   assert.ok(index.items.every((item) => /^[A-Za-z0-9_-]{20,}$/.test(item.id)));
-  assert.ok(trainersSource.includes('import histologyDriveIndex from "../data/histology-drive-index.json"'));
+  // Домен разнесён по файлам: относительная глубина пути изменилась, сам импорт — нет.
+  assert.match(trainersSource, /import histologyDriveIndex from "\.\.\/(?:\.\.\/)?data\/histology-drive-index\.json"/);
   assert.ok(trainersSource.includes("findHistologyDriveItem"));
   // Растровые картинки идут thumbnail-ом (sz=w2000) — «долгие электронограммы»;
   // полный оригинал — по ?variant=full. Маркеры резолвера фиксированы тестом.
@@ -282,7 +291,7 @@ test("ticket bank catalog reads canonical banks and generates source-backed ques
 });
 
 test("subject test pages keep catalog queries scoped to canonical subject, course, and semester", () => {
-  assert.ok(subjectPageSource.includes("listTests(s.id, user?.groupId, slug, s.course_number ?? 2, s.semester ?? 3"));
+  assert.ok(subjectPageSource.includes("listTests(s.id, groupId, slug, s.course_number ?? 2, s.semester ?? 3"));
   // D9: каталог тестов запрашивается с AbortSignal, чтобы смена предмета или
   // unmount отменяли медленный ответ, а не перезаписывали новое состояние.
   assert.ok(subjectPageSource.includes("s.semester ?? 3, { signal })"));

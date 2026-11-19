@@ -13,7 +13,7 @@
  */
 import { Hono } from "hono";
 import { ok, requestId } from "../../lib/response";
-import { requireAuth, type AuthVariables } from "../../middleware/auth";
+import { requireAuth } from "../../middleware/auth";
 import { callerRoles, canAdminister, requireTeachingCapability } from "../../lib/permissions";
 import { createServiceClient } from "../../lib/supabase";
 import { loadTeacherScope } from "../../lib/teacher-scope";

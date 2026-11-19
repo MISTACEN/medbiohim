@@ -3,27 +3,12 @@
  * Выделено из монолита routes/teacher.ts — один домен, один файл.
  */
 import { Hono } from "hono";
-import { ok, fail, requestId } from "../../lib/response";
+import { ok, requestId } from "../../lib/response";
 import { requireAuth } from "../../middleware/auth";
-import {
-  canAdminister,
-  callerRoles,
-  requireAdmin,
-  requireTeachingCapability,
-} from "../../lib/permissions";
-import { describeScope, loadTeacherScope, loadTeacherSubjectIds } from "../../lib/teacher-scope";
+import { canAdminister, callerRoles, requireTeachingCapability } from "../../lib/permissions";
+import { loadTeacherScope } from "../../lib/teacher-scope";
 import { createServiceClient } from "../../lib/supabase";
-import {
-  ASSIGNMENT_ROLES,
-  UUID,
-  error,
-  scopedHomeworks,
-  scopedSubmissions,
-  studentDirectory,
-  teacherSubjects,
-  uniqueIds,
-  type TeacherEnv,
-} from "./_shared";
+import { UUID, error, type TeacherEnv } from "./_shared";
 
 const teacher = new Hono<TeacherEnv>();
 
@@ -330,7 +315,6 @@ teacher.get("/students/:id/test/:testId/answers", requireAuth, async (c) => {
       if (seen.has(key)) continue; // последний ответ на вопрос — как в прогрессе банка
       seen.add(key);
       const meta = questionTexts.get(key);
-      const isCorrect = row.is_correct === true;
       const item: Record<string, unknown> = {
         question_id: key,
         text: meta?.text || "—",

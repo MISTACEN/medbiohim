@@ -2,7 +2,7 @@
  * Общие хелперы расписания (ЗАДАЧА A4): даты, сетка дня, цвета предметов.
  * Вынесено из монолита app/schedule/page.tsx по образцу components/<домен>/.
  */
-import type { ScheduleItem, ScheduleMeta } from "@/lib/api";
+import type { ScheduleItem } from "@/lib/api";
 import { nowParts as sharedNowParts } from "@/lib/now-parts";
 
 export const nowParts = () => sharedNowParts();

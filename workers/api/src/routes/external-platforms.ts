@@ -11,6 +11,10 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { createAnonClient } from "../lib/supabase";
+import { clientIp } from "./auth/shared";
+import { rateLimit } from "../lib/redis";
+import { cached } from "../lib/cache";
+import { getRedis } from "../lib/redis";
 
 const externalPlatforms = new Hono<{ Bindings: Env }>();
 
@@ -18,6 +22,13 @@ const ALLOWED_PLATFORMS = new Set(["neofamily", "sechenov"]);
 
 externalPlatforms.post("/click", async (c) => {
   const rid = requestId();
+  // Публичная запись по замыслу (анонимный счётчик переходов); guard — rate limit по IP.
+  const ip = clientIp(c);
+  const rl = await rateLimit(c.env, `ext:click:${ip}`, 60, 60);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMITED", "Слишком много запросов", 429, rid);
+    return c.json(body, status as 429);
+  }
   let payload: any = {};
   try {
     payload = await c.req.json();
@@ -46,25 +57,33 @@ externalPlatforms.post("/click", async (c) => {
 
 externalPlatforms.get("/stats", async (c) => {
   const rid = requestId();
+  // Публичный агрегат, одинаковый для всех ролей (ADR-0002): без кэша каждый
+  // запрос читал до 5000 строк Supabase. Нет Redis - считаем напрямую.
+  const waitUntil = (() => {
+    try { return (task: Promise<unknown>) => c.executionCtx.waitUntil(task); } catch { return undefined; }
+  })();
   try {
-    const supabase = createAnonClient(c.env);
-    const { data, error } = await supabase
-      .from("external_platform_clicks")
-      .select("platform,title,href")
-      .order("created_at", { ascending: false })
-      .limit(5000);
-    if (error) throw error;
-    const byLink = new Map<string, { platform: string; title: string; href: string; clicks: number }>();
-    let total = 0;
-    for (const row of data || []) {
-      total += 1;
-      const key = `${row.platform}:${row.href}`;
-      const entry = byLink.get(key) || { platform: row.platform, title: row.title, href: row.href, clicks: 0 };
-      entry.clicks += 1;
-      byLink.set(key, entry);
-    }
-    const items = [...byLink.values()].sort((a, b) => b.clicks - a.clicks).slice(0, 10);
-    return c.json(ok({ total, items }, rid));
+    const result = await cached("external:stats", {}, async () => {
+      const supabase = createAnonClient(c.env);
+      const { data, error } = await supabase
+        .from("external_platform_clicks")
+        .select("platform,title,href")
+        .order("created_at", { ascending: false })
+        .limit(5000);
+      if (error) throw error;
+      const byLink = new Map<string, { platform: string; title: string; href: string; clicks: number }>();
+      let total = 0;
+      for (const row of data || []) {
+        total += 1;
+        const key = `${row.platform}:${row.href}`;
+        const entry = byLink.get(key) || { platform: row.platform, title: row.title, href: row.href, clicks: 0 };
+        entry.clicks += 1;
+        byLink.set(key, entry);
+      }
+      const items = [...byLink.values()].sort((a, b) => b.clicks - a.clicks).slice(0, 10);
+      return { total, items };
+    }, { store: getRedis(c.env), waitUntil });
+    return c.json(ok(result, rid));
   } catch (error) {
     console.error("[external-platforms:stats]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Статистика временно недоступна", 503, rid);

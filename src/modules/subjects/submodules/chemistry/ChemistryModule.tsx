@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Tabs } from "@/components/ui/Tabs";
-import { ReactionBalancer } from "@/components/chemistry/ReactionBalancer";
+import { ReactionBalancer } from "./ReactionBalancer";
 import { ChemistryWorkbench } from "./ChemistryWorkbench";
 import ChemTools from "./ChemTools";
 import { LabBench } from "./LabBench";

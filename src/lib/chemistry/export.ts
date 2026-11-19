@@ -6,6 +6,8 @@
  * print-стилями: без внешнего рендера и без обещаний «настоящего» PDF.
  */
 
+import { downloadBlob } from "../download";
+
 export type CsvColumn<Row extends Record<string, unknown> = Record<string, unknown>> = {
   key: keyof Row & string;
   label: string;
@@ -50,16 +52,7 @@ export function downloadCsv(filename: string, csv: string): boolean {
     return false;
   }
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  // Освобождаем blob чуть позже: Safari не успевает начать скачивание сразу.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlob(blob, filename);
   return true;
 }
 

@@ -1,3 +1,4 @@
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -6,7 +7,7 @@ const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("canonical API mounts protected administration endpoints", async () => {
   const index = await source("../src/index.ts");
-  const routes = await source("../src/routes/admin.ts");
+  const routes = await adminRoutesSource();
   assert.match(index, /import adminRoutes from "\.\/routes\/admin"/);
   assert.match(index, /v1\.route\("\/admin", adminRoutes\)/);
   for (const contract of [
@@ -27,7 +28,7 @@ test("canonical API mounts protected administration endpoints", async () => {
 });
 
 test("admin access checks role codes, and user role changes require strict admin", async () => {
-  const routes = await source("../src/routes/admin.ts");
+  const routes = await adminRoutesSource();
   assert.match(routes, /from\("user_roles"\)\.select\("roles\(code\)"\)/);
   assert.match(routes, /const STRICT_ADMINS = \["admin"\]/);
   assert.match(routes, /LAST_ADMIN/);
@@ -35,7 +36,7 @@ test("admin access checks role codes, and user role changes require strict admin
 });
 
 test("content import is bounded, allowlisted, dry-run capable, and histology scoped", async () => {
-  const routes = await source("../src/routes/admin.ts");
+  const routes = await adminRoutesSource();
   assert.match(routes, /total > 500/);
   assert.match(routes, /dry_run/);
   assert.match(routes, /subjectSlug === "histology" && specialty !== "mbh"/);
@@ -43,7 +44,7 @@ test("content import is bounded, allowlisted, dry-run capable, and histology sco
 });
 
 test("Telegram webhook secrets are read only from Worker environment and are not returned", async () => {
-  const routes = await source("../src/routes/admin.ts");
+  const routes = await adminRoutesSource();
   const env = await source("../src/env.ts");
   assert.match(env, /TELEGRAM_BOT_TOKEN\?: string/);
   assert.match(env, /TELEGRAM_WEBHOOK_SECRET\?: string/);

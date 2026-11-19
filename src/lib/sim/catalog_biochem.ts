@@ -14,7 +14,7 @@
  * 1 ФАДН₂ → 1.5 АТФ, 1 ГТФ = 1 АТФ-эквивалент (см. limitations моделей).
  */
 
-import type { SimDefinition, SimParams } from "./types";
+import type { SimDefinition } from "./types";
 
 /**
  * Консервативные эквиваленты окислительного фосфорилирования.

@@ -1,6 +1,8 @@
 /** Static physiology practice content, generated from the department manuals
  *  by tools/physiology/build_content.py into public/content/physiology. */
 
+import { fetchContentJson as getJson } from "./content-json";
+
 export type PhysiologyQuestion = {
   number: number;
   text: string;
@@ -83,14 +85,6 @@ export type PhysiologyIndex = {
 };
 
 const cache = new Map<string, PhysiologyManual>();
-
-async function getJson<T>(url: string): Promise<T> {
-  // no-cache: контент обновляется вместе с деплоем, но браузер не должен
-  // годами держать старую копию JSON. Ревалидация дешёвая (304).
-  const response = await fetch(url, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`Не удалось загрузить материал (${response.status})`);
-  return (await response.json()) as T;
-}
 
 export async function loadPhysiologyIndex(): Promise<PhysiologyIndex> {
   return getJson<PhysiologyIndex>("/content/physiology/index.json");

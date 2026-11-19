@@ -3,7 +3,7 @@
  * Выделено из монолита routes/teacher.ts — один домен, один файл.
  */
 import { Hono } from "hono";
-import { ok, fail, requestId } from "../../lib/response";
+import { ok, requestId } from "../../lib/response";
 import { requireAuth } from "../../middleware/auth";
 import {
   canAdminister,
@@ -11,19 +11,9 @@ import {
   requireAdmin,
   requireTeachingCapability,
 } from "../../lib/permissions";
-import { describeScope, loadTeacherScope, loadTeacherSubjectIds } from "../../lib/teacher-scope";
+
 import { createServiceClient } from "../../lib/supabase";
-import {
-  ASSIGNMENT_ROLES,
-  UUID,
-  error,
-  scopedHomeworks,
-  scopedSubmissions,
-  studentDirectory,
-  teacherSubjects,
-  uniqueIds,
-  type TeacherEnv,
-} from "./_shared";
+import { UUID, error, teacherSubjects, uniqueIds, type TeacherEnv } from "./_shared";
 
 const teacher = new Hono<TeacherEnv>();
 

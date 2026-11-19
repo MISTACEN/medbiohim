@@ -2,6 +2,7 @@
 import { api } from "./api";
 import { endpoints } from "./endpoints";
 import { describeApiError } from "./errors";
+import { downloadBlob } from "./download";
 
 /* —— Tutor (RAG) —— */
 export type TutorSource = {
@@ -395,19 +396,7 @@ export async function downloadMyData(): Promise<DownloadResult> {
   const doc = result.data;
   const filename = `medbiohim-export-${exportFileStamp(doc?.generated_at)}.json`;
   const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  try {
-    const link = window.document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.rel = "noopener";
-    window.document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } finally {
-    // Ссылку освобождаем с запасом: часть браузеров читает blob после click().
-    window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  }
+  downloadBlob(blob, filename);
   return { ok: true, filename, bytes: blob.size };
 }
 

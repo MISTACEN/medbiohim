@@ -190,6 +190,19 @@ export function moduleGate(
         );
         return c.json(body, status as 403);
       }
+      // denyRoles применяется после специализированных веток выше: сегодня
+      // единственный вызывающий (workshop) уже закрыт teacher-веткой, поэтому
+      // исходы не меняются, но опция больше не игнорируется молча.
+      const denied = (options.denyRoles ?? []).find((role) => roles.includes(role));
+      if (denied) {
+        const { body, status } = fail(
+          "MODULE_FORBIDDEN",
+          `Модуль недоступен для роли: ${denied}.`,
+          403,
+          rid,
+        );
+        return c.json(body, status as 403);
+      }
       const access = await effectiveModuleAccess(c.env, c.get("user").id, roles);
       if (access.allowed.has("*") || access.allowed.has(moduleKey)) return next();
       const { body, status } = fail(

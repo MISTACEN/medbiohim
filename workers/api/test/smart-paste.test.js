@@ -1,3 +1,4 @@
+import { readHomeworkDomain } from "./homework-source.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -61,7 +62,7 @@ test("smart paste: честный отказ, когда распознават�
 });
 
 test("контракт: POST /homeworks/smart-parse — requireAuth, лимит длины, честная 422", async () => {
-  const routes = await source("../src/routes/homework.ts");
+  const routes = await readHomeworkDomain();
   assert.match(routes, /homework\.post\("\/smart-parse"/);
   const start = routes.indexOf('homework.post("/smart-parse"');
   const body = routes.slice(start, start + 1200);

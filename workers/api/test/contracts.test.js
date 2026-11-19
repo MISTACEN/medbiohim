@@ -1,6 +1,16 @@
+import { readAdminScheduleDomain } from "./admin-schedule-source.js";
+import { readCommunityDomain } from "./community-source.js";
+import { readAuthDomain } from "./auth-source.js";
+import { readMaterialsDomain } from "./materials-source.js";
+import { readSettingsDomain } from "./settings-source.js";
+import { readTrainersDomain } from "./trainers-source.js";
+import { readTestsDomain } from "./tests-source.js";
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 import test from "node:test";
+import { readPageWithDomain } from "./page-source.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readAiDomain } from "./ai-source.js";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -17,7 +27,7 @@ test("canonical API mounts test-preparation handlers before test routes", async 
 });
 
 test("test lifecycle uses server RPCs and does not fall back to direct attempt insertion", async () => {
-  const testsRoute = await source("../src/routes/tests.ts");
+  const testsRoute = await readTestsDomain();
   assert.match(testsRoute, /medbiohim_start_test_attempt/);
   assert.match(testsRoute, /medbiohim_save_test_answer/);
   assert.match(testsRoute, /p_answer_text/);
@@ -59,7 +69,7 @@ test("training mutations validate before invoking protected RPCs", async () => {
 
 
 test("histology atlas proxies public Upstash Blob objects without requiring a private token", async () => {
-  const trainers = await source("../src/routes/trainers.ts");
+  const trainers = await readTrainersDomain();
   assert.match(trainers, /UPSTASH_BLOB_PUBLIC_BASE_URL\s*\|\|\s*"https:\/\/b8a4f9f853fa\.blob\.upstash\.io"/);
   assert.match(trainers, /publicResponse\.ok && publicResponse\.body/);
   const imageRoute = trainers.slice(trainers.indexOf('trainers.get("/feed/:id/image"'));
@@ -73,7 +83,7 @@ test("histology atlas proxies public Upstash Blob objects without requiring a pr
 });
 
 test("materials proxy public Upstash Blob files and retain MIME metadata fallback", async () => {
-  const materials = await source("../src/routes/materials.ts");
+  const materials = await readMaterialsDomain();
   const env = await source("../src/env.ts");
   const wrangler = await source("../wrangler.toml");
   assert.match(materials, /UPSTASH_BLOB_PUBLIC_BASE_URL\s*\|\|\s*"https:\/\/b8a4f9f853fa\.blob\.upstash\.io"/);
@@ -85,8 +95,11 @@ test("materials proxy public Upstash Blob files and retain MIME metadata fallbac
 });
 
 test("admin parity routes used by the frontend are mounted with safe table-backed handlers", async () => {
-  const admin = await source("../src/routes/admin.ts");
-  const parity = await source("../src/routes/admin-parity.ts");
+  const admin = await adminRoutesSource();
+  const parity = (await Promise.all(
+    ["shared", "community", "homeworks", "materials", "problem-center", "content", "audit", "index"]
+      .map((file) => source(`../src/routes/admin-parity/${file}.ts`)),
+  )).join("\n");
   assert.match(admin, /admin\.route\("\/", adminParity\)/);
   for (const contract of [
     'parity.get("/community"',
@@ -114,13 +127,13 @@ test("admin parity routes used by the frontend are mounted with safe table-backe
 });
 
 test("content importer returns the response fields expected by the admin UI", async () => {
-  const admin = await source("../src/routes/admin.ts");
+  const admin = await adminRoutesSource();
   assert.match(admin, /dry_run:\s*true,\s*valid:\s*true,\s*errors:\s*\[\]/);
   assert.match(admin, /created:\s*\{\s*tests:\s*mappedTests\.length/);
 });
 
 test("chemistry master catalog reads chemistry_master_documents and reports DB failures", async () => {
-  const testsRoute = await source("../src/routes/tests.ts");
+  const testsRoute = await readTestsDomain();
   // Каталог лежит в chemistry_master_documents; чтение несуществующей
   // chemistry_master месяцами маскировалось пустым ответом 200.
   assert.match(testsRoute, /\.from\("chemistry_master_documents"\)/);
@@ -141,7 +154,7 @@ test("chemistry master catalog reads chemistry_master_documents and reports DB f
 });
 
 test("curriculum map no longer masks database errors with an empty list", async () => {
-  const testsRoute = await source("../src/routes/tests.ts");
+  const testsRoute = await readTestsDomain();
   const mapRoute = testsRoute.slice(
     testsRoute.indexOf('tests.get("/curriculum-map"'),
     testsRoute.indexOf('tests.get("/chemistry-master"')
@@ -152,7 +165,7 @@ test("curriculum map no longer masks database errors with an empty list", async 
 });
 
 test("every admin-schedule handler is staff-gated (D3)", async () => {
-  const route = await source("../src/routes/admin-schedule.ts");
+  const route = await readAdminScheduleDomain();
   const handlers = [
     'adminSchedule.get("/schedule/versions/:scheduleId"',
     'adminSchedule.post("/schedule/save"',
@@ -170,7 +183,7 @@ test("every admin-schedule handler is staff-gated (D3)", async () => {
 });
 
 test("schedule rollback reports honestly instead of pretending to succeed", async () => {
-  const route = await source("../src/routes/admin-schedule.ts");
+  const route = await readAdminScheduleDomain();
   const start = route.indexOf('adminSchedule.post("/schedule/rollback/:scheduleId/:targetVersion"');
   assert.ok(start >= 0, "rollback handler not found");
   const body = route.slice(start, start + 1200);
@@ -286,7 +299,7 @@ test("schedule .ics feed is token-gated, read-only and serves text/calendar", as
 });
 
 test("email change stays truthful: pending address is reported and resend is explicit", async () => {
-  const route = await source("../src/routes/settings.ts");
+  const route = await readSettingsDomain();
   // Новый адрес попадает в ответ как «ждёт подтверждения», а не как факт.
   assert.match(route, /email_change_pending: pendingEmail/);
   assert.match(route, /c\.set\("emailChangePending", email\)/);
@@ -301,7 +314,7 @@ test("email change stays truthful: pending address is reported and resend is exp
 test("test variant builder is a single atomic server-side transaction (MA10)", async () => {
   // Роут воркера: один RPC, гейт по ролям, честные 422 — и никаких
   // построчных вставок tests/test_questions из кода роута.
-  const admin = await source("../src/routes/admin.ts");
+  const admin = await adminRoutesSource();
   const routeStart = admin.indexOf('admin.post("/tests/build-variants"');
   assert.ok(routeStart >= 0, "build-variants route exists");
   const route = admin.slice(routeStart, admin.indexOf("// Lectures are stored"));
@@ -332,7 +345,7 @@ test("test variant builder is a single atomic server-side transaction (MA10)", a
 
   // Клиент больше не собирает варианты цепочкой запросов и не «откатывает»
   // частичный успех архивацией.
-  const page = await source("../../../src/app/admin/tests/page.tsx");
+  const page = await readPageWithDomain("app/admin/tests/page.tsx");
   assert.match(page, /adminBuildTestVariants\(/);
   assert.doesNotMatch(page, /adminDbInsert\("tests"/);
   assert.doesNotMatch(page, /adminDbInsert\("test_questions"/);
@@ -355,7 +368,7 @@ test("test variant builder is a single atomic server-side transaction (MA10)", a
 test("admin test-question editor covers text, options, answer and type via the staff-gated bank route (MA8)", async () => {
   // Роут question-bank PUT: гейт, валидация и честные 422, полная замена
   // редактируемых полей вопроса.
-  const admin = await source("../src/routes/admin.ts");
+  const admin = await adminRoutesSource();
   const routeStart = admin.indexOf('admin.put("/question-bank/:id"');
   assert.ok(routeStart >= 0, "question-bank route exists");
   const route = admin.slice(routeStart, admin.indexOf('admin.post("/tests/build-variants"'));
@@ -381,7 +394,7 @@ test("admin test-question editor covers text, options, answer and type via the s
 
   // Редактор в админке правит вопрос целиком через этот роут, а не через
   //-generic PATCH /admin/database.
-  const page = await source("../../../src/app/admin/test-questions/page.tsx");
+  const page = await readPageWithDomain("app/admin/test-questions/page.tsx");
   assert.match(page, /adminUpdateBankQuestion\(/);
   assert.doesNotMatch(page, /adminDbUpdate\("questions"/);
   assert.match(page, /QUESTION_TYPES/);
@@ -418,7 +431,7 @@ test("avatar upload is authenticated, size/type limited and served through a pri
   assert.match(del, /avatar_key: null/);
 
   // Профиль отдаёт только признак и адрес прокси — сам ключ хранилища наружу не уходит.
-  const settings = await source("../src/routes/settings.ts");
+  const settings = await readSettingsDomain();
   assert.match(settings, /has_uploaded_avatar:/);
   assert.match(settings, /avatar_proxy_url:/);
   // Без токена хранилища загрузка недоступна, и интерфейс должен это знать,
@@ -427,7 +440,7 @@ test("avatar upload is authenticated, size/type limited and served through a pri
   assert.doesNotMatch(settings, /avatar_key: profile/);
 
   // Лента сообщества подписывает посты автором, не раскрывая профиль целиком.
-  const community = await source("../src/routes/community.ts");
+  const community = await readCommunityDomain();
   assert.match(community, /author_name/);
   assert.match(community, /author_has_avatar/);
   assert.doesNotMatch(community, /select\("\*"\)/);
@@ -448,7 +461,7 @@ test("FA11: подготовка отдаёт дедлайн и не прини�
 });
 
 test("FA6: личная статистика тренажёра — accuracy и очередь ошибок", async () => {
-  const route = await source("../src/routes/trainers.ts");
+  const route = await readTrainersDomain();
   const start = route.indexOf('trainers.get("/feed/stats"');
   assert.ok(start >= 0, "stats route missing");
   const body = route.slice(start, start + 4000);
@@ -463,7 +476,7 @@ test("FA6: личная статистика тренажёра — accuracy и 
 });
 
 test("FA9: RAG-контекст тьютора — фрагменты лекций в system prompt", async () => {
-  const route = await source("../src/routes/ai.ts");
+  const route = await readAiDomain();
   assert.match(route, /buildLectureContext/);
   assert.match(route, /histology_lectures/);
   assert.match(route, /eq\("is_published", true\)/);
@@ -508,10 +521,10 @@ test("FA1: внутренний дайджест для бота — secret-gate
 });
 
 test("Leaked password protection: HIBP-проверка на регистрации и смене пароля", async () => {
-  const register = await source("../src/routes/auth.ts");
+  const register = await readAuthDomain();
   assert.match(register, /isPwnedPassword\(String\(body\.password\)\)/);
   assert.match(register, /PASSWORD_PWNED/);
-  const settings = await source("../src/routes/settings.ts");
+  const settings = await readSettingsDomain();
   assert.match(settings, /isPwnedPassword\(password\)/);
   assert.match(settings, /PASSWORD_PWNED/);
   // guard: k-анонимность (только префикс SHA-1 уходит наружу) и fail-open

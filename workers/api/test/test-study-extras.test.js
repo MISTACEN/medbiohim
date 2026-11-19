@@ -1,3 +1,5 @@
+import { readLecturesDomain } from "./lectures-source.js";
+import { readTestsDomain } from "./tests-source.js";
 /**
  * Новые учебные механики (сентябрь 2026): рекомендации практики, сундук дня,
  * подкаст и шпаргалка лекции.
@@ -16,6 +18,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { readDomain } from "./domain-source.js";
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -24,7 +27,7 @@ async function read(rel) {
 }
 
 test("рекомендации практики зарегистрированы до /tests/:id", async () => {
-  const route = await read("src/routes/tests.ts");
+  const route = await readTestsDomain();
   const recommended = route.indexOf('tests.get("/recommended"');
   const detail = route.indexOf('tests.get("/:id"');
   assert.ok(recommended > -1, "маршрут /tests/recommended существует");
@@ -37,7 +40,7 @@ test("рекомендации практики зарегистрированы
 });
 
 test("сундук дня идемпотентен и учтён в событиях", async () => {
-  const route = await read("src/routes/study-prep.ts");
+  const route = await readDomain("src/routes/study-prep.ts");
   assert.match(route, /studyPrep\.post\("\/quests\/chest"/);
   assert.match(route, /kind: "quest_chest"/);
   assert.match(route, /chest\.claimed/);
@@ -46,7 +49,7 @@ test("сундук дня идемпотентен и учтён в событи
 });
 
 test("подкаст лекции: ключ, WAV и квота", async () => {
-  const route = await read("src/routes/lectures.ts");
+  const route = await readLecturesDomain();
   const start = route.indexOf('lectures.post("/:id/podcast"');
   assert.ok(start > -1, "маршрут подкаста существует");
   const body = route.slice(start);
@@ -57,7 +60,7 @@ test("подкаст лекции: ключ, WAV и квота", async () => {
 });
 
 test("случайная задача по химии отдаёт только задания с ответом", async () => {
-  const route = await read("src/routes/tests.ts");
+  const route = await readTestsDomain();
   const start = route.indexOf('tests.get("/chemistry-random"');
   assert.ok(start > -1, "маршрут /tests/chemistry-random существует");
   const body = route.slice(start, route.indexOf('tests.get("/attempts"'));
@@ -67,7 +70,7 @@ test("случайная задача по химии отдаёт только 
 });
 
 test("шпаргалка лекции кэшируется по хэшу тела", async () => {
-  const route = await read("src/routes/lectures.ts");
+  const route = await readLecturesDomain();
   const start = route.indexOf('lectures.post("/:id/cheatsheet"');
   assert.ok(start > -1, "маршрут шпаргалки существует");
   const body = route.slice(start, route.indexOf('lectures.post("/:id/podcast"'));

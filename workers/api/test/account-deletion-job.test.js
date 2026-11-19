@@ -1,3 +1,4 @@
+import { readExportDomain } from "./export-source.js";
 // SA6: cron-исполнение удаления аккаунтов. Проверяем поведение процесса на
 // подставленном клиенте: без сети и без БД, но с реальной логикой.
 import assert from "node:assert/strict";
@@ -185,7 +186,7 @@ test("cron подключён: scheduled-обработчик, триггер и
   assert.match(route, /Math\.min\(Math\.floor\(rawLimit\), DELETION_SWEEP_LIMIT\)/, "лимит ограничен сверху");
 
   // Пользователь должен видеть, произойдёт ли удаление на самом деле.
-  const exportRoute = await readFile(new URL("../src/routes/export.ts", import.meta.url), "utf8");
+  const exportRoute = await readExportDomain();
   assert.match(exportRoute, /withExecution\(/, "статус удаления несёт флаг конфигурации");
   assert.match(exportRoute, /execution_configured/, "флаг назван явно");
 });

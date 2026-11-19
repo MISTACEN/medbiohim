@@ -3,9 +3,6 @@
  * сворачиваемый длинный текст. Вынесено из монолита app/schedule/page.tsx.
  */
 "use client";
-import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { homeworkPrepStatus } from "@/lib/learning/statuses";
 
 export function HomeworkGrade({ homework }: { homework: any }) {
   const grade = homework?.grade;

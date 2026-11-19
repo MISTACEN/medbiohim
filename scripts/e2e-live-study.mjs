@@ -74,9 +74,6 @@ async function callApi(url, path, { method = "GET", token, body, timeout = 30000
   return { status: response.status, data };
 }
 
-/** Тот же анти-галлюцинационный критерий, что у сервера, но проверенный снаружи. */
-const squash = (value) => String(value || "").replace(/\s+/g, " ").trim();
-
 const db = new pg.Client({ connectionString: dbUrl.toString(), ssl: { rejectUnauthorized: false } });
 await db.connect();
 

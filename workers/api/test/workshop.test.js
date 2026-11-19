@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
+// Маршруты мастерской разнесены по доменам; контракт проверяем по всем файлам.
+const workshopSources = async () => (await Promise.all(
+  ["catalog.ts", "items.ts", "moderation.ts", "shared.ts", "index.ts"].map((file) => source(`../src/routes/workshop/${file}`)),
+)).join("\n");
 const workshopLib = await import(new URL("../src/lib/workshop.ts", import.meta.url).href);
 
 test("Workshop: десять фото собираются в одну фотолекцию", () => {
@@ -36,7 +40,7 @@ test("Workshop: теги нормализуются, файлы сортирую
 });
 
 test("Workshop routes: режим, версии, авторский контроль и модерация", async () => {
-  const routes = await source("../src/routes/workshop.ts");
+  const routes = await workshopSources();
   for (const contract of [
     'workshop.get("/items"',
     'workshop.post("/items"',

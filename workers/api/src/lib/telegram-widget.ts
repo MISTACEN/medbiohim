@@ -42,15 +42,6 @@ export type TelegramWidgetResult =
   | { ok: true; user: TelegramWidgetUser; auth_date: number }
   | { ok: false; error: TelegramWidgetError };
 
-export type TelegramWidgetPayload = Record<string, unknown>;
-
-/** auth_date older than this is refused (24 hours). */
-export const TELEGRAM_WIDGET_MAX_AGE_SECONDS = 86400;
-/** Small clock-skew allowance for auth_date in the future. */
-export const TELEGRAM_WIDGET_FUTURE_SKEW_SECONDS = 60;
-
-const encoder = new TextEncoder();
-
 /** Constant-time string comparison; length is not secret, content must not short-circuit. */
 export function constantTimeEqual(actual: string, expected: string): boolean {
   if (actual.length !== expected.length) return false;
@@ -59,12 +50,6 @@ export function constantTimeEqual(actual: string, expected: string): boolean {
     difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
   }
   return difference === 0;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  let out = "";
-  for (let i = 0; i < bytes.length; i += 1) out += bytes[i].toString(16).padStart(2, "0");
-  return out;
 }
 
 async function hmacSha256(keyBytes: Uint8Array, message: string): Promise<Uint8Array | null> {
@@ -78,6 +63,22 @@ async function hmacSha256(keyBytes: Uint8Array, message: string): Promise<Uint8A
   } catch {
     return null;
   }
+}
+
+export type TelegramWidgetPayload = Record<string, unknown>;
+
+/** auth_date older than this is refused (24 hours). */
+export const TELEGRAM_WIDGET_MAX_AGE_SECONDS = 86400;
+/** Small clock-skew allowance for auth_date in the future. */
+export const TELEGRAM_WIDGET_FUTURE_SKEW_SECONDS = 60;
+
+
+const encoder = new TextEncoder();
+
+function bytesToHex(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 1) out += bytes[i].toString(16).padStart(2, "0");
+  return out;
 }
 
 function normalizeOptionalString(value: unknown, maxLength: number): string | null {

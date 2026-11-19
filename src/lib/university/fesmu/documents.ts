@@ -2,47 +2,9 @@
  * Парсеры страниц расписаний и документов FESMU (ЗАДАЧА A3: вынесено из
  * монолита fesmu.ts). Чистые функции без сети — вся сеть в _shared/http.
  */
-import {
-  MAX_CONTEXT_LENGTH,
-  attrValue,
-  cleanText,
-  extractDateText,
-  resolveUrl,
-} from "./_shared";
-import {
-  BOILERPLATE_TITLES,
-  DISCLAIMER,
-  FACULTIES,
-  FEED_LABELS,
-  FEED_SOURCES,
-  KIND_LABELS,
-  KIND_ORDER,
-  PORTAL,
-  SCHEDULE_INDEX_URL,
-  SCHEDULE_NOTE,
-  SECTION_LABELS,
-  findFaculty,
-  staticServices,
-} from "../portals";
-import type {
-  DocumentFormat,
-  Faculty,
-  FacultySchedule,
-  FacultySummary,
-  Feed,
-  FeedItem,
-  FeedKind,
-  FesmuResponse,
-  Overview,
-  ScheduleItem,
-  ScheduleKind,
-  SchedulePage,
-  Semester,
-  ServiceStatusReport,
-  ServiceStatus,
-  StudyForm,
-  TitleSource,
-} from "../types";
+import { MAX_CONTEXT_LENGTH, attrValue, cleanText, resolveUrl } from "./_shared";
+import { BOILERPLATE_TITLES, KIND_LABELS, KIND_ORDER } from "../portals";
+import type { DocumentFormat, ScheduleItem, ScheduleKind, Semester, StudyForm, TitleSource } from "../types";
 function formatFromPath(pathname: string): DocumentFormat | null {
   const match = /\.(pdf|doc|docx|xls|xlsx)$/i.exec(pathname);
   if (!match) return null;

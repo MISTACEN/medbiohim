@@ -1,3 +1,5 @@
+import { readAuthDomain } from "./auth-source.js";
+
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
@@ -236,12 +238,13 @@ test("telegram initData module stays dependency-free and log-free", async () => 
 });
 
 test("telegram webapp route uses the validator, the linked account and a server-issued session", async () => {
-  const authSource = await readFile(new URL("../src/routes/auth.ts", import.meta.url), "utf8");
+  const authSource = await readAuthDomain();
   const indexSource = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 
   assert.ok(indexSource.includes('v1.route("/auth", auth)'));
   assert.ok(authSource.includes('auth.post("/telegram/webapp"'));
-  assert.ok(authSource.includes('from "../lib/telegram-initdata"'));
+  // Домен auth/ лежит на уровень глубже — путь импорта тоже.
+  assert.match(authSource, /from "\.\.\/(\.\.\/)?lib\/telegram-initdata"/);
   assert.ok(authSource.includes("validateTelegramInitData("));
   assert.ok(authSource.includes("createServiceClient"));
   assert.ok(authSource.includes('from("telegram_accounts")'));

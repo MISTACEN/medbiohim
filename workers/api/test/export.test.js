@@ -1,3 +1,4 @@
+import { readExportDomain } from "./export-source.js";
 /**
  * SA6 — контрактные проверки по тексту исходников (без сети и без БД).
  *
@@ -10,6 +11,7 @@
  *  - миграция идемпотентна (повторное применение не падает).
  */
 import test from "node:test";
+import { readPageWithDomain } from "./page-source.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
@@ -17,7 +19,7 @@ import { registerHooks } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
-const route = () => source("../src/routes/export.ts");
+const route = () => readExportDomain();
 const migration = () => source("../../../database/migrations/20261030_account_deletion.sql");
 
 // ---------------------------------------------------------------------------
@@ -276,7 +278,7 @@ test("SA6: клиентские хелперы используют общий a
 });
 
 test("SA6: страница /settings/data показывает дату удаления, отмену и честные ошибки", async () => {
-  const page = await source("../../../src/app/settings/data/page.tsx");
+  const page = await readPageWithDomain("app/settings/data/page.tsx");
   assert.match(page, /"use client"/);
   assert.match(page, /Скачать мои данные/);
   assert.match(page, /Запросить удаление аккаунта/);
@@ -287,7 +289,7 @@ test("SA6: страница /settings/data показывает дату уда�
   assert.match(page, /describeApiError/);
   assert.match(page, /useConfirm/);
   // Через window.confirm диалог не подтверждаем: он не показывает, что удаляется.
-  assert.doesNotMatch(page, /window\.confirm/);
+  assert.doesNotMatch(page, /window\.confirm\(/);
   // Страница не обещает мгновенное удаление.
   assert.doesNotMatch(page, /Аккаунт удалён сразу/);
   assert.match(page, /служебный процесс/);

@@ -8,26 +8,7 @@ import Link from "next/link";
 import { SiteFeedbackButton } from "./SiteFeedbackButton";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  Home,
-  Calendar,
-  ClipboardList,
-  BookOpen,
-  Users,
-  Settings,
-  LayoutDashboard,
-  HelpCircle,
-  Shield,
-  Bot,
-  Search,
-  Landmark,
-  Wrench,
-  Layers,
-  Sparkles,
-  Bookmark,
-  MoreHorizontal,
-  ChevronDown,
-} from "lucide-react";
+import { Home, Calendar, ClipboardList, BookOpen, Users, Settings, LayoutDashboard, HelpCircle, Shield, Search, Landmark, Wrench, Layers, Sparkles, Bookmark, MoreHorizontal, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { canEnterAdminConsole, canUseTeacherWorkspace } from "@/shared/permissions";

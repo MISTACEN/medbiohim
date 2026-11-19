@@ -33,9 +33,21 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 CONTENT = REPO / "public" / "content" / "histology"
 # Корень исходников можно переопределить: HISTOLOGY_SOURCES=/путь
-SRC = Path(os.environ.get("HISTOLOGY_SOURCES") or r"C:\Users\MISTACEN\Desktop\Гистология")
+SRC = Path(os.environ.get("HISTOLOGY_SOURCES") or r"C:\Users\MISTACEN\Desktop\вуз\01_Гистология\Учебники и атласы")
 
 CHECK_ONLY = "--check" in sys.argv
+
+
+def source_file(rel: str) -> Path:
+    """Резолвит исходник и в старой структуре (относительный путь),
+    и в новой плоской (архив «вуз/01_Гистология/Учебники и атласы»)."""
+    direct = SRC / rel
+    if direct.exists() or not SRC.exists():
+        return direct
+    flat = SRC / Path(rel).name
+    if flat.exists():
+        return flat
+    return direct  # пусть упадёт с осмысленным сообщением FileNotFoundError
 
 # Ключ источника -> (путь относительно SRC, читаемое название)
 SOURCES = {
@@ -280,7 +292,7 @@ def parse_pair_answers(seg: str):
 def source_cit():
     """Сборник 2007: закрытые + открытые тесты по цитологии и эмбриологии.
     Границы регионов ищем по заголовкам, а не по фиксированным смещениям."""
-    text = antiword(SRC / SOURCES["cit"][0])
+    text = antiword(source_file(SOURCES["cit"][0]))
 
     def header(section, kind):
         for m in re.finditer(r"^\s*%s\s*$" % section, text, re.M):
@@ -331,7 +343,7 @@ def source_cit():
 
 def source_obs():
     """Сборник 2003: пять тем закрытых тестов, ключи в конце файла."""
-    text = antiword(SRC / SOURCES["obs"][0])
+    text = antiword(source_file(SOURCES["obs"][0]))
     ans_start = text.find("Ответы к теме")
     theme_headers = [
         (m.start(), m.group(0).strip())
@@ -377,7 +389,7 @@ def parse_federal(text):
 
 
 def source_fedstom():
-    text = antiword(SRC / SOURCES["fedstom"][0])
+    text = antiword(source_file(SOURCES["fedstom"][0]))
     qs = parse_federal(text)
     keys = {}
     am = re.search(r"^\s*Ответы:\s*$", text, re.M)
@@ -390,7 +402,7 @@ def source_fedstom():
 
 
 def source_fedped():
-    text = antiword(SRC / SOURCES["fedped"][0])
+    text = antiword(source_file(SOURCES["fedped"][0]))
     qs = parse_federal(text)
     for q in qs:  # эталоны в файле отсутствуют
         q["answer"] = ""
@@ -452,7 +464,7 @@ def source_h2008() -> dict:
     смешанный банк; в документе его ДВА списка (40 + 155 заданий,
     «проверка знаний» и «проверка») — берём оба, пересечение из трёх
     вопросов снимает общая дедупликация."""
-    text = antiword(SRC / SOURCES["h2008"][0])
+    text = antiword(source_file(SOURCES["h2008"][0]))
 
     def norm_title(t: str) -> str:
         return re.sub(r"\s+", " ", t).strip().rstrip(".").upper()
@@ -536,7 +548,7 @@ EXAM_EXPECTED = {
 
 
 def source_exam_list(source_key: str, sections, titles) -> dict:
-    text = antiword(SRC / SOURCES[source_key][0])
+    text = antiword(source_file(SOURCES[source_key][0]))
     marks = []
     for header, part in sections:
         for m in re.finditer(r"(?m)^\s*%s\s*[.]?\s*$" % re.escape(header), text):
@@ -593,7 +605,7 @@ def source_kontrol(source_key: str) -> list:
     """Контрольная работа: разделы «I./1. заголовок», задания — пункты
     «• …». Каждый пункт становится отдельным открытым заданием; разделы
     без пунктов — одним заданием. Эталонов нет."""
-    text = antiword(SRC / SOURCES[source_key][0])
+    text = antiword(source_file(SOURCES[source_key][0]))
     questions = []
     header = None    # накопленный текст заголовка раздела
     bullet = None    # накопленный текст текущего пункта
@@ -681,7 +693,7 @@ TASK_HEADER_RE = re.compile(
 def source_tasks():
     """Задачи 1..57 + эталоны по порядку (docx-эталоны: 58 абзацев,
     один ответ разбит на два абзаца — задача 19)."""
-    text = antiword(SRC / SOURCES["tasks"][0])
+    text = antiword(source_file(SOURCES["tasks"][0]))
     # документ содержит повторный список задач; берём строго последовательные номера
     tasks = []
     cur = None
@@ -697,7 +709,7 @@ def source_tasks():
             cur["text"] = join_cont(cur["text"], raw)
         offset += len(raw) + 1
 
-    et = docx_paragraphs(SRC / SOURCES["etalons"][0])
+    et = docx_paragraphs(source_file(SOURCES["etalons"][0]))
     # первые абзацы — заголовок «Эталоны ответов…»
     et = [p for p in et if not re.match(r"^(Эталоны|ответов к задачам|лечебного и педиатрического)", p)]
     if len(et) == len(tasks) + 1:

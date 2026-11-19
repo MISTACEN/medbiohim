@@ -14,7 +14,7 @@
  */
 import fs from "node:fs";
 import crypto from "node:crypto";
-import path from "node:path";
+
 
 const MANIFEST = process.argv[2] ?? "docs/media-upload-manifest.json";
 const LARGE_THRESHOLD = 100 * 1024 * 1024;

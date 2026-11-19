@@ -1,7 +1,7 @@
 # МЕСТЕР-ПЛАН MEDBIOHIM — все задачи списков в одной карте
 
-Обновлён: 2026-11-18. Объединяет: «Блоки 1–9», «Части I–XV», задачу «переработка тестового движка» (выполнена) и задачу «разнесение монолитов» (в работе).
-Производственная точка: Vercel `medbiohim.vercel.app` + Worker `medbiohim-api`. Облачная медиа-библиотека — B2 `medbiohim-files` (1.93 ГБ, 11 файлов, раздача через /api/media + подписанные ссылки). Последние проверки (2026-11-18, полная матрица): worker **490/490**, vitest **719/719**, node **344/344**, contrast 6 тем 0 провалов, overrides OK, lint 0 errors, build OK.
+Обновлён: 2026-11-20. Объединяет: «Блоки 1–9», «Части I–XV», задачу «переработка тестового движка» (выполнена) и задачу «разнесение монолитов» (**выполнена 2026-11-20**, см. MODULE-ARCHITECTURE.md §13).
+Производственная точка: Vercel `medbiohim.vercel.app` + Worker `medbiohim-api`. Облачная медиа-библиотека — B2 `medbiohim-files` (1.93 ГБ, 11 файлов, раздача через /api/media + подписанные ссылки). Последние проверки (2026-11-20, worktree medbiohim-b0 + dry-run интеграции): worker **530/530**, vitest+node **367/367**, `tsc --noEmit` чисто, lint **0 errors / 37 warnings** (baseline 153), `next build` OK (дважды: b0 и integration), contrast 6 тем 0 провалов, LOC-аудит: **0 монолитов** (pages 200 / routes 400 / modules 400, исключений нет), визуальная проверка 6 страниц браузером (home, chemistry/elements, chemistry/lab + интерактив, login, subjects, tutor).
 
 Статусы: ✅ готово (проверено) · 🟡 частично · ❌ не сделано · 🔍 не проверено живьём · ⏸️ ждёт (второй агент/решение владельца)
 
@@ -21,20 +21,28 @@
 - ✅ Единый конверт {ok,data,requestId}; health; requestId; таймауты прокси
 - ✅ Секреты только в воркере; логи без токенов
 - ❌ Изолированная конвертация DOC/XLS/PPT (File Engine, старые форматы)
-- 🔍 Redis: сроки жизни/очистка кэша — 🔍 живого аудита нет
+- ✅ Redis: политика кэша списков (`workers/api/src/lib/cache.ts`: TTL + stale-while-revalidate, fail-open) и необязательная пагинация (`lib/pagination.ts`); применено к `GET /subjects`. Решение — ADR [0002](docs/architecture/adr/0002-list-cache-policy.md). 🔍 живого аудита Upstash и ручной очистки кэша по-прежнему нет
 
 # ЭТАП 2. Модульность и Shared — 🟡 → см. ЗАДАЧА A (разнесение монолитов)
 
 - ✅ Домены на всех слоях (app/components/lib-api/worker-routes), PROJECT-MAP
+- ✅ Лекции: карта трёх хранилищ и поверхностей (`docs/architecture/LECTURES-MAP.md`); архив на вкладке «Портал» — одна лента с одним поиском вместо двух карточек; инварианты в `test/lectures-content.test.mjs`
 - ✅ Shared: UI-кит (barrel+реестр), question-types (реестр+грейдер), file-engine, permissions
 - ✅ Access Control: разделы вкл/выкл админом без кода
 - ✅ РАЗНЕСЕНО: routes/teacher.ts (1414) → каталог routes/teacher/ (6 файлов) — образец
-- ❌ РАЗНЕСТИ: admin.ts (1445, ⏸️ у второго агента), fesmu.ts (1440), workshop.ts (787), admin-parity.ts (680)
-- ❌ РАЗНЕСТИ страницы: schedule (1221), subjects/[id] (1084, 40 импортов), settings (869), главная (836), practice (829)
+- ✅ РАЗНЕСЕНО: admin.ts (1481) → routes/admin/ (11 доменов + shared/index), fesmu.ts (1440), workshop.ts (787), admin-parity.ts (680)
+- ✅ РАЗНЕСЕНО: ai.ts (1366) → `routes/ai/` (6 доменов + баррель), study-prep.ts (1301) → `routes/study-prep/` (4 домена); имена роутеров `ai`/`studyPrep` сохранены
+- ✅ РАЗНЕСЕНО: schedule 959 → 83 строки; данные и действия — `components/schedule/useSchedulePage.ts`, правила — `model.ts`, разметка — виды недели/дня/месяца/семестра, планировщик, панель занятия. Поведение и разметка перенесены один-в-один
+- ✅ РАЗНЕСЕНО: subjects/[id] 884 → 55 строк; данные — `components/subjects/useSubjectPage.ts`, шапка и три файла панелей вкладок, читалка материала
+- ✅ РАЗНЕСЕНЫ страницы очереди: главная 846 → 55 (`components/home/`), tests/preparation/[id] 1114 → 65 (`components/test-prep/`), admin/attestations 745 → 87, workshop 713 → 160, university/import 635 → 114, search 606 → 76; ранее settings 872→157, practice 752→194, schedule 959→83, subjects/[id] 884→55. Осталось 40 страниц сверх лимита 200 (крупнейшие — tutor 561, teacher 556, admin/teachers 533). Размеры зафиксированы в `docs/architecture/registry/loc-budgets.json` (64 записи), расти им нельзя
+- 📋 ОЧЕРЕДЬ (снимок 2026-11-19): 40 страниц сверх 200 строк, 22 файла маршрутов сверх 400, 2 файла модулей сверх 400 — полный список в [MODULE-ARCHITECTURE §12.8](docs/architecture/MODULE-ARCHITECTURE.md#128-очередь-на-разнесение-снимок-2026-11-19-base-fab432d9); крупнейшие `tutor` 561, `teacher` 556, `tests.ts` 991. Машиночитаемо — `docs/architecture/registry/loc-budgets.json`
 - ❌ Физический src/core/ (auth/права/api-клиент)
-- ❌ Реестр модулей (для компонентов есть, для модулей — нет)
+- ✅ Реестр подмодулей предметов: `src/modules/subjects/registry.json` — единственный источник разделов, доступ только через баррель `@/modules/subjects`; генератор `scripts/new-module.mjs`; инварианты `test/subject-submodules.test.mjs`. Решение — ADR [0001](docs/architecture/adr/0001-submodule-registry.md)
+- ✅ Architecture fitness-тесты (`test/architecture-fitness.test.mjs` + `scripts/audit-loc.mjs`): LOC-бюджет страниц/маршрутов/модулей с крысой, достижимость каждого файла маршрутов из `workers/api/src/index.ts`, отсутствие циклов в `src/modules`, запрет импорта `app/` из модулей
+- ✅ ADR: `docs/architecture/adr/` — шаблон, правила, индекс; решения 0001 (реестр подмодулей) и 0002 (кэш списков)
+- ❌ Реестр модулей платформы целиком (subjects/tests/lectures/…) — есть только для подмодулей предметов
 - ❌ Универсальный редактор вопросов для банков
-- ❌ Унификация chem/ vs chemistry/; три входа в тесты (tests/tickets/practice) — задокументированы
+- ✅ Унификация chem/: `ChemPlan` → `components/subjects/`, `ReactionBalancer` и его тесты → модуль `chemistry`; каталогов `components/chem` и `components/chemistry` больше нет. Три входа в тесты (tests/tickets/practice) — задокументированы
 
 # ЭТАП 3. Права, роли, Access Control — ✅ ядро
 
@@ -119,20 +127,20 @@
 
 ---
 
-# ЗАДАЧА A (текущая): разнесение монолитов — 🟡 1 из 10
+# ЗАДАЧА A (текущая): разнесение монолитов — 🟡 в работе
 
 | # | Файл | Строк | Статус |
 |---|---|---|---|
 | A1 | routes/teacher.ts → routes/teacher/ (6 файлов) | 1414 | ✅ выпущено (b03ea891) |
-| A2 | routes/admin.ts → routes/admin/ (telegram/lectures/questions/users/files/content) | 1445 | ⏸️ после завершения второго агента |
+| A2 | routes/admin.ts → routes/admin/ (11 доменов + shared/index) | 1481 | ✅ выполнено: overview/questions/tests/lectures/users/telegram/content/files/schedule/announcements/presence + barrel, 491/491 |
 | A3 | lib/university/fesmu.ts → lib/university/fesmu/* (7 модулей + barrel; контрактные тесты читают каталог) | 1440 | ✅ выпущено |
 | A4 | app/schedule/page.tsx → components/schedule/ (ScheduleCard, HomeworkBits, utils) | 1221 | ✅ выпущено (страница 1221→904) |
 | A5 | app/subjects/[id]/page.tsx → components/subjects/ | 1084 | 🟡 начато: ✅ ЗАВЕРШЕНА: tabs-config.ts + MaterialsTab.tsx + PlanTab.tsx + LecturesTab.tsx; страница 1084→850 |
-| A6 | app/settings/page.tsx → components/settings/ | 869 | ❌ |
+| A6 | app/settings/page.tsx → components/settings/ | 872 | ✅ выполнено: 11 карточек + useSettingsData; 925→157 |
 | A7 | app/page.tsx (главная) → components/home/ | 836 | 🟡 частично (components/home есть) |
-| A8 | app/practice/page.tsx → components/practice/ | 829 | ❌ |
-| A9 | routes/workshop.ts → routes/workshop/ | 787 | ❌ |
-| A10 | routes/admin-parity.ts → admin/ | 680 | ❌ |
+| A8 | app/practice/page.tsx → components/practice/ | 754 | ✅ выполнено: model + usePracticeData + фильтры/список/карточка; 830→194 |
+| A9 | routes/workshop.ts → routes/workshop/ | 787 | ✅ выполнено: catalog/items/moderation/shared/index + barrel, тесты 490/490 |
+| A10 | routes/admin-parity.ts → admin-parity/ | 681 | ✅ выполнено: 6 доменов + shared/index + barrel, тесты 490/490 |
 
 Правило: разносить по образцу routes/teacher/ — один домен = один файл, _shared.ts для хелперов, контрактные тесты обновляются в том же коммите, деплой из чистого worktree.
 

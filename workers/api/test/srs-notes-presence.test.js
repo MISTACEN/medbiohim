@@ -1,3 +1,5 @@
+import { readSrsDomain } from "./srs-source.js";
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -5,7 +7,7 @@ import { readFile } from "node:fs/promises";
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("SRS exposes the full legacy contract used by /cards", async () => {
-  const srs = await source("../src/routes/srs.ts");
+  const srs = await readSrsDomain();
   for (const contract of [
     'srs.get("/summary"',
     'srs.post("/ensure"',
@@ -23,7 +25,7 @@ test("SRS exposes the full legacy contract used by /cards", async () => {
 });
 
 test("SRS review is bounded to four ratings and updates the card instead of a missing table", async () => {
-  const srs = await source("../src/routes/srs.ts");
+  const srs = await readSrsDomain();
   assert.match(srs, /rating < 1 \|\| rating > 4/);
   assert.match(srs, /from\("srs_cards"\)/);
   assert.doesNotMatch(srs, /srs_reviews/);
@@ -45,7 +47,7 @@ test("Notes are owner-scoped and mounted on the canonical API", async () => {
 });
 
 test("Admin presence is gated and reads heartbeat timestamps", async () => {
-  const admin = await source("../src/routes/admin.ts");
+  const admin = await adminRoutesSource();
   assert.match(admin, /admin\.get\("\/presence", requireAuth/);
   // Присутствие — персональные данные («кто сейчас онлайн»): только admin,
   // иначе преподаватель видел бы активность всех студентов.

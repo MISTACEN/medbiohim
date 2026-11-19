@@ -33,12 +33,6 @@ function sim(slug: string) {
   return found;
 }
 
-function defaultParams(slug: string): Record<string, number> {
-  const params: Record<string, number> = {};
-  for (const parameter of sim(slug).parameters) params[parameter.id] = parameter.default;
-  return params;
-}
-
 describe("каталог физиологических симуляций", () => {
   it("содержит пять новых моделей (насос — в базовом каталоге)", () => {
     expect(PHYSIOLOGY_SIMS.map((item) => item.slug)).toEqual([

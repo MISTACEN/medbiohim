@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 
-const route = await readFile(new URL("../src/routes/study-prep.ts", import.meta.url), "utf8");
+import { readDomain } from "./domain-source.js";
+
+const route = await readDomain("src/routes/study-prep.ts");
 
 test("план подготовки строится по любому событию, сводка готовности — по аттестациям", () => {
   // prepReadinessForEvents умеет включать все виды событий, но по умолчанию

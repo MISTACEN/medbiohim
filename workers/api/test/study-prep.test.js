@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readDomain } from "./domain-source.js";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -11,7 +12,7 @@ test("study-prep mounted under the academic module gate", async () => {
 });
 
 test("prep plan reads are owner-scoped and event-checked", async () => {
-  const route = await source("../src/routes/study-prep.ts");
+  const route = await readDomain("src/routes/study-prep.ts");
   // План читается и пишется только своим пользователем.
   assert.match(route, /\.eq\("user_id", user\.id\)/);
   // Событие ищется в расписании группы пользователя.
@@ -22,7 +23,7 @@ test("prep plan reads are owner-scoped and event-checked", async () => {
 });
 
 test("plan is deterministic rules, not an LLM call", async () => {
-  const route = await source("../src/routes/study-prep.ts");
+  const route = await readDomain("src/routes/study-prep.ts");
   assert.match(route, /export function buildPlanDays/);
   assert.match(route, /generated_by: "rules"/);
   // Роут не ходит в ИИ и не расходует квоты тьютора.
@@ -30,7 +31,7 @@ test("plan is deterministic rules, not an LLM call", async () => {
 });
 
 test("missing study_plans table degrades instead of failing", async () => {
-  const route = await source("../src/routes/study-prep.ts");
+  const route = await readDomain("src/routes/study-prep.ts");
   assert.match(route, /function isMissingTable/);
   assert.match(route, /42P01/);
   assert.match(route, /persisted/);

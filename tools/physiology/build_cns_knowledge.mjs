@@ -50,7 +50,7 @@ function splitSections(raw) {
   return parts;
 }
 
-function sectionTitle(part, fallbackIndex) {
+function sectionTitle(part) {
   // Заголовок раздела = первая строка без markdown-мусора; цитаты-вступления
   // («> Соответствует вопросам…») не годятся в название источника.
   const first = part.split("\n", 1)[0].replace(/[*_`#>]/g, "").trim();

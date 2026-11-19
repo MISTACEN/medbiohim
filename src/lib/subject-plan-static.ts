@@ -30,10 +30,10 @@ export const DB_FIRST_PLAN_SLUGS = new Set([
 ]);
 
 /** Загружает JSON плана кафедры из public/content (отмена через AbortSignal). */
+import { fetchContentJson } from "./content-json";
+
 export async function fetchStaticPlan(file: string, signal?: AbortSignal): Promise<unknown> {
   // no-cache = условная проверка: без изменений браузер получает 304, а после
   // правки плана студент видит новый файл сразу, а не старую копию из кеша.
-  const res = await fetch(`/content/${file}`, { cache: "no-cache", signal });
-  if (!res.ok) throw new Error(`План кафедры недоступен (${res.status})`);
-  return res.json();
+  return fetchContentJson<unknown>(`/content/${file}`, { signal });
 }

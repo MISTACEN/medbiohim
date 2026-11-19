@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "updated": "2026-11-20",
+  "rules": {
+    "appPageLimit": 200,
+    "routeFileLimit": 400,
+    "moduleFileLimit": 400
+  },
+  "budgets": {},
+  "budgetsNote": "Исключений нет: после декомпозиции 2026-11-20 ни один page/route/module не превышает лимит. Новые исключения добавлять только через ADR с обоснованием.",
+  "unreachableRoutes": []
+}

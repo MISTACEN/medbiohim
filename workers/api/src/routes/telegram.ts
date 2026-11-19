@@ -2,17 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { Hono } from "hono";
 import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
+import { constantTimeEqual } from "../lib/timing";
 
 const telegram = new Hono<{ Bindings: Env }>();
-
-function constantTimeEqual(actual: string, expected: string): boolean {
-  if (!actual || !expected || actual.length !== expected.length) return false;
-  let difference = 0;
-  for (let i = 0; i < actual.length; i += 1) {
-    difference |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return difference === 0;
-}
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));

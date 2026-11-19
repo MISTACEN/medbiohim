@@ -51,9 +51,22 @@ test("nowParts produces platform-tz date and HH:MM label", () => {
   assert.equal(now.minutes, now.hour * 60 + now.minute);
 });
 
-test("schedule page and dashboard both import the shared module", async () => {
-  for (const file of ["../src/app/page.tsx", "../src/app/schedule/page.tsx"]) {
-    const src = await readFile(new URL(file, import.meta.url), "utf8");
-    assert.match(src, /@\/lib\/now-parts/, file + " не использует общий расчёт времени");
-  }
+
+
+// Расписание после разнесения считает время в хуке, а хук берёт расчёт из
+// components/schedule/utils, который оборачивает общий @/lib/now-parts.
+// Проверяем цепочку целиком: свой расчёт времени в расписании по-прежнему запрещён.
+test("schedule feature and dashboard both use the shared time calculation", async () => {
+  // Главная разнесена: страница собирает хук домена, а время считает хук.
+  const dashboardPage = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  assert.match(dashboardPage, /@\/components\/home\/useHomeDashboard/, "dashboard не собирается из своего хука");
+  const dashboardHook = await readFile(new URL("../src/components/home/useHomeDashboard.ts", import.meta.url), "utf8");
+  assert.match(dashboardHook, /@\/lib\/now-parts/, "dashboard не использует общий расчёт времени");
+
+  const hook = await readFile(new URL("../src/components/schedule/useSchedulePage.ts", import.meta.url), "utf8");
+  assert.match(hook, /nowParts/, "хук расписания не считает время");
+  assert.match(hook, /@\/components\/schedule\/utils/, "хук должен брать nowParts из общего utils расписания");
+
+  const utils = await readFile(new URL("../src/components/schedule/utils.ts", import.meta.url), "utf8");
+  assert.match(utils, /@\/lib\/now-parts/, "utils расписания должен оборачивать общий расчёт времени");
 });

@@ -19,7 +19,7 @@
 ## Исключения и shared surfaces
 
 1. `workers/api/src/index.ts`, `workers/api/src/env.ts`, общие middleware — Backend-owned, но один writer; route registration/bindings согласуются с DevOps.
-2. `workers/api/src/routes/trainers.ts` — смешанный business/media hotspot. Default owner — Backend. Storage может получить весь файл как единственный owner конкретной задачи; делить один файл между агентами нельзя.
+2. `workers/api/src/routes/trainers/**` (бывший монолит `trainers.ts`) — смешанный business/media hotspot. Default owner — Backend. Storage может получить конкретный файл (`03-image.ts` и связанные) как единственный owner задачи; делить один файл между агентами нельзя.
 3. `src/lib/api.ts`, `src/lib/api/**`, `src/types/**` — shared frontend contract surface. Frontend — writer; Backend утверждает API shape, QA проверяет регрессии.
 4. `src/app/api/v1/[...path]/route.ts` — DevOps owns proxy; Frontend/Backend только согласуют изменение транспорта.
 5. `src/app/api/**` (кроме `/api/v1` proxy) — Backend owns server endpoints; Frontend owns pages/components.
@@ -27,6 +27,9 @@
 7. SQL seeds и migrations остаются Database-owned даже если содержат учебные вопросы. Education предоставляет проверенные данные и provenance, Database отвечает за безопасный импорт.
 8. `workers/api/src/routes/storage.ts`, `files.ts`, `trainer-atlas.ts`, `lib/b2.ts`, `lib/redis.ts` — Storage-owned; другие backend routes остаются Backend-owned.
 9. `docs/architecture/registry/**`, `test/component-registry.test.mjs` и `test/ui-barrel.test.mjs` — контракт реестра общих компонентов (этапы A и D). Данные реестра — shared surface с одним writer (архитектура/Frontend); `test/**` остаётся QA-owned. Изменение реестра принимается только вместе с прохождением теста-стража; записи в обход контракта не принимаются.
+10. `src/modules/subjects/registry.json` + `registry.ts` + `submodules/<slug>/**` — реестр подмодулей предмета (ADR-0001). Один writer на цикл; новые подмодули добавляются только генератором `scripts/new-module.mjs` (рукописные правки `registry.json` не принимаются — стражи `test/subject-submodules.test.mjs` и `test/architecture-fitness.test.mjs`). `src/modules/**` не импортирует `src/app/**` и чужие подмодули — проверяет fitness-тест.
+11. `docs/architecture/registry/loc-budgets.json` (v2) — LOC-бюджеты: страницы 200 / маршруты 400 / модули 400. Исключения — только через ADR; проверка `scripts/audit-loc.mjs` + fitness.
+12. `workers/api/test/route-guards.test.js` — страж guard-хелперов маршрутов. Новый публичный маршрут без auth обязан получить rate limit либо обоснованную запись в ALLOWLIST файла-стража (QA-owned, согласование с Backend).
 
 ## Legacy и замороженные зоны
 

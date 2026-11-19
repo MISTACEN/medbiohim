@@ -11,6 +11,8 @@ const eslintConfig = [
       // The existing application uses gradual typing; TypeScript's strict
       // compiler remains the enforced type-safety gate.
       "@typescript-eslint/no-explicit-any": "off",
+      // underscore-префикс = намеренно неиспользуемое (распаковка полей, резервные параметры)
+      "@typescript-eslint/no-unused-vars": ["warn", { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_" }],
     },
   },
   {

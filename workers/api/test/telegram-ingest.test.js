@@ -1,3 +1,5 @@
+import { readTelegramIngestDomain } from "./telegram-ingest-source.js";
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -6,7 +8,7 @@ const source = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("Telegram ingest is mounted and protected by a shared secret", async () => {
   const index = await source("../src/index.ts");
-  const route = await source("../src/routes/telegram-ingest.ts");
+  const route = await readTelegramIngestDomain();
   assert.match(index, /v1\.route\("\/telegram", telegramIngest\)/);
   assert.match(route, /telegramIngest\.post\("\/ingest"/);
   assert.match(route, /env\.TELEGRAM_INGEST_SECRET \|\| env\.TELEGRAM_WEBHOOK_SECRET/);
@@ -20,7 +22,7 @@ test("Telegram ingest is mounted and protected by a shared secret", async () => 
 });
 
 test("ingest classifies every text message and creates homework only above threshold", async () => {
-  const route = await source("../src/routes/telegram-ingest.ts");
+  const route = await readTelegramIngestDomain();
   assert.match(route, /classifyMessage\(c\.env/);
   assert.match(route, /HOMEWORK_THRESHOLD = 0\.65/);
   assert.match(route, /classification\.category !== "homework" \|\| classification\.confidence < HOMEWORK_THRESHOLD/);
@@ -29,13 +31,13 @@ test("ingest classifies every text message and creates homework only above thres
 });
 
 test("ordinary chatter never triggers a bot reply", async () => {
-  const route = await source("../src/routes/telegram-ingest.ts");
+  const route = await readTelegramIngestDomain();
   assert.match(route, /classification\.category === "homework" \|\| classification\.category === "material_candidate"/);
   assert.doesNotMatch(route, /category === "other" && classification\.confidence <= 0\.6/);
 });
 
 test("admin can see AI status, messages and publish a missed homework", async () => {
-  const admin = await source("../src/routes/admin.ts");
+  const admin = await adminRoutesSource();
   for (const contract of [
     'admin.get("/telegram/ai-status"',
     'admin.get("/telegram/messages"',

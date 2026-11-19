@@ -1,3 +1,4 @@
+import { readTestsDomain } from "./tests-source.js";
 /**
  * Авторский предпросмотр теста (план §9.1, BACKLOG п.2).
  *
@@ -19,7 +20,7 @@ async function read(rel) {
 }
 
 test("предпросмотр теста защищён capability и не создаёт попыток", async () => {
-  const route = await read("src/routes/tests.ts");
+  const route = await readTestsDomain();
   const start = route.indexOf('tests.get("/preview/:id"');
   const end = route.indexOf('tests.get("/:id"');
   assert.ok(start > -1, "маршрут /tests/preview/:id существует");

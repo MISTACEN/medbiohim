@@ -6,7 +6,7 @@
  */
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CalendarClock, Loader2 } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { listAssignedTests, type AssignedTest } from "@/lib/api/tests";
 import { describeApiError } from "@/lib/errors";
 

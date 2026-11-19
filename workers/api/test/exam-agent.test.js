@@ -8,6 +8,7 @@ import {
   isValidEventDate,
   pickAgentQuestions,
 } from "../src/lib/exam-agent.ts";
+import { readDomain } from "./domain-source.js";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -74,7 +75,7 @@ test("exam date must be today..+180 days", () => {
 });
 
 test("agent routes are owner-scoped and write only through the service client", async () => {
-  const route = await source("../src/routes/study-prep.ts");
+  const route = await readDomain("src/routes/study-prep.ts");
   assert.match(route, /studyPrep\.post\("\/agent", requireAuth/);
   assert.match(route, /studyPrep\.get\("\/agent", requireAuth/);
   assert.match(route, /studyPrep\.patch\("\/agent\/items\/:id", requireAuth/);

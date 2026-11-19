@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readAiDomain } from "./ai-source.js";
 
 const provider = await readFile(new URL("../../../integrations/cloudflare-api/src/ai-chat.js", import.meta.url), "utf8");
-const route = await readFile(new URL("../src/routes/ai.ts", import.meta.url), "utf8");
+const route = await readAiDomain();
 
 test("внешнему провайдеру даётся больше семи секунд", () => {
   // 7 с не хватало 70B-модели на ответ в 500–800 токенов: запрос обрывался,

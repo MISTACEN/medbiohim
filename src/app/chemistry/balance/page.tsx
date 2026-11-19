@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { ReactionBalancer } from "@/components/chemistry/ReactionBalancer";
+import { ReactionBalancer } from "@/modules/subjects/submodules/chemistry";
 import SubjectContextBanner from "@/components/subjects/SubjectContextBanner";
 
 export const metadata: Metadata = {

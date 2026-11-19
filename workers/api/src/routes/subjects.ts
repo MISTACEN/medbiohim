@@ -3,6 +3,9 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { callerRoles } from "../lib/permissions";
+import { cached } from "../lib/cache";
+import { getRedis } from "../lib/redis";
+import { paginate, parsePage } from "../lib/pagination";
 
 const subjects = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -50,12 +53,27 @@ subjects.get("/", requireAuth, async (c) => {
   // Админке нужен архив, чтобы удалённый предмет можно было вернуть. Обычный
   // каталог по-прежнему видит только активные строки.
   const includeInactive = ["1", "true", "yes"].includes(String(c.req.query("include_inactive") || "").toLowerCase());
-  let q = db.from("subjects").select("id,name,slug,course_number,semester,color_hex,is_active,specialty_slug,control_type,credits,total_hours,lecture_hours,practice_hours,self_study_hours").order("name", { ascending: true }).limit(500);
-  if (!includeInactive) q = q.eq("is_active", true);
-  if (course) q = q.eq("course_number", Number(course));
-  if (semester) q = q.eq("semester", Number(semester));
-  const { data, error } = await q;
-  if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subjects unavailable", 503, rid); return c.json(body, status as 503); }
+  // Каталог читается почти каждой страницей и меняется редко: свежий ответ
+  // берём из Upstash, устаревший отдаём сразу и обновляем в waitUntil
+  // (lib/cache.ts). Нет Redis или он упал — идём в БД, как раньше.
+  const waitUntil = (() => {
+    try { return (task: Promise<unknown>) => c.executionCtx.waitUntil(task); } catch { return undefined; }
+  })();
+  let data: any[];
+  try {
+    data = await cached("subjects:catalog", { course, semester, includeInactive }, async () => {
+      let q = db.from("subjects").select("id,name,slug,course_number,semester,color_hex,is_active,specialty_slug,control_type,credits,total_hours,lecture_hours,practice_hours,self_study_hours").order("name", { ascending: true }).limit(500);
+      if (!includeInactive) q = q.eq("is_active", true);
+      if (course) q = q.eq("course_number", Number(course));
+      if (semester) q = q.eq("semester", Number(semester));
+      const { data: rows, error } = await q;
+      if (error) throw new Error(error.message || "subjects unavailable");
+      return rows || [];
+    }, { store: getRedis(c.env), waitUntil });
+  } catch {
+    const { body, status } = fail("DB_UNAVAILABLE", "Subjects unavailable", 503, rid);
+    return c.json(body, status as 503);
+  }
   // В каталоге бывают строки-пустышки без слага и активные дубли одного
   // предмета (разные курсы/семестры, один slug) — студенту они показываются
   // как одинаковые предметы и ломают переход по адресу. Админке отдаём сырой
@@ -74,7 +92,12 @@ subjects.get("/", requireAuth, async (c) => {
         !current?.specialty_slug && Boolean(row?.specialty_slug));
     if (better) bySlug.set(slug, row);
   }
-  return c.json(ok({ items: [...bySlug.values()] }, rid));
+  // Пагинация необязательная: без limit/offset тело ответа прежнее ({ items }).
+  const items = [...bySlug.values()];
+  const page = parsePage(new URL(c.req.url).searchParams);
+  if (!page.requested) return c.json(ok({ items }, rid));
+  const sliced = paginate(items, page);
+  return c.json(ok({ items: sliced.items, page: sliced.page }, rid));
 });
 
 subjects.get("/:id/gradebook", requireAuth, async (c) => {

@@ -1,277 +1,270 @@
 {
- "tests": [
-  {
-   "id": "biology-bio-genetics",
-   "title": "Общая генетика — базовый",
-   "subject": "Биология",
-   "subjectId": "biology",
-   "topic": "Генетика",
-   "count": 6
-  },
-  {
-   "id": "biology-bio-helminths",
-   "title": "Гельминты — пути заражения",
-   "subject": "Биология",
-   "subjectId": "biology",
-   "topic": "Паразитология",
-   "count": 5
-  },
-  {
-   "id": "biology-bio-protists",
-   "title": "Протисты — возбудители",
-   "subject": "Биология",
-   "subjectId": "biology",
-   "topic": "Паразитология",
-   "count": 6
-  },
-  {
-   "id": "biology-parasitology-arthropods-mc",
-   "title": "Паразитология · членистоногие — тест",
-   "subject": "Биология",
-   "subjectId": "biology",
-   "topic": "Паразитология",
-   "count": 59
-  },
-  {
-   "id": "chem2-1-2-himicheskaya-svyaz-elekt",
-   "title": "ХИМИЧЕСКАЯ СВЯЗЬ. ЭЛЕКТРОННЫЕ ЭФФЕКТЫ ЗАМЕСТИТЕЛЕЙ — тесты (сборник, chem2)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник chem2 · 1.2",
-   "count": 8
-  },
-  {
-   "id": "chem2-voprosy-bez-zagolovka-temy",
-   "title": "вопросы без заголовка темы — тесты (сборник, chem2)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник chem2 · —",
-   "count": 19
-  },
-  {
-   "id": "chem3-2-1-metody-identifikacii-org",
-   "title": "МЕТОДЫ ИДЕНТИФИКАЦИИ ОРГАНИЧЕСКИХ СОЕДИНЕНИЙ — тесты (сборник, chem3)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник chem3 · 2.1",
-   "count": 30
-  },
-  {
-   "id": "chem3-3-2-alkeny-alkiny-dieny",
-   "title": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ — тесты (сборник, chem3)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник chem3 · 3.2",
-   "count": 30
-  },
-  {
-   "id": "chem3-3-3-monoyadernye-areny",
-   "title": "МОНОЯДЕРНЫЕ АРЕНЫ — тесты (сборник, chem3)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник chem3 · 3.3",
-   "count": 30
-  },
-  {
-   "id": "chem3-3-4-galogenproizvodnye-uglev",
-   "title": "ГАЛОГЕНПРОИЗВОДНЫЕ УГЛЕВОДОРОДОВ — тесты (сборник, chem3)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник chem3 · 3.4",
-   "count": 16
-  },
-  {
-   "id": "chemistry-alcohols-phenols-ethers",
-   "title": "Спирты. Фенолы. Простые эфиры — полный тест",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Тема 3.5",
-   "count": 80
-  },
-  {
-   "id": "chemistry-organic-part2-aldegidy-ketony",
-   "title": "Альдегиды и кетоны — самопроверка (по лекции МБХ-201)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Лекция 3.8",
-   "count": 15
-  },
-  {
-   "id": "chemistry-organic-part2-alkany-cikloalkany",
-   "title": "Алканы. Циклоалканы — тесты (сборник, часть II)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник часть II · 3.1",
-   "count": 16
-  },
-  {
-   "id": "chemistry-organic-part2-aminy",
-   "title": "Амины — тесты (сборник, часть II)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник часть II · 3.6",
-   "count": 12
-  },
-  {
-   "id": "chemistry-organic-part2-geterocikly",
-   "title": "Гетероциклы и алкалоиды — самопроверка (по лекции МБХ-201)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Лекция 3.11–3.13",
-   "count": 15
-  },
-  {
-   "id": "chemistry-organic-part2-geterofunkcionalnye",
-   "title": "Гетерофункциональные соединения — самопроверка (по лекции МБХ-201)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Лекция 3.10",
-   "count": 15
-  },
-  {
-   "id": "chemistry-organic-part2-karbonovye-kisloty",
-   "title": "Карбоновые кислоты и их производные — самопроверка (по лекции МБХ-201)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Лекция 3.9",
-   "count": 15
-  },
-  {
-   "id": "history-hist-intro",
-   "title": "История — вводный",
-   "subject": "История России",
-   "subjectId": "history",
-   "topic": "Общее",
-   "count": 3
-  },
-  {
-   "id": "math-math-derivatives-basic",
-   "title": "Производная — базовый тест",
-   "subject": "Математический анализ",
-   "subjectId": "math",
-   "topic": "Производная функции",
-   "count": 4
-  },
-  {
-   "id": "math-math-vectors-basic",
-   "title": "Векторы — базовый тест",
-   "subject": "Математический анализ",
-   "subjectId": "math",
-   "topic": "Векторная алгебра",
-   "count": 5
-  },
-  {
-   "id": "organic-part1-enantiomeriya-diastereomeriya-st",
-   "title": "Энантиомерия. σ-, π-диастереомерия. Стереохимическая номенклатура — тесты (сборник, часть I)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник часть I · 1.3",
-   "count": 26
-  },
-  {
-   "id": "organic-part1-himicheskaya-svyaz-elektronnye-e",
-   "title": "Химическая связь. Электронные эффекты заместителей — тесты (сборник, часть I)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник часть I · 1.2",
-   "count": 30
-  },
-  {
-   "id": "organic-part1-kislotnost-i-osnovnost-organiche",
-   "title": "Кислотность и основность органических соединений — тесты (сборник, часть I)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник часть I · 1.4",
-   "count": 34
-  },
-  {
-   "id": "organic-part1-klassifikaciya-i-nomenklatura-or",
-   "title": "Классификация и номенклатура органических соединений — тесты (сборник, часть I)",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Сборник часть I · 1.1",
-   "count": 32
-  },
-  {
-   "id": "orgchem-chem-kinetics",
-   "title": "Химическая кинетика",
-   "subject": "Органическая и физическая химия",
-   "subjectId": "chemistry",
-   "topic": "Физхимия",
-   "count": 5
-  },
-  {
-   "id": "physics-phys-mech",
-   "title": "Механика — базовый",
-   "subject": "Физика",
-   "subjectId": "physics",
-   "topic": "Механика",
-   "count": 5
-  },
-  {
-   "id": "physics-phys-optics",
-   "title": "Оптика — базовый",
-   "subject": "Физика",
-   "subjectId": "physics",
-   "topic": "Оптика",
-   "count": 4
-  },
-  {
-   "id": "physiology-physio-blood",
-   "title": "Кровь — базовый",
-   "subject": "Физиология",
-   "subjectId": "physiology",
-   "topic": "Кровь",
-   "count": 3
-  },
-  {
-   "id": "physiology-physio-cardio",
-   "title": "Кровообращение — базовый",
-   "subject": "Физиология",
-   "subjectId": "physiology",
-   "topic": "Сердечно-сосудистая система",
-   "count": 4
-  },
-  {
-   "id": "physiology-physio-excitable",
-   "title": "Возбудимые ткани и мембраны — базовый",
-   "subject": "Физиология",
-   "subjectId": "physiology",
-   "topic": "Возбудимые ткани",
-   "count": 20
-  },
-  {
-   "id": "physiology-physio-respiration",
-   "title": "Дыхание — базовый",
-   "subject": "Физиология",
-   "subjectId": "physiology",
-   "topic": "Дыхательная система",
-   "count": 20
-  },
-  {
-   "id": "physiology-physio-digestion",
-   "title": "Пищеварение — базовый",
-   "subject": "Физиология",
-   "subjectId": "physiology",
-   "topic": "Пищеварительная система",
-   "count": 20
-  },
-  {
-   "id": "histology-cito-embriologiya",
-   "title": "Цитология и эмбриология — контрольная",
-   "subject": "Гистология, цитология и эмбриология",
-   "subjectId": "histology",
-   "topic": "Цитология и эмбриология",
-   "count": 25
-  },
-  {
-   "id": "histology-obschaya",
-   "title": "Общая гистология — контрольная",
-   "subject": "Гистология, цитология и эмбриология",
-   "subjectId": "histology",
-   "topic": "Общая гистология",
-   "count": 26
-  }
- ],
- "count": 0
+  "tests": [
+    {
+      "id": "biology-bio-genetics",
+      "title": "Общая генетика — базовый",
+      "subject": "Биология",
+      "subjectId": "biology",
+      "topic": "Генетика",
+      "count": 6
+    },
+    {
+      "id": "biology-bio-helminths",
+      "title": "Гельминты — пути заражения",
+      "subject": "Биология",
+      "subjectId": "biology",
+      "topic": "Паразитология",
+      "count": 5
+    },
+    {
+      "id": "biology-bio-protists",
+      "title": "Протисты — возбудители",
+      "subject": "Биология",
+      "subjectId": "biology",
+      "topic": "Паразитология",
+      "count": 6
+    },
+    {
+      "id": "biology-parasitology-arthropods-mc",
+      "title": "Паразитология · членистоногие — тест",
+      "subject": "Биология",
+      "subjectId": "biology",
+      "topic": "Паразитология",
+      "count": 59
+    },
+    {
+      "id": "chem2-alkaloids",
+      "title": "Алкалоиды — тесты (сборник, chem2)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник chem2 · алкалоиды",
+      "count": 24,
+      "file": "mc-chem2-alkaloids.json"
+    },
+    {
+      "id": "chem3-2-1-metody-identifikacii-org",
+      "title": "МЕТОДЫ ИДЕНТИФИКАЦИИ ОРГАНИЧЕСКИХ СОЕДИНЕНИЙ — тесты (сборник, chem3)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник chem3 · 2.1",
+      "count": 30
+    },
+    {
+      "id": "chem3-3-2-alkeny-alkiny-dieny",
+      "title": "АЛКЕНЫ, АЛКИНЫ, ДИЕНЫ — тесты (сборник, chem3)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник chem3 · 3.2",
+      "count": 30
+    },
+    {
+      "id": "chem3-3-3-monoyadernye-areny",
+      "title": "МОНОЯДЕРНЫЕ АРЕНЫ — тесты (сборник, chem3)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник chem3 · 3.3",
+      "count": 30
+    },
+    {
+      "id": "chem3-3-4-galogenproizvodnye-uglev",
+      "title": "ГАЛОГЕНПРОИЗВОДНЫЕ УГЛЕВОДОРОДОВ — тесты (сборник, chem3)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник chem3 · 3.4",
+      "count": 16
+    },
+    {
+      "id": "chemistry-alcohols-phenols-ethers",
+      "title": "Спирты. Фенолы. Простые эфиры — полный тест",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Тема 3.5",
+      "count": 80
+    },
+    {
+      "id": "chemistry-organic-part2-aldegidy-ketony",
+      "title": "Альдегиды и кетоны — самопроверка (по лекции МБХ-201)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Лекция 3.8",
+      "count": 15
+    },
+    {
+      "id": "chemistry-organic-part2-alkany-cikloalkany",
+      "title": "Алканы. Циклоалканы — тесты (сборник, часть II)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник часть II · 3.1",
+      "count": 16
+    },
+    {
+      "id": "chemistry-organic-part2-aminy",
+      "title": "Амины — тесты (сборник, часть II)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник часть II · 3.6",
+      "count": 12
+    },
+    {
+      "id": "chemistry-organic-part2-geterocikly",
+      "title": "Гетероциклы и алкалоиды — самопроверка (по лекции МБХ-201)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Лекция 3.11–3.13",
+      "count": 15
+    },
+    {
+      "id": "chemistry-organic-part2-geterofunkcionalnye",
+      "title": "Гетерофункциональные соединения — самопроверка (по лекции МБХ-201)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Лекция 3.10",
+      "count": 15
+    },
+    {
+      "id": "chemistry-organic-part2-karbonovye-kisloty",
+      "title": "Карбоновые кислоты и их производные — самопроверка (по лекции МБХ-201)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Лекция 3.9",
+      "count": 15
+    },
+    {
+      "id": "history-hist-intro",
+      "title": "История — вводный",
+      "subject": "История России",
+      "subjectId": "history",
+      "topic": "Общее",
+      "count": 3
+    },
+    {
+      "id": "math-math-derivatives-basic",
+      "title": "Производная — базовый тест",
+      "subject": "Математический анализ",
+      "subjectId": "math",
+      "topic": "Производная функции",
+      "count": 4
+    },
+    {
+      "id": "math-math-vectors-basic",
+      "title": "Векторы — базовый тест",
+      "subject": "Математический анализ",
+      "subjectId": "math",
+      "topic": "Векторная алгебра",
+      "count": 5
+    },
+    {
+      "id": "organic-part1-enantiomeriya-diastereomeriya-st",
+      "title": "Энантиомерия. σ-, π-диастереомерия. Стереохимическая номенклатура — тесты (сборник, часть I)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник часть I · 1.3",
+      "count": 26
+    },
+    {
+      "id": "organic-part1-himicheskaya-svyaz-elektronnye-e",
+      "title": "Химическая связь. Электронные эффекты заместителей — тесты (сборник, часть I)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник часть I · 1.2",
+      "count": 30
+    },
+    {
+      "id": "organic-part1-kislotnost-i-osnovnost-organiche",
+      "title": "Кислотность и основность органических соединений — тесты (сборник, часть I)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник часть I · 1.4",
+      "count": 34
+    },
+    {
+      "id": "organic-part1-klassifikaciya-i-nomenklatura-or",
+      "title": "Классификация и номенклатура органических соединений — тесты (сборник, часть I)",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Сборник часть I · 1.1",
+      "count": 32
+    },
+    {
+      "id": "orgchem-chem-kinetics",
+      "title": "Химическая кинетика",
+      "subject": "Органическая и физическая химия",
+      "subjectId": "chemistry",
+      "topic": "Физхимия",
+      "count": 5
+    },
+    {
+      "id": "physics-phys-mech",
+      "title": "Механика — базовый",
+      "subject": "Физика",
+      "subjectId": "physics",
+      "topic": "Механика",
+      "count": 5
+    },
+    {
+      "id": "physics-phys-optics",
+      "title": "Оптика — базовый",
+      "subject": "Физика",
+      "subjectId": "physics",
+      "topic": "Оптика",
+      "count": 4
+    },
+    {
+      "id": "physiology-physio-blood",
+      "title": "Кровь — базовый",
+      "subject": "Физиология",
+      "subjectId": "physiology",
+      "topic": "Кровь",
+      "count": 3
+    },
+    {
+      "id": "physiology-physio-cardio",
+      "title": "Кровообращение — базовый",
+      "subject": "Физиология",
+      "subjectId": "physiology",
+      "topic": "Сердечно-сосудистая система",
+      "count": 4
+    },
+    {
+      "id": "physiology-physio-excitable",
+      "title": "Возбудимые ткани и мембраны — базовый",
+      "subject": "Физиология",
+      "subjectId": "physiology",
+      "topic": "Возбудимые ткани",
+      "count": 20
+    },
+    {
+      "id": "physiology-physio-respiration",
+      "title": "Дыхание — базовый",
+      "subject": "Физиология",
+      "subjectId": "physiology",
+      "topic": "Дыхательная система",
+      "count": 20
+    },
+    {
+      "id": "physiology-physio-digestion",
+      "title": "Пищеварение — базовый",
+      "subject": "Физиология",
+      "subjectId": "physiology",
+      "topic": "Пищеварительная система",
+      "count": 20
+    },
+    {
+      "id": "histology-cito-embriologiya",
+      "title": "Цитология и эмбриология — контрольная",
+      "subject": "Гистология, цитология и эмбриология",
+      "subjectId": "histology",
+      "topic": "Цитология и эмбриология",
+      "count": 25
+    },
+    {
+      "id": "histology-obschaya",
+      "title": "Общая гистология — контрольная",
+      "subject": "Гистология, цитология и эмбриология",
+      "subjectId": "histology",
+      "topic": "Общая гистология",
+      "count": 26
+    }
+  ],
+  "count": 0
 }

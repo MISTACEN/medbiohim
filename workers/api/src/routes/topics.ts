@@ -88,10 +88,6 @@ export default topics;
 /** Пирамида знаний: установка уровня темы (1/2/3 или null) — только админ. */
 topics.patch("/:id/pyramid", requireAuth, async (c) => {
   const rid = requestId();
-  const { body, status } = await (async () => {
-    const res = await fetch(c.req.url.replace("/pyramid", "/catalog-admin-check"), { headers: c.req.raw.headers });
-    return { body: null, status: 0 };
-  })();
   let input: any = {};
   try { input = await c.req.json(); } catch { return err(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON"); }
   const level = input?.knowledge_level;

@@ -1,133 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { BookOpen, CheckCircle2, Search } from "lucide-react";
-import { listLectures, type LectureListItem } from "@/lib/api";
-import { describeApiError } from "@/lib/errors";
-import { useApiRequest } from "@/hooks/useApiRequest";
-import { useLectureProgress } from "@/hooks/useLectureProgress";
-import { lectureSolvedCount, lectureTaskTotal } from "@/lib/lectureProgress";
+import { BookOpen, Search } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCards } from "@/components/ui/Skeleton";
-import { compareRu } from "@/lib/collation";
-import { groupBySubmodule, resolveLectureSubjectKey, subjectTitle } from "@/lib/lectures/submodules";
-
-type LectureRow = {
-  id: string;
-  title: string;
-  subject?: string;
-  subject_slug?: string;
-  topic?: string;
-  summary?: string;
-  body_markdown?: string | null;
-};
+import { LectureModuleCard } from "@/components/lectures/LectureModuleCard";
+import { useLecturesPage } from "@/components/lectures/useLecturesPage";
 
 export default function LecturesPage() {
-  const [q, setQ] = useState("");
-  const [subject, setSubject] = useState("");
-  const progress = useLectureProgress();
-
-  // D9: единый слой отмены вместо ручного cancelled-флага.
-  const { data, loading, error } = useApiRequest<LectureListItem[]>(async () => {
-    const r = await listLectures(subject || undefined);
-    if (!r.ok) throw new Error(describeApiError(r.error) || "Не удалось загрузить лекции");
-    return r.data.items || [];
-  }, [subject]);
-  const items = useMemo(() => (data ?? []) as LectureRow[], [data]);
-
-  const filtered = useMemo(() => {
-    const n = q.trim().toLowerCase();
-    if (!n) return items;
-    return items.filter(
-      (x) =>
-        String(x.title || "").toLowerCase().includes(n) ||
-        String(x.topic || "").toLowerCase().includes(n) ||
-        String(x.subject || x.subject_slug || "").toLowerCase().includes(n)
-    );
-  }, [items, q]);
-
-  /**
-   * Модуль = предмет, внутри — подмодули программы: в списке API приходит только
-   * subject_slug, поэтому он ведущий, а тематические блоки берутся из реестра
-   * (@/lib/lectures/submodules). Лекция без подмодуля попадает в «Прочие занятия».
-   */
-  const modules = useMemo(() => {
-    const groups = new Map<string, LectureRow[]>();
-    for (const item of filtered) {
-      const key = String(item.subject || item.subject_slug || "Без модуля");
-      const list = groups.get(key) ?? [];
-      list.push(item);
-      groups.set(key, list);
-    }
-    return [...groups.entries()].map(([title, lessons]) => {
-      const subjectKey = resolveLectureSubjectKey(lessons[0] ?? {});
-      const rows = new Map<string, { lesson: LectureRow; total: number; solved: number }>();
-      for (const lesson of lessons) {
-        const total = lectureTaskTotal(lesson.body_markdown);
-        rows.set(lesson.id, {
-          lesson,
-          total,
-          solved: lectureSolvedCount(lesson.id, total, progress),
-        });
-      }
-      const submodules = groupBySubmodule(subjectKey, lessons).map((group) => {
-        const groupRows = group.lectures.map((lesson) => rows.get(lesson.id)!).filter(Boolean);
-        return {
-          title: group.title,
-          subtitle: group.subtitle ?? group.submodule?.subtitle,
-          rows: groupRows,
-          tasks: groupRows.reduce((sum, row) => sum + row.total, 0),
-          solved: groupRows.reduce((sum, row) => sum + row.solved, 0),
-        };
-      });
-      const all = submodules.flatMap((group) => group.rows);
-      return {
-        title: subjectTitle(subjectKey, title),
-        submodules,
-        count: all.length,
-        tasks: all.reduce((sum, row) => sum + row.total, 0),
-        solved: all.reduce((sum, row) => sum + row.solved, 0),
-      };
-    });
-  }, [filtered, progress]);
-
-  /** Строка занятия: общая для всех подмодулей, чтобы прогресс считался одинаково. */
-  const renderRow = (row: { lesson: LectureRow; total: number; solved: number }, index: number) => {
-    const { lesson, total, solved } = row;
-    const done = total > 0 && solved >= total;
-    return (
-      <li key={lesson.id}>
-        <Link
-          href={`/lectures/${encodeURIComponent(lesson.id)}`}
-          className="group flex items-start gap-3 rounded-xl border-l-[3px] border-transparent px-3 py-2 transition hover:border-[var(--primary)] hover:bg-slate-50"
-        >
-          <span className="mt-0.5 w-5 shrink-0 text-xs font-bold text-[var(--muted)]">{index + 1}</span>
-          <span className="min-w-0 flex-1">
-            <span className="block break-words text-sm font-semibold leading-snug group-hover:text-[var(--primary)]">{lesson.title}</span>
-            {lesson.summary && (
-              <span className="mt-0.5 line-clamp-2 block text-xs text-[var(--muted)]">{lesson.summary}</span>
-            )}
-            <span className="mt-1 flex items-center gap-1 whitespace-nowrap text-[11px] font-semibold text-[var(--muted)]">
-              {total > 0 ? (
-                <>
-                  {done ? <CheckCircle2 className="size-3 shrink-0 text-[var(--status-ok-fg)]" /> : null}
-                  Решено задач: {solved} из {total}
-                </>
-              ) : (
-                "Конспект"
-              )}
-            </span>
-          </span>
-        </Link>
-      </li>
-    );
-  };
-
-  const subjects = useMemo(() => {
-    const s = new Set(items.map((x) => x.subject || x.subject_slug).filter(Boolean) as string[]);
-    return Array.from(s).sort(compareRu);
-  }, [items]);
+  const page = useLecturesPage();
+  const { q, setQ, subject, setSubject, loading, error, filtered, modules, subjects } = page;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -135,6 +16,7 @@ export default function LecturesPage() {
         <h1 className="page-title">Лекции</h1>
         <p className="page-subtitle">
           Занятия сгруппированы по модулям: список уроков, задачи после каждого блока и прогресс по ним.
+          {" "}Архивные конспекты по предметам — во вкладке «Портал» на странице предмета.
         </p>
       </header>
 
@@ -178,54 +60,9 @@ export default function LecturesPage() {
         />
       ) : (
         <div className="space-y-4">
-          {modules.map((mod) => {
-            const percent = mod.tasks > 0 ? Math.round((mod.solved / mod.tasks) * 100) : 0;
-            return (
-              <section key={mod.title} className="card p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--primary)]">Модуль</div>
-                    <h2 className="mt-0.5 break-words text-base font-extrabold leading-snug sm:text-lg">{mod.title}</h2>
-                    <p className="mt-1 text-xs text-[var(--muted)]">
-                      {mod.count} занятий · {mod.submodules.length}{" "}
-                      {mod.submodules.length === 1 ? "подмодуль" : "подмодуля"} ·{" "}
-                      {mod.tasks > 0 ? `Решено задач: ${mod.solved} из ${mod.tasks}` : "только конспекты"}
-                    </p>
-                  </div>
-                  {mod.tasks > 0 && (
-                    <div className="w-full sm:w-[180px]">
-                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                        <span>Прогресс</span>
-                        <span>{percent}%</span>
-                      </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${percent}%` }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {mod.submodules.map((group) => (
-                  <div
-                    key={group.title}
-                    className="mt-4 border-t border-[var(--border)] pt-3 first:border-0 first:pt-0"
-                  >
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <h3 className="text-sm font-bold">{group.title}</h3>
-                      <span className="text-[11px] font-semibold text-[var(--muted)]">
-                        {group.rows.length} занятий
-                        {group.tasks > 0 ? ` · решено ${group.solved} из ${group.tasks}` : ""}
-                      </span>
-                    </div>
-                    {group.subtitle && (
-                      <p className="mt-0.5 text-xs leading-5 text-[var(--muted)]">{group.subtitle}</p>
-                    )}
-                    <ol className="mt-2 space-y-1">{group.rows.map(renderRow)}</ol>
-                  </div>
-                ))}
-              </section>
-            );
-          })}
+          {modules.map((mod) => (
+            <LectureModuleCard key={mod.title} mod={mod} />
+          ))}
         </div>
       )}
     </div>

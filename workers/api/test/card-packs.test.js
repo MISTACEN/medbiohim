@@ -1,3 +1,4 @@
+import { readCardPacksDomain } from "./card-packs-source.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -11,7 +12,7 @@ test("card-packs mounted under gated subjects module", async () => {
 });
 
 test("every write is owner-scoped (RLS belt-and-suspenders on top of DB policies)", async () => {
-  const route = await source("../src/routes/card-packs.ts");
+  const route = await readCardPacksDomain();
   assert.match(route, /\.eq\("owner_id", c\.get\("user"\)\.id\)/);
   // Импорт чужого пака требует публикации.
   assert.match(route, /Импортировать можно только опубликованные паки/);
@@ -21,7 +22,7 @@ test("every write is owner-scoped (RLS belt-and-suspenders on top of DB policies
 });
 
 test("pack creation validates and caps payload", async () => {
-  const route = await source("../src/routes/card-packs.ts");
+  const route = await readCardPacksDomain();
   assert.match(route, /MAX_PACK_ITEMS = 100/);
   assert.match(route, /Нужен заголовок пака/);
   assert.match(route, /Нужны карточки \(front\/back\)/);
@@ -29,7 +30,7 @@ test("pack creation validates and caps payload", async () => {
 });
 
 test("AI generation quotes lectures verbatim and returns a draft only", async () => {
-  const route = await source("../src/routes/card-packs.ts");
+  const route = await readCardPacksDomain();
   assert.match(route, /ДОСЛОВНО из приведённых ниже фрагментов лекций/);
   assert.match(route, /Ничего не выдумывай/);
   assert.match(route, /buildLectureContext\(db, subjectSlug, topic\)/);
@@ -39,6 +40,6 @@ test("AI generation quotes lectures verbatim and returns a draft only", async ()
 });
 
 test("chunked item insert guards against pooler resets", async () => {
-  const route = await source("../src/routes/card-packs.ts");
+  const route = await readCardPacksDomain();
   assert.match(route, /const CHUNK = 25/);
 });

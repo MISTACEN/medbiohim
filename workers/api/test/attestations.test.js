@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readPageWithDomain } from "./page-source.js";
 
 const modelSource = await readFile(new URL("../src/lib/attestation.ts", import.meta.url), "utf8");
 const publicRoute = await readFile(new URL("../src/routes/attestations.ts", import.meta.url), "utf8");
@@ -18,9 +19,9 @@ const apiClient = await (async () => {
   return parts.join("\n");
 })();
 
-const subjectPage = await readFile(new URL("../../../src/app/subjects/[id]/page.tsx", import.meta.url), "utf8");
+const subjectPage = readPageWithDomain("app/subjects/[id]/page.tsx");
 const runnerPage = await readFile(new URL("../../../src/app/subjects/[id]/attestations/[slug]/page.tsx", import.meta.url), "utf8");
-const adminPage = await readFile(new URL("../../../src/app/admin/attestations/page.tsx", import.meta.url), "utf8");
+const adminPage = readPageWithDomain("app/admin/attestations/page.tsx");
 
 test("attestation model supports the five attestation types and three item kinds", () => {
   for (const type of ["colloquium", "exam", "credit", "test", "control"]) {

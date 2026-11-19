@@ -11,6 +11,8 @@ import type {
   PhysiologyTestGroup,
 } from "./physiologyContent";
 
+import { fetchContentJson as getJson } from "./content-json";
+
 export type HistologyQuestion = PhysiologyQuestion;
 export type HistologyTestGroup = PhysiologyTestGroup;
 export type HistologyBank = PhysiologyBank;
@@ -19,14 +21,6 @@ export type HistologyManualSummary = PhysiologyManualSummary;
 export type HistologyIndex = PhysiologyIndex;
 
 const cache = new Map<string, HistologyManual>();
-
-async function getJson<T>(url: string): Promise<T> {
-  // no-cache: контент обновляется вместе с деплоем, но браузер не должен
-  // годами держать старую копию JSON. Ревалидация дешёвая (304).
-  const response = await fetch(url, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`Не удалось загрузить материал (${response.status})`);
-  return (await response.json()) as T;
-}
 
 export async function loadHistologyIndex(): Promise<HistologyIndex> {
   return getJson<HistologyIndex>("/content/histology/index.json");

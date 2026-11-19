@@ -1,6 +1,10 @@
+import { readCardPacksDomain } from "./card-packs-source.js";
+import { readLecturesDomain } from "./lectures-source.js";
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readAiDomain } from "./ai-source.js";
 
 const source = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -41,11 +45,11 @@ test("миграция: сводка по дням и провайдерам д�
 
 test("каждая точка вызова ИИ пишет строку в журнал", async () => {
   const files = {
-    "src/routes/ai.ts": await source("../src/routes/ai.ts"),
-    "src/routes/card-packs.ts": await source("../src/routes/card-packs.ts"),
-    "src/routes/lectures.ts": await source("../src/routes/lectures.ts"),
+    "src/routes/ai.ts": await readAiDomain(),
+    "src/routes/card-packs.ts": await readCardPacksDomain(),
+    "src/routes/lectures.ts": await readLecturesDomain(),
     "src/lib/telegram-classify.ts": await source("../src/lib/telegram-classify.ts"),
-    "src/routes/admin.ts": await source("../src/routes/admin.ts"),
+    "src/routes/admin.ts": await adminRoutesSource(),
   };
   for (const [file, text] of Object.entries(files)) {
     assert.match(text, /ai-usage/, `${file} не импортирует журнал`);
@@ -59,7 +63,7 @@ test("каждая точка вызова ИИ пишет строку в жу�
 });
 
 test("ответ тьютора журналируется и в /ai/chat, и в истории чата", async () => {
-  const ai = await source("../src/routes/ai.ts");
+  const ai = await readAiDomain();
   // 4 точки: два маршрута тьютора + оценка устного ответа + конспект из файла.
   assert.equal((ai.match(/trackedGeneration\(\s*c\.env/g) || []).length, 4, "все ИИ-маршруты журналируются");
   assert.match(ai, /route: "POST \/ai\/chat"/);
@@ -72,17 +76,17 @@ test("ответ тьютора журналируется и в /ai/chat, и в
 });
 
 test("дорогие генерации ограничены суточной квотой", async () => {
-  const ai = await source("../src/routes/ai.ts");
+  const ai = await readAiDomain();
   assert.equal(
     (ai.match(/aiDailyQuota\(c\.env, "tutor_chat", user\.id\)/g) || []).length,
     2,
     "квота проверяется в обоих маршрутах тьютора",
   );
-  assert.match(await source("../src/routes/card-packs.ts"), /aiDailyQuota\(c\.env, "card_pack", userId\)/);
-  assert.match(await source("../src/routes/lectures.ts"), /aiDailyQuota\(c\.env, "lecture_cloze", user\.id\)/);
-  assert.match(await source("../src/routes/admin.ts"), /aiDailyQuota\(c\.env, "lecture_generate", user\.id\)/);
+  assert.match(await readCardPacksDomain(), /aiDailyQuota\(c\.env, "card_pack", userId\)/);
+  assert.match(await readLecturesDomain(), /aiDailyQuota\(c\.env, "lecture_cloze", user\.id\)/);
+  assert.match(await adminRoutesSource(), /aiDailyQuota\(c\.env, "lecture_generate", user\.id\)/);
   // Отказ возвращается как 429 и попадает в журнал.
-  for (const text of [ai, await source("../src/routes/card-packs.ts")]) {
+  for (const text of [ai, await readCardPacksDomain()]) {
     assert.match(text, /logAiQuotaRejection\(/);
     assert.match(text, /AI_DAILY_LIMIT/);
   }

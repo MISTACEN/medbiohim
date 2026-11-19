@@ -1,6 +1,9 @@
+import { readLecturesDomain } from "./lectures-source.js";
 import test from "node:test";
+import { readPageWithDomain } from "./page-source.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readDomain } from "./domain-source.js";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -49,14 +52,14 @@ test("cloze cache key carries a version", async () => {
   assert.match(clozeText, /export const CLOZE_CACHE_VERSION = "v1";/);
   assert.match(clozeText, /export const CLOZE_CACHE_PREFIX = `cloze:\$\{CLOZE_CACHE_VERSION\}:`;/);
   // Чтения и запись кэша идут через clozeCacheKey: префикс с версией + хэш текста лекции.
-  const lectures = await source("../src/routes/lectures.ts");
+  const lectures = await readLecturesDomain();
   assert.match(lectures, /function clozeCacheKey\(id: string, hash: string\)/);
   assert.match(lectures, /clozeCacheKey\(id, hash\)/);
   assert.match(lectures, /const cacheKey = clozeCacheKey\(id, await clozeBodyHash\(lecture\.body_markdown\)\);/);
 });
 
 test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
-  const lectures = await source("../src/routes/lectures.ts");
+  const lectures = await readLecturesDomain();
   // Регрессия живого E2E: UUID-проверка отбрасывала все 85 лекций и давала 404.
   assert.match(lectures, /const LECTURE_ID = \/\^\[A-Za-z0-9\]\[A-Za-z0-9_-\]\{0,63\}\$\//);
   assert.match(lectures, /function loadLectureForCloze[\s\S]{0,160}if \(!LECTURE_ID\.test\(id\)\) return null;/);
@@ -64,10 +67,18 @@ test("cloze accepts text lecture ids (lec-…), not only UUIDs", async () => {
 });
 
 test("deterministic bold-term cloze runs before any AI call", async () => {
-  const lectures = await source("../src/routes/lectures.ts");
+  const lectures = await readLecturesDomain();
   const clozeText = await source("../src/lib/cloze-text.ts");
   assert.match(clozeText, /export function extractBoldClozeItems/);
-  assert.match(lectures, /import \{ CLOZE_CACHE_PREFIX, clozeBodyHash, extractBoldClozeItems, validateClozeItems \} from "\.\.\/lib\/cloze-text"/);
+  // Домен разнесён по файлам: каждый хелпер обязан приходить из lib/cloze-text
+  // (а не быть переписанным локально), но одним import-выражением они уже не связаны.
+  for (const helper of ["CLOZE_CACHE_PREFIX", "clozeBodyHash", "extractBoldClozeItems", "validateClozeItems"]) {
+    assert.match(
+      lectures,
+      new RegExp('import \\{[^}]*\\b' + helper + '\\b[^}]*\\} from "\\.\\.\\/(?:\\.\\.\\/)?lib\\/cloze-text"'),
+      `${helper} импортируется из lib/cloze-text`,
+    );
+  }
   assert.match(lectures, /let items = validateClozeItems\(extractBoldClozeItems\(text\)/);
   assert.match(lectures, /let provider = "markdown";/);
   // ИИ — только если разметки не хватило на четыре пункта.
@@ -75,7 +86,7 @@ test("deterministic bold-term cloze runs before any AI call", async () => {
 });
 
 test("cloze falls back to Workers AI when external providers fail", async () => {
-  const lectures = await source("../src/routes/lectures.ts");
+  const lectures = await readLecturesDomain();
   // Живой прод: все внешние провайдеры отказали, тьютор выжил на биндинге AI.
   assert.match(lectures, /async function generateClozeDraft/);
   assert.match(lectures, /if \(!workersAiConfigured\(env\)\) throw error;/);
@@ -84,7 +95,7 @@ test("cloze falls back to Workers AI when external providers fail", async () => 
 });
 
 test("cloze generation is cached, rate-limited and honest about failure", async () => {
-  const lectures = await source("../src/routes/lectures.ts");
+  const lectures = await readLecturesDomain();
   assert.match(lectures, /lectures\.get\("\/:id\/cloze", requireAuth/);
   assert.match(lectures, /lectures\.post\("\/:id\/cloze", requireAuth/);
   assert.match(lectures, /rateLimit\(c\.env, `lecture:cloze:\$\{user\.id\}`, 12, 600\)/);
@@ -100,7 +111,7 @@ test("cloze generation is cached, rate-limited and honest about failure", async 
 });
 
 test("SRS compression only moves cards earlier and stays owner-scoped", async () => {
-  const route = await source("../src/routes/study-prep.ts");
+  const route = await readDomain("src/routes/study-prep.ts");
   assert.match(route, /studyPrep\.post\("\/plan\/:id\/compress", requireAuth/);
   assert.match(route, /\.gt\("due_at", targetIso\)/);
   assert.match(route, /\.eq\("user_id", user\.id\)/);
@@ -122,7 +133,7 @@ test("frontend wires the cloze page, endpoints and compression button", async ()
   // Пустой ответ не может считаться верным.
   assert.match(cloze, /if \(!answer\) return false;/);
 
-  const page = await source("../../../src/app/lectures/[id]/learn/page.tsx");
+  const page = await readPageWithDomain("app/lectures/[id]/learn/page.tsx");
   assert.match(page, /isClozeAnswerCorrect\(/);
   assert.match(page, /srsAddCard\(/);
   assert.match(page, /Все ошибки/);
@@ -147,7 +158,7 @@ test("bold-term context is cut at word boundaries", async () => {
 
 test("cache key is bound to the lecture body hash", async () => {
   const { clozeBodyHash } = await import("../src/lib/cloze-text.ts");
-  const route = await source("../src/routes/lectures.ts");
+  const route = await readLecturesDomain();
   // Ключ строится функцией с хэшем, а не голым id.
   assert.match(route, /clozeCacheKey\(id, await clozeBodyHash/);
   assert.match(route, /function clozeCacheKey\(id: string, hash: string\)/);

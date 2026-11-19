@@ -129,16 +129,14 @@ export function legacyPortalConfig(slug?: string | null): LegacyPortalConfig | n
   return (slug && LEGACY_PORTALS[slug]) || null;
 }
 
+import { fetchContentJson } from "./content-json";
+
 const cache = new Map<string, unknown>();
 
 async function getJson<T>(url: string): Promise<T> {
   const cached = cache.get(url);
   if (cached) return cached as T;
-  // no-cache, а не force-cache: после деплоя контента браузер обязан
-  // ревалидировать файл по ETag, иначе пользователи видят старые тесты и лекции.
-  const response = await fetch(url, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`Не удалось загрузить материал (${response.status})`);
-  const data = (await response.json()) as T;
+  const data = await fetchContentJson<T>(url);
   cache.set(url, data);
   return data;
 }

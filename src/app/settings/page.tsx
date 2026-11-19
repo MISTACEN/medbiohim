@@ -1,425 +1,26 @@
 "use client";
 
-import { FormEvent, Suspense, useCallback, useEffect, useState, type ChangeEvent } from "react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-
+import { Suspense } from "react";
 import clsx from "clsx";
-import {
-  Check, Link2, Unlink, Mail, KeyRound, Shield, RefreshCw, Bell, Globe2, Sparkles, Send,
-  MonitorSmartphone, LogOut, Database, ArrowRight, Rows3 } from "lucide-react";
-import { THEMES, useTheme, type AppThemeId } from "@/components/theme/ThemeProvider";
+import { RefreshCw } from "lucide-react";
+
+import { AccountOverview } from "@/components/settings/AccountOverview";
+import { ActiveDevices } from "@/components/settings/ActiveDevices";
+import { AiExplainCard } from "@/components/settings/AiExplainCard";
 import { AiModelSettings } from "@/components/settings/AiModelSettings";
-import { describeApiError } from "@/lib/errors";
-import { deleteAvatar, forgetAvatar, getAvatarUrl, uploadAvatar } from "@/lib/api";
-import { describeLastSeen, describeUserAgent } from "@/lib/device";
-import { useAuth } from "@/components/auth/AuthProvider";
-import { useApiRequest } from "@/hooks/useApiRequest";
-import { useConfirm } from "@/components/ui/ConfirmDialog";
-import {
-  changeAccountPassword,
-  getAccountSettings,
-  resendEmailChange,
-  saveAccountPreferences,
-  startLinkIdentity,
-  unlinkIdentity,
-  updateAccountProfile,
-  startTelegramLink, getTelegramLinkStatus, unlinkTelegramAccount,
-  listActiveSessions, revokeActiveSession, revokeOtherSessions,
-  type TelegramLinkStatus,
-  type AccountSettings,
-  type LinkedIdentity,
-  type ActiveSession,
-} from "@/lib/settings-api";
-
-type TrainerLayout = "sidebar" | "list" | "top";
-
-/** Остаток ожидания привязки в формате мм:сс. */
-function formatWait(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
-}
+import { DataAccountCard } from "@/components/settings/DataAccountCard";
+import { DensityCard } from "@/components/settings/DensityCard";
+import { LoginMethodsCard } from "@/components/settings/LoginMethodsCard";
+import { NotificationsCard } from "@/components/settings/NotificationsCard";
+import { PasswordCard } from "@/components/settings/PasswordCard";
+import { ProfileCard } from "@/components/settings/ProfileCard";
+import { TelegramCard } from "@/components/settings/TelegramCard";
+import { TestLayoutCard } from "@/components/settings/TestLayoutCard";
+import { ThemesSection } from "@/components/settings/ThemesSection";
+import { useSettingsData } from "@/components/settings/useSettingsData";
 
 function SettingsPageInner() {
-  const searchParams = useSearchParams();
-  const { theme, setTheme } = useTheme();
-  const { user, refresh } = useAuth();
-  const { confirm, dialog } = useConfirm();
-  const [recoveryMode, setRecoveryMode] = useState(false);
-
-  const [account, setAccount] = useState<AccountSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [density, setDensityState] = useState<"comfortable" | "compact">("comfortable");
-  useEffect(() => {
-    const saved = localStorage.getItem("mb_density");
-    if (saved === "compact" || saved === "comfortable") setDensityState(saved);
-  }, []);
-  function applyDensity(value: "comfortable" | "compact") {
-    setDensityState(value);
-    localStorage.setItem("mb_density", value);
-    document.documentElement.setAttribute("data-density", value);
-  }
-  const [busy, setBusy] = useState<string | null>(null);
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [emailPending, setEmailPending] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [password, setPassword] = useState("");
-  const [password2, setPassword2] = useState("");
-  const [trainerLayout, setTrainerLayout] = useState<TrainerLayout>("top");
-  // Провайдер для «Объяснить · ИИ» в тестах (хранится в preferences).
-  const [aiExplainProvider, setAiExplainProvider] = useState("auto");
-  const [telegramStatus, setTelegramStatus] = useState<TelegramLinkStatus | null>(null);
-  // Отдельно от «не привязан»: недоступный статус нельзя выдавать за отсутствие привязки.
-  const [telegramStatusError, setTelegramStatusError] = useState<string | null>(null);
-  // Ожидание подтверждения в боте: пока ждём, статус опрашивается сам.
-  const [telegramWait, setTelegramWait] = useState<{ url: string; expiresAt: number } | null>(null);
-  const [clock, setClock] = useState(0);
-  const [avatarBusy, setAvatarBusy] = useState(false);
-  // SA4: активные устройства. null — ещё не загружали, [] — сессий нет.
-  const [sessions, setSessions] = useState<ActiveSession[] | null>(null);
-  const [sessionsError, setSessionsError] = useState<string | null>(null);
-  const [sessionsBusy, setSessionsBusy] = useState<string | null>(null);
-
-  const referenceThemes = THEMES.filter((t) => (t as { family?: string }).family === "reference");
-  const otherThemes = THEMES.filter((t) => (t as { family?: string }).family !== "reference");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErr(null);
-    const r = await getAccountSettings();
-    if (r.ok) {
-      setAccount(r.data);
-      const u = r.data.user || {};
-      setFullName(String(u.full_name || user?.name || ""));
-      setEmail(String(u.email || user?.email || ""));
-      setEmailPending(String(u.email_change_pending || ""));
-      const savedLayout = String(r.data.preferences?.trainer_layout || "top");
-      if (savedLayout === "sidebar" || savedLayout === "list" || savedLayout === "top") setTrainerLayout(savedLayout);
-      const savedAi = String(r.data.preferences?.ai_explain_provider || "auto");
-      if (["auto", "gigachat", "groq", "mistral", "openai", "openrouter", "custom"].includes(savedAi)) setAiExplainProvider(savedAi);
-    } else {
-      setErr(describeApiError(r.error));
-      setFullName(user?.name || "");
-      setEmail(user?.email || "");
-    }
-    const tg = await getTelegramLinkStatus();
-    if (tg.ok) {
-      setTelegramStatus(tg.data);
-      setTelegramStatusError(null);
-    } else {
-      setTelegramStatusError(describeApiError(tg.error));
-    }
-    setLoading(false);
-    return r;
-  }, [user?.name, user?.email]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  // Превью аватара: приоритет у загруженного файла (приватный прокси), иначе
-  // внешний https-адрес из профиля (например, Google). Ошибку сети не показываем
-  // баннером — просто остаются инициалы.
-  const { data: avatarPreview } = useApiRequest<string | null>(async () => {
-    const userId = String(account?.user?.id || user?.id || "");
-    const external = String(account?.user?.avatar_url || "");
-    const uploaded = Boolean(account?.user?.has_uploaded_avatar);
-    if (!uploaded) return /^https:\/\//i.test(external) ? external : null;
-    if (!userId) return null;
-    return getAvatarUrl(userId);
-  }, [account?.user?.id, account?.user?.avatar_url, account?.user?.has_uploaded_avatar, user?.id]);
-
-  // Сервер сам сообщает, доступна ли загрузка: без хранилища кнопка вела бы в
-  // честный 502. Старый ответ без поля считаем доступным (fail-open на UI).
-  const avatarUploadEnabled = account?.user?.avatar_upload_enabled !== false;
-
-  async function onAvatarPick(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
-      setErr("Аватар может быть только JPEG, PNG или WebP");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setErr("Размер аватара — не больше 2 МБ");
-      return;
-    }
-    setAvatarBusy(true); setErr(null); setMsg(null);
-    const r = await uploadAvatar(file);
-    if (!r.ok) {
-      setAvatarBusy(false);
-      return setErr(describeApiError(r.error));
-    }
-    // Файл загружен сервером; перечитываем аккаунт, чтобы взять новый ключ,
-    // а не показывать optimistic-состояние.
-    forgetAvatar();
-    await load();
-    setAvatarBusy(false);
-    setMsg("Аватар обновлён");
-    if (refresh) void refresh();
-  }
-
-  async function onAvatarRemove() {
-    setAvatarBusy(true); setErr(null); setMsg(null);
-    const r = await deleteAvatar();
-    if (!r.ok) {
-      setAvatarBusy(false);
-      // 404 значит «уже нет загруженного» — это не ошибка для пользователя.
-      if (String((r.error as { code?: string }).code || "") === "NOT_FOUND") {
-        await load();
-        return setMsg("Загруженного аватара нет");
-      }
-      return setErr(describeApiError(r.error));
-    }
-    forgetAvatar();
-    await load();
-    setAvatarBusy(false);
-    setMsg("Аватар удалён");
-    if (refresh) void refresh();
-  }
-
-  // SA4: список устройств. Ошибка не прячется за пустым списком — иначе
-  // пользователь решит, что сессий нет, хотя сервер их не отдал.
-  const loadSessions = useCallback(async () => {
-    setSessionsError(null);
-    const r = await listActiveSessions();
-    if (r.ok) {
-      setSessions(r.data.sessions);
-    } else {
-      setSessions([]);
-      setSessionsError(describeApiError(r.error));
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadSessions();
-  }, [loadSessions]);
-
-  async function onRevokeSession(sessionId: string) {
-    setSessionsBusy(sessionId); setErr(null); setMsg(null);
-    const r = await revokeActiveSession(sessionId);
-    setSessionsBusy(null);
-    if (!r.ok) {
-      const code = String((r.error as { code?: string }).code || "");
-      if (code === "NOT_FOUND") {
-        // Сессия уже истекла сама — это не ошибка, список просто устарел.
-        await loadSessions();
-        return setMsg("Устройство уже завершено");
-      }
-      return setErr(describeApiError(r.error));
-    }
-    await loadSessions();
-    setMsg("Устройство завершено: для входа на нём потребуется пароль");
-  }
-
-  async function onRevokeOtherSessions() {
-    setSessionsBusy("others"); setErr(null); setMsg(null);
-    const r = await revokeOtherSessions();
-    setSessionsBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
-    await loadSessions();
-    setMsg(r.data.revoked > 0
-      ? `Завершено устройств: ${r.data.revoked}. Текущее устройство осталось в аккаунте.`
-      : "Других активных устройств не было");
-  }
-
-  const recoveryFromQuery = searchParams.get("recovery") === "1";
-  const linkedFromQuery = searchParams.get("linked") === "1" || searchParams.get("link") === "ok";
-  const oauthError = searchParams.get("error_description") || searchParams.get("error") || "";
-
-  useEffect(() => {
-    if (recoveryFromQuery) setRecoveryMode(true);
-    if (!linkedFromQuery && !oauthError) return;
-    window.history.replaceState({}, "", "/settings");
-    // Возврат с OAuth сам по себе не доказывает, что привязка удалась:
-    // пользователь мог отменить вход. Проверяем, что Google реально в identities,
-    // а причину отказа показываем текстом, а не «попробуйте ещё раз».
-    setMsg(linkedFromQuery ? "Проверяем привязку Google…" : null);
-    void load().then((r) => {
-      const linked = r.ok && (r.data.identities || []).some((item) => item.provider === "google");
-      if (linked) {
-        setMsg("Google привязан. Данные остаются на том же аккаунте.");
-        return;
-      }
-      setMsg(null);
-      setErr(oauthError
-        ? `Привязка Google не завершена: ${oauthError}`
-        : "Google не привязан: привязка не завершена. Попробуйте ещё раз.");
-    });
-  }, [recoveryFromQuery, linkedFromQuery, oauthError, load]);
-
-  // Автоподтверждение Telegram: пока ждём, проверяем статус раз в 3 секунды.
-  // Таймер честно истекает: просроченная ссылка не «висит» вечно.
-  useEffect(() => {
-    if (!telegramWait || telegramStatus?.linked) return;
-    // Это остановка интервала опроса, а не ручной cancelled-флаг загрузки данных
-    // (D9 требует useApiRequest для запросов страницы).
-    let stopped = false;
-    const tick = async () => {
-      const current = Date.now();
-      setClock(current);
-      if (current >= telegramWait.expiresAt) {
-        setTelegramWait(null);
-        setErr("Ссылка на привязку истекла. Создайте новую — старая больше не работает.");
-        return;
-      }
-      const status = await getTelegramLinkStatus();
-      if (stopped) return;
-      if (status.ok) {
-        setTelegramStatusError(null);
-        if (status.data.linked) {
-          setTelegramStatus(status.data);
-          setTelegramWait(null);
-          setMsg("Telegram привязан. Теперь бот узнаёт ваш аккаунт.");
-        }
-      }
-    };
-    void tick();
-    const timer = setInterval(() => { void tick(); }, 3000);
-    return () => { stopped = true; clearInterval(timer); };
-  }, [telegramWait, telegramStatus?.linked]);
-
-  async function onSaveProfile(e: FormEvent) {
-    e.preventDefault();
-    setBusy("profile"); setMsg(null); setErr(null);
-    const r = await updateAccountProfile({ full_name: fullName.trim() || undefined, email: email.trim() || undefined });
-    setBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
-    setAccount(r.data);
-    const pending = String(r.data?.user?.email_change_pending || "");
-    setEmailPending(pending);
-    // Supabase меняет адрес только после перехода по ссылке из письма:
-    // рапортовать «сохранено» до подтверждения — врать пользователю.
-    setMsg(
-      pending
-        ? `Письмо с подтверждением отправлено на ${pending}. Адрес изменится после перехода по ссылке из письма.`
-        : "Профиль сохранён"
-    );
-    if (refresh) void refresh();
-  }
-
-  async function onResendEmailChange() {
-    setBusy("email-resend"); setErr(null);
-    const r = await resendEmailChange();
-    setBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
-    setMsg(`Письмо отправлено повторно на ${r.data.pending_email || emailPending}`);
-  }
-
-  async function onChangePassword(e: FormEvent) {
-    e.preventDefault();
-    if (!currentPassword) return setErr("Укажите текущий пароль");
-    if (password.length < 8) return setErr("Пароль не короче 8 символов");
-    if (password !== password2) return setErr("Пароли не совпадают");
-    if (password === currentPassword) return setErr("Новый пароль совпадает с текущим");
-    setBusy("password"); setErr(null); setMsg(null);
-    const r = await changeAccountPassword(password, currentPassword);
-    setBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
-    setCurrentPassword(""); setPassword(""); setPassword2("");
-    setMsg(
-      r.data.sessions_revoked
-        ? "Пароль обновлён. Остальные устройства вышли из аккаунта — на них нужно войти заново."
-        : "Пароль обновлён. Если вы входили с других устройств, смените пароль ещё раз после выхода на них."
-    );
-  }
-
-  async function onLink(provider: string) {
-    setBusy("link-" + provider); setErr(null);
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://medbiohim.vercel.app";
-    const r = await startLinkIdentity(provider, `${origin}/auth/callback?linked=google`);
-    setBusy(null);
-    if (!r.ok) {
-      // Гонка: привязку могли завершить в другой вкладке. Тогда это не ошибка.
-      if (r.error.code === "IDENTITY_ALREADY_LINKED") {
-        await load();
-        setMsg("Google уже привязан к этому аккаунту");
-        return;
-      }
-      return setErr(describeApiError(r.error));
-    }
-    if (r.data.url) window.location.href = r.data.url;
-    else setErr("Нет URL для привязки");
-  }
-
-  async function onStartTelegramLink() {
-    setBusy("telegram-link"); setErr(null); setMsg(null);
-    const r = await startTelegramLink();
-    setBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
-    const expiresAt = Date.now() + Math.max(60, r.data.expires_in_seconds || 600) * 1000;
-    setTelegramWait({ url: r.data.url, expiresAt });
-    setClock(Date.now());
-    // Не открываем t.me сами: после await браузер блокирует popup, а запасной
-    // переход увёл бы со страницы и сломал автоподтверждение. Ссылка — кнопкой
-    // в карточке ожидания, это действие пользователя и открывается всегда.
-    setMsg("Ссылка готова. Откройте бота кнопкой ниже — статус обновится сам.");
-  }
-
-  async function onUnlinkTelegram() {
-    if (!(await confirm({
-      title: "Отвязать Telegram от этого аккаунта MEDBIOHIM?",
-      confirmLabel: "Отвязать",
-      danger: true,
-    }))) return;
-    setBusy("telegram-unlink"); setErr(null);
-    const r = await unlinkTelegramAccount();
-    setBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
-    setTelegramWait(null);
-    const status = await getTelegramLinkStatus();
-    if (status.ok) { setTelegramStatus(status.data); setTelegramStatusError(null); }
-    setMsg("Telegram отвязан");
-  }
-
-  async function onUnlink(id: LinkedIdentity) {
-    if (!id.can_unlink) return setErr("Нельзя отвязать единственный способ входа");
-    if (!(await confirm({
-      title: `Отвязать ${id.provider_label}?`,
-      confirmLabel: "Отвязать",
-      danger: true,
-    }))) return;
-    setBusy("unlink-" + id.id);
-    const r = await unlinkIdentity(id.id);
-    setBusy(null);
-    if (!r.ok) return setErr(describeApiError(r.error));
-    setAccount(r.data);
-    setMsg(`${id.provider_label} отвязан`);
-  }
-
-  const ALLOWED_PROVIDERS = new Set(["email", "google", "custom:telegram", "telegram"]);
-  const identities = (account?.identities || []).filter((item) => ALLOWED_PROVIDERS.has(String(item.provider)));
-  const linkedProviders = new Set(identities.map((i) => i.provider));
-  const providerCatalog = (account?.providers_available?.length
-    ? account.providers_available
-    : [
-        { id: "email", label: "Почта", region: "global", enabled: true, linkable: false },
-        { id: "google", label: "Google", region: "global", enabled: true, linkable: true },
-        { id: "custom:telegram", label: "Telegram", region: "global", enabled: true, linkable: false },
-      ]
-  ).filter((item) => ALLOWED_PROVIDERS.has(item.id));
-  const googleProvider = providerCatalog.find((item) => item.id === "google");
-  const emailIdentity = identities.find((item) => item.provider === "email");
-
-  const renderTheme = (t: (typeof THEMES)[number]) => {
-    const active = theme === t.id;
-    return (
-      <button key={t.id} type="button" onClick={() => { setTheme(t.id as AppThemeId); void saveAccountPreferences({ theme: t.id }); }}
-        className={clsx("group relative overflow-hidden rounded-3xl border p-4 text-left transition", active ? "ring-2 ring-offset-2" : "hover:-translate-y-0.5")}
-        style={{ borderColor: active ? "var(--primary)" : "var(--border)", background: "color-mix(in srgb, var(--card) 88%, var(--background))", color: "var(--text)", ["--tw-ring-color" as string]: "var(--primary)" }}>
-        {active && (
-          <span className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full text-white" style={{ background: "linear-gradient(135deg,var(--primary),var(--accent))" }}>
-            <Check className="h-4 w-4" />
-          </span>
-        )}
-        <div className="relative mb-4 h-28 overflow-hidden rounded-2xl border" style={{ background: (t as { preview?: string }).preview || "linear-gradient(135deg,#2563eb,#60a5fa)", borderColor: "color-mix(in srgb,var(--primary) 16%,transparent)" }} />
-        <div className="font-bold">{t.label}</div>
-        <div className="mt-1 text-xs leading-5 opacity-70">{t.description}</div>
-      </button>
-    );
-  };
+  const settings = useSettingsData();
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -428,489 +29,121 @@ function SettingsPageInner() {
           <h1 className="page-title">Настройки</h1>
           <p className="page-subtitle">Один аккаунт · почта / Google / Telegram · темы и уведомления</p>
         </div>
-        <button type="button" onClick={() => void load()} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
-          <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} /> Обновить
+        <button type="button" onClick={() => void settings.load()} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
+          <RefreshCw className={clsx("h-4 w-4", settings.loading && "animate-spin")} /> Обновить
         </button>
       </div>
 
-      {recoveryMode && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"><b>Восстановление пароля.</b> Сессия подтверждена. Задайте новый пароль ниже.</div>}
+      {settings.recoveryMode && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"><b>Восстановление пароля.</b> Сессия подтверждена. Задайте новый пароль ниже.</div>}
 
-      {(msg || err) && (
-        <div className={clsx("rounded-xl border px-4 py-3 text-sm", err ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]" : "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]")}>
-          {err || msg}
+      {(settings.msg || settings.err) && (
+        <div className={clsx("rounded-xl border px-4 py-3 text-sm", settings.err ? "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]" : "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]")}>
+          {settings.err || settings.msg}
         </div>
       )}
 
-      <section className="card space-y-3 border-l-4 border-l-[var(--primary)] p-5">
-        <div className="flex items-center gap-2 font-semibold"><Shield className="h-5 w-5 text-[var(--primary)]" /> Единый аккаунт</div>
-        <p className="text-sm text-[var(--muted)]">{String(account?.sync?.note || "Прогресс, SRS и задания привязаны к одному ID. Привязка Google или Telegram не создаёт второй профиль.")}</p>
-        {account?.sync?.account_id ? <div className="font-mono text-xs text-[var(--muted)]">ID: {String(account.sync.account_id)}</div> : null}
-        <div className="grid gap-2 sm:grid-cols-3">
-          {[
-            {
-              key: "email",
-              title: "Почта",
-              icon: <Mail className="h-4 w-4" />,
-              active: Boolean(emailIdentity || account?.user?.email || user?.email),
-              detail: String(emailIdentity?.email || account?.user?.email || user?.email || "не указана"),
-            },
-            {
-              key: "google",
-              title: "Google",
-              icon: <span className="text-sm font-black text-[#4285F4]">G</span>,
-              active: linkedProviders.has("google"),
-              detail: linkedProviders.has("google") ? "привязан" : "не привязан",
-            },
-            {
-              key: "telegram",
-              title: "Telegram",
-              icon: <Send className="h-4 w-4" />,
-              active: Boolean(telegramStatus?.linked),
-              detail: telegramStatus?.linked
-                ? (telegramStatus.account?.username ? "@" + telegramStatus.account.username : "привязан")
-                : "не привязан",
-            },
-          ].map((item) => (
-            <div key={item.key} className={clsx("rounded-xl border px-3 py-2.5", item.active ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)]" : "border-[var(--border)]")}>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                {item.icon}
-                {item.title}
-                {item.active && <Check className="ml-auto h-3.5 w-3.5 text-[var(--status-ok-fg)]" />}
-              </div>
-              <div className="mt-1 truncate text-xs text-[var(--muted)]">{item.detail}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <AccountOverview
+        account={settings.account}
+        emailIdentity={settings.emailIdentity}
+        linkedProviders={settings.linkedProviders}
+        telegramStatus={settings.telegramStatus}
+        fallbackEmail={settings.fallbackEmail}
+      />
 
-      <section className="card space-y-4 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Mail className="h-5 w-5" /> Профиль</h2>
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-bold text-white"
-            style={{ background: "linear-gradient(135deg,var(--primary),var(--accent))" }}
-            aria-hidden={avatarPreview ? undefined : true}
-          >
-            {avatarPreview
-              ? /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={avatarPreview} alt="Аватар" className="h-full w-full object-cover" />
-              : String(String(fullName || user?.name || "?").trim().charAt(0) || "?").toUpperCase()}
-          </div>
-          <div className="min-w-0 space-y-2">
-            <div className="text-xs text-[var(--muted)]">JPEG, PNG или WebP, до 2 МБ.</div>
-            <div className="flex flex-wrap items-center gap-2">
-              {avatarUploadEnabled ? (
-                <label className={clsx(
-                  "cursor-pointer rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold",
-                  avatarBusy && "pointer-events-none opacity-60"
-                )}>
-                  {avatarBusy ? "Загрузка…" : avatarPreview ? "Заменить фото" : "Загрузить фото"}
-                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void onAvatarPick(e)} disabled={avatarBusy} />
-                </label>
-              ) : null}
-              {account?.user?.has_uploaded_avatar && avatarUploadEnabled ? (
-                <button
-                  type="button"
-                  onClick={() => void onAvatarRemove()}
-                  disabled={avatarBusy}
-                  className="rounded-lg border border-[var(--status-critical-border)] px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-60"
-                >
-                  Удалить фото
-                </button>
-              ) : null}
-            </div>
-            {account?.user?.avatar_url && !account?.user?.has_uploaded_avatar ? (
-              <div className="text-xs text-[var(--muted)]">
-                Сейчас показывается внешний аватар из{" "}
-                {String((account.user as { provider_hint?: string }).provider_hint || "подключённого сервиса")}.
-                {avatarUploadEnabled ? " Загрузка своего фото заменит его." : ""}
-              </div>
-            ) : null}
-            {!avatarUploadEnabled ? (
-              <div className="text-xs text-[var(--muted)]">
-                Загрузка своего фото временно недоступна: файловое хранилище не настроено на сервере.
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <form onSubmit={onSaveProfile} className="space-y-3">
-          <label className="block text-sm"><span className="mb-1 block text-xs text-[var(--muted)]">Имя</span>
-            <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" /></label>
-          <div className="block text-sm">
-            <label htmlFor="settings-email" className="mb-1 block text-xs text-[var(--muted)]">Email</label>
-            <input id="settings-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
-            {emailPending ? (
-              <div className="mt-2 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 text-xs text-[var(--status-warn-fg)]">
-                <div className="font-semibold">Адрес {emailPending} ждёт подтверждения</div>
-                <p className="mt-1 leading-relaxed">
-                  Пока вы не перейдёте по ссылке из письма, вход остаётся на{" "}
-                  {String(account?.user?.email || user?.email || "текущий адрес")}. Если письма нет — проверьте «Спам».
-                </p>
-                <button
-                  type="button"
-                  disabled={busy === "email-resend"}
-                  onClick={() => void onResendEmailChange()}
-                  className="mt-2 rounded-lg border border-[var(--status-warn-border)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
-                >
-                  {busy === "email-resend" ? "Отправляем…" : "Отправить письмо снова"}
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <button type="submit" disabled={busy === "profile"} className="btn-primary disabled:opacity-60">{busy === "profile" ? "…" : "Сохранить профиль"}</button>
-        </form>
-      </section>
+      <ProfileCard
+        account={settings.account}
+        avatarPreview={settings.avatarPreview}
+        avatarUploadEnabled={settings.avatarUploadEnabled}
+        avatarBusy={settings.avatarBusy}
+        fullName={settings.fullName}
+        email={settings.email}
+        emailPending={settings.emailPending}
+        busy={settings.busy}
+        fallbackName={settings.fallbackName}
+        fallbackEmail={settings.fallbackEmail}
+        onFullName={settings.setFullName}
+        onEmail={settings.setEmail}
+        onAvatarPick={settings.onAvatarPick}
+        onAvatarRemove={() => void settings.onAvatarRemove()}
+        onSaveProfile={(event) => void settings.onSaveProfile(event)}
+        onResendEmailChange={() => void settings.onResendEmailChange()}
+      />
 
-      <section className="card space-y-3 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Rows3 className="h-5 w-5" /> Плотность таблиц</h2>
-        <div className="flex gap-2" role="radiogroup" aria-label="Плотность таблиц">
-          {(["comfortable", "compact"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={density === value}
-              onClick={() => applyDensity(value)}
-              className={"rounded-xl px-4 py-2 text-sm font-semibold " + (density === value ? "bg-[var(--primary)] text-white" : "border")}
-              style={density === value ? undefined : { borderColor: "var(--border)" }}
-            >
-              {value === "comfortable" ? "Обычная" : "Компактная"}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-slate-500">Влияет на отступы в таблицах расписания, журналов и админки. Настройка хранится в этом браузере.</p>
-      </section>
+      <DensityCard />
 
       <AiModelSettings />
 
-      <section className="card space-y-4 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><KeyRound className="h-5 w-5" /> Пароль</h2>
-        <form onSubmit={onChangePassword} className="space-y-3">
-          <label className="block text-sm font-semibold">
-            Текущий пароль
-            <input type="password" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-normal" autoComplete="current-password" />
-          </label>
-          <label className="block text-sm font-semibold">
-            Новый пароль
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-normal" autoComplete="new-password" />
-            <span className="mt-1 block text-xs font-normal" style={{ color: "var(--muted)" }}>Не короче 8 символов.</span>
-          </label>
-          <label className="block text-sm font-semibold">
-            Повтор нового пароля
-            <input type="password" required value={password2} onChange={(e) => setPassword2(e.target.value)} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-normal" autoComplete="new-password" />
-          </label>
-          <button type="submit" disabled={busy === "password"} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-semibold">Сменить пароль</button>
-        </form>
-      </section>
+      <PasswordCard
+        currentPassword={settings.currentPassword}
+        password={settings.password}
+        password2={settings.password2}
+        busy={settings.busy}
+        onCurrentPassword={settings.setCurrentPassword}
+        onPassword={settings.setPassword}
+        onPassword2={settings.setPassword2}
+        onSubmit={(event) => void settings.onChangePassword(event)}
+      />
 
-      <section className="card space-y-4 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><MonitorSmartphone className="h-5 w-5" /> Активные устройства</h2>
-        <p className="text-sm text-[var(--muted)]">
-          Где сейчас выполнен вход в аккаунт. Завершение устройства сбрасывает его сессию: на нём потребуется войти заново.
-        </p>
-        {sessionsError ? (
-          <div className="rounded-xl border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] px-4 py-3 text-sm text-[var(--status-critical-fg)]">
-            {sessionsError}{" "}
-            <button type="button" onClick={() => void loadSessions()} className="font-semibold underline">Повторить</button>
-          </div>
-        ) : sessions === null ? (
-          <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
-            <RefreshCw className="h-4 w-4 animate-spin" /> Загрузка устройств…
-          </div>
-        ) : sessions.length === 0 ? (
-          <p className="text-sm text-[var(--muted)]">Список устройств пуст.</p>
-        ) : (
-          <ul className="space-y-2">
-            {sessions.map((s) => {
-              const device = describeUserAgent(s.user_agent);
-              return (
-                <li key={s.session_id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 font-semibold">
-                      {device.label}
-                      {s.is_current ? (
-                        <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-xs font-semibold text-[var(--primary)]">это устройство</span>
-                      ) : null}
-                    </div>
-                    <div className="text-xs text-[var(--muted)]">
-                      Вход: {describeLastSeen(s.created_at)} · Активность: {describeLastSeen(s.last_used_at)}
-                      {s.ip_hint ? ` · ${s.ip_hint}` : ""}
-                    </div>
-                  </div>
-                  {s.is_current ? (
-                    <span className="text-xs text-[var(--muted)]">Выход — кнопкой «Выйти» в меню</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void onRevokeSession(s.session_id)}
-                      disabled={sessionsBusy === s.session_id}
-                      className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
-                    >
-                      {sessionsBusy === s.session_id ? "Завершаем…" : "Завершить"}
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        <button
-          type="button"
-          onClick={() => void onRevokeOtherSessions()}
-          disabled={sessionsBusy === "others" || (sessions?.length ?? 0) < 2}
-          className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
-        >
-          <LogOut className="h-4 w-4" /> {sessionsBusy === "others" ? "Завершаем…" : "Выйти на всех других устройствах"}
-        </button>
-      </section>
+      <ActiveDevices
+        sessions={settings.sessions}
+        error={settings.sessionsError}
+        busy={settings.sessionsBusy}
+        onRetry={settings.loadSessions}
+        onRevoke={settings.onRevokeSession}
+        onRevokeOthers={settings.onRevokeOtherSessions}
+      />
 
-      <section className="card space-y-4 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Способы входа</h2>
-        <p className="text-sm text-[var(--muted)]">
-          В аккаунте используются только почта, Google и Telegram. Почта — основной идентификатор; Google привязывается в один клик; Telegram — через подтверждение в боте.
-        </p>
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
-            <div>
-              <div className="font-semibold">Почта</div>
-              <div className="text-xs text-[var(--muted)]">{String(emailIdentity?.email || account?.user?.email || user?.email || "не указана")}</div>
-            </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">основной вход</span>
-          </div>
-          {identities.filter((item) => item.provider !== "email" && item.provider !== "custom:telegram" && item.provider !== "telegram").map((id) => (
-            <div key={id.id || id.provider} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-4 py-3">
-              <div>
-                <div className="font-semibold">{id.provider_label}</div>
-                <div className="text-xs text-[var(--muted)]">{[id.email, id.name].filter(Boolean).join(" · ") || id.provider}</div>
-              </div>
-              <button type="button" disabled={!id.can_unlink} onClick={() => void onUnlink(id)} className="inline-flex items-center gap-1 rounded-lg border border-[var(--status-critical-border)] px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-40">
-                <Unlink className="h-3.5 w-3.5" /> Отвязать
-              </button>
-            </div>
-          ))}
-        </div>
-        {googleProvider && (
-          <button
-            type="button"
-            disabled={linkedProviders.has("google") || !googleProvider.enabled || !!busy}
-            onClick={() => void onLink("google")}
-            className={clsx(
-              "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm",
-              linkedProviders.has("google") ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" : "border-[var(--border)] hover:bg-slate-50",
-            )}
-          >
-            <span>
-              <span className="block font-semibold">{linkedProviders.has("google") ? "✓ Google привязан" : "Привязать Google"}</span>
-              <span className="block text-xs text-[var(--muted)]">{linkedProviders.has("google") ? "Вход в один клик уже доступен" : "Тот же аккаунт, без второго профиля"}</span>
-            </span>
-            <span className="text-lg font-black text-[#4285F4]">G</span>
-          </button>
-        )}
-      </section>
+      <LoginMethodsCard
+        identities={settings.identities}
+        emailIdentity={settings.emailIdentity}
+        account={settings.account}
+        fallbackEmail={settings.fallbackEmail}
+        linkedProviders={settings.linkedProviders}
+        googleProvider={settings.googleProvider}
+        busy={settings.busy}
+        onUnlink={(identity) => void settings.onUnlink(identity)}
+        onLink={(provider) => void settings.onLink(provider)}
+      />
 
+      <TelegramCard
+        loading={settings.loading}
+        busy={settings.busy}
+        telegramStatus={settings.telegramStatus}
+        telegramStatusError={settings.telegramStatusError}
+        telegramWait={settings.telegramWait}
+        clock={settings.clock}
+        onStart={() => void settings.onStartTelegramLink()}
+        onUnlink={() => void settings.onUnlinkTelegram()}
+        onCancelWait={() => settings.onCancelTelegramWait()}
+        onCheckStatus={() => void settings.checkTelegramStatus()}
+      />
 
-      <section className="card space-y-3 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Link2 className="h-5 w-5" /> Telegram</h2>
-        <p className="text-sm text-[var(--muted)]">Свяжите Telegram с текущим аккаунтом MEDBIOHIM. Ссылка одноразовая и действует 10 минут; пароль и токены бот не запрашивает.</p>
-        {telegramStatus?.linked ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-3 text-[var(--status-ok-fg)]">
-            <div>
-              <div className="font-semibold">✓ Telegram привязан</div>
-              <div className="text-xs">{telegramStatus.account?.username ? "@" + telegramStatus.account.username : telegramStatus.account?.first_name || "Аккаунт Telegram"}</div>
-            </div>
-            <button type="button" disabled={!!busy} onClick={() => void onUnlinkTelegram()} className="inline-flex items-center gap-1 rounded-lg border border-[var(--status-critical-border)] px-3 py-1.5 text-xs font-semibold text-[var(--status-critical-fg)] disabled:opacity-50">
-              <Unlink className="h-3.5 w-3.5" /> Отвязать
-            </button>
-          </div>
-        ) : telegramWait ? (
-          <div className="space-y-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 text-indigo-950">
-            <div className="font-semibold">Ждём подтверждение в Telegram</div>
-            <p className="text-xs leading-5">
-              Откройте <strong>@MEDBIOCHIM_bot</strong> кнопкой ниже и нажмите «Start». Ссылка одноразовая,
-              осталось <strong className="tabular-nums">{clock ? formatWait(telegramWait.expiresAt - clock) : "10:00"}</strong>.
-              После подтверждения статус обновится сам — перезагружать страницу не нужно.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <a href={telegramWait.url} target="_blank" rel="noreferrer" className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold">
-                Открыть бота
-              </a>
-              <button
-                type="button"
-                onClick={() => { setTelegramWait(null); setMsg("Ожидание привязки отменено. Ссылка больше не используется."); }}
-                className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold"
-              >
-                Отменить ожидание
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button type="button" disabled={!!busy} onClick={() => void onStartTelegramLink()} className="btn-primary disabled:opacity-60">
-            {busy === "telegram-link" ? "Создаём ссылку…" : "Привязать через @MEDBIOCHIM_bot"}
-          </button>
-        )}
-        {telegramStatusError && !telegramStatus?.linked && (
-          <p role="alert" className="rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-3 py-2 text-xs text-[var(--status-warn-fg)]">
-            Статус привязки временно недоступен: {telegramStatusError}. Это не значит, что Telegram отвязан.
-          </p>
-        )}
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void getTelegramLinkStatus().then((r) => {
-            if (r.ok) {
-              setTelegramStatus(r.data);
-              setTelegramStatusError(null);
-              setMsg(r.data.linked ? "Telegram привязан" : "Telegram пока не привязан");
-            } else {
-              setErr(describeApiError(r.error));
-            }
-          })}
-          className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs"
-        >
-          Проверить статус привязки
-        </button>
-      </section>
+      <NotificationsCard />
 
-      <section className="card space-y-4 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Bell className="h-5 w-5" /> Уведомления</h2>
-        {/* SA5: раньше здесь были чекбоксы, которые только писались в настройки и
-            ничего не включали — движка доставки нет. Пустышка хуже отсутствия:
-            показываем честное состояние вместо переключателей-обманок. */}
-        <p className="text-sm text-[var(--muted)]">
-          Пока уведомления не отправляются: движок доставки (письма и Telegram-дайджест) ещё не подключён.
-          Поэтому переключателей нет — они бы ни на что не влияли.
-        </p>
-        <ul className="space-y-1 text-sm text-[var(--muted)]">
-          <li>• Расписание, оценки и задания всегда видны в интерфейсе — без уведомлений.</li>
-          <li>• Telegram-бот присылает только подтверждение привязки аккаунта.</li>
-          <li>• Когда доставка появится, настройки частоты и тихих часов придут сюда же.</li>
-        </ul>
-        <div className="flex items-center gap-2 text-xs text-[var(--muted)]"><Globe2 className="h-3.5 w-3.5" /> Язык интерфейса: русский</div>
-      </section>
+      <DataAccountCard />
 
-      <section className="card space-y-3 p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Database className="h-5 w-5" /> Данные и аккаунт</h2>
-        <p className="text-sm text-[var(--muted)]">
-          Выгрузка своих данных одним JSON-файлом и удаление аккаунта с недельным сроком, в течение которого запрос можно отменить.
-        </p>
-        <Link href="/settings/data" className="inline-flex w-fit items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:border-[var(--primary)]">
-          Открыть «Данные и аккаунт» <ArrowRight className="h-4 w-4" />
-        </Link>
-      </section>
+      <TestLayoutCard trainerLayout={settings.trainerLayout} onSelect={(layout) => void settings.saveTrainerLayout(layout)} />
 
-      <section className="card space-y-5 p-5">
-        <div>
-          <h2 className="text-lg font-semibold">Формат отображения тестов</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Общий параметр для всех тестов и тренировок. Здесь можно сразу увидеть мини-пример каждого варианта.</p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          {([
-            ["sidebar", "Сайдбар", "Номера и статус слева"],
-            ["list", "Списком", "Все задания подряд"],
-            ["top", "Верхняя пагинация", "Одно задание + номера сверху"],
-          ] as [TrainerLayout, string, string][]).map(([id, label, hint]) => {
-            const active = trainerLayout === id;
-            return (
-              <button key={id} type="button" onClick={async () => {
-                setTrainerLayout(id);
-                const saved = await saveAccountPreferences({ trainer_layout: id });
-                if (!saved.ok) {
-                  setErr(describeApiError(saved.error));
-                  return;
-                }
-                setAccount((prev) => prev ? { ...prev, preferences: { ...prev.preferences, ...saved.data.preferences } } : prev);
-                setMsg("Формат тестов сохранён");
-              }} className={clsx("rounded-2xl border p-3 text-left transition", active ? "border-indigo-400 bg-indigo-50 ring-2 ring-indigo-100" : "border-[var(--border)] hover:bg-slate-50")}>
-                <div className="mb-3 rounded-xl border bg-white p-2">
-                  {id === "sidebar" && (
-                    <div className="grid grid-cols-[28%_1fr] gap-2">
-                      <div className="space-y-1 rounded-lg bg-slate-100 p-2"><span className="block h-2 rounded bg-indigo-300" /><span className="block h-2 rounded bg-[var(--status-ok-fg)]" /><span className="block h-2 rounded bg-slate-300" /><span className="block h-2 rounded bg-slate-300" /></div>
-                      <div className="space-y-2"><span className="block h-3 w-1/2 rounded bg-slate-200" /><span className="block h-14 rounded-lg bg-slate-100" /><span className="block h-3 rounded bg-slate-200" /></div>
-                    </div>
-                  )}
-                  {id === "list" && (
-                    <div className="space-y-1.5"><span className="block h-8 rounded-lg bg-slate-100" /><span className="block h-8 rounded-lg bg-slate-100" /><span className="block h-8 rounded-lg bg-slate-100" /></div>
-                  )}
-                  {id === "top" && (
-                    <div className="space-y-2"><div className="flex gap-1"><span className="h-3 w-3 rounded-full bg-indigo-400" /><span className="h-3 w-3 rounded-full bg-slate-300" /><span className="h-3 w-3 rounded-full bg-slate-300" /><span className="h-3 w-3 rounded-full bg-slate-300" /></div><span className="block h-16 rounded-lg bg-slate-100" /></div>
-                  )}
-                </div>
-                <div className="font-semibold">{label}</div>
-                <div className="mt-1 text-xs text-[var(--muted)]">{hint}</div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {referenceThemes.length > 0 && (
-        <section className="card space-y-5 p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white" style={{ background: "linear-gradient(135deg,var(--primary),var(--accent))" }}>
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Темы из макетов</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">Стекло, градиенты, медицинский индиго</p>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">{referenceThemes.map(renderTheme)}</div>
-        </section>
+      {settings.referenceThemes.length > 0 && (
+        <ThemesSection
+          themes={settings.referenceThemes}
+          activeTheme={settings.theme}
+          onSelect={settings.selectTheme}
+          title="Темы из макетов"
+          description="Стекло, градиенты, медицинский индиго"
+          hero
+        />
       )}
 
-      <section className="card space-y-3 p-5">
-        <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold"><Sparkles className="h-5 w-5" /> ИИ-пояснения в тестах</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Какая нейросеть отвечает по кнопке «Объяснить · ИИ» и в разборе ошибок. «Авто» — сервер выбирает сам по доступности ключей.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(([
-            ["auto", "Авто (рекомендуется)"],
-            ["gigachat", "GigaChat"],
-            ["groq", "Groq"],
-            ["mistral", "Mistral"],
-            ["openai", "OpenAI"],
-            ["openrouter", "OpenRouter"],
-            ["custom", "Своя модель"],
-          ]) as [string, string][]).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={async () => {
-                const previous = aiExplainProvider;
-                setAiExplainProvider(id);
-                const saved = await saveAccountPreferences({ ai_explain_provider: id });
-                if (!saved.ok) {
-                  setAiExplainProvider(previous);
-                  setErr(describeApiError(saved.error));
-                  return;
-                }
-                setAccount((prev) => prev ? { ...prev, preferences: { ...prev.preferences, ...saved.data.preferences } } : prev);
-                setMsg("Настройка ИИ-пояснений сохранена");
-              }}
-              className={clsx(
-                "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                aiExplainProvider === id
-                  ? "border-indigo-500 bg-indigo-50 text-indigo-800"
-                  : "border-[var(--border)] text-slate-600 hover:border-indigo-300",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-[var(--muted)]">
-          Настройка применяется к кнопкам в тренировке и в разборе после теста; сами ответы на вопросы она не меняет.
-        </p>
-      </section>
+      <AiExplainCard value={settings.aiExplainProvider} onSelect={(id) => void settings.saveAiExplainProvider(id)} />
 
-      <section className="card space-y-4 p-5">
-        <h2 className="text-lg font-semibold">Классические темы</h2>
-        <div className="grid gap-3 md:grid-cols-3">{(otherThemes.length ? otherThemes : THEMES).map(renderTheme)}</div>
-      </section>
-      {dialog}
+      <ThemesSection
+        themes={settings.otherThemes.length ? settings.otherThemes : settings.themes}
+        activeTheme={settings.theme}
+        onSelect={settings.selectTheme}
+        title="Классические темы"
+      />
+      {settings.dialog}
     </div>
   );
 }

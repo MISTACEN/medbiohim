@@ -6,9 +6,19 @@ import test from "node:test";
 const ROOT = new URL("../", import.meta.url);
 const CONTENT = new URL("public/content/histology/", ROOT);
 // Корень исходных документов кафедры (то же значение, что в
-// tools/histology/build_content.py; переопределяется HISTOLOGY_SOURCES)
+// tools/histology/build_content.py; переопределяется HISTOLOGY_SOURCES).
+// Исходники переехали в архив «вуз/01_Гистология» (плоская структура),
+// резолвер ниже понимает и старые относительные пути, и новое расположение.
 const SOURCES_ROOT =
-  process.env.HISTOLOGY_SOURCES || "C:\\Users\\MISTACEN\\Desktop\\Гистология";
+  process.env.HISTOLOGY_SOURCES ||
+  "C:\\Users\\MISTACEN\\Desktop\\вуз\\01_Гистология\\Учебники и атласы";
+
+function sourceExists(relFile) {
+  return (
+    existsSync(path.join(SOURCES_ROOT, relFile)) ||
+    existsSync(path.join(SOURCES_ROOT, path.basename(relFile)))
+  );
+}
 
 function readJson(name) {
   return JSON.parse(readFileSync(new URL(name, CONTENT), "utf8"));
@@ -32,8 +42,10 @@ test("histology index lists exactly three manuals with existing files", () => {
     assert.equal(manual.year, 2026, `${manual.slug}: year`);
     assert.ok(manual.hours > 0, `${manual.slug}: hours`);
     assert.ok(manual.source.title.length > 5, `${manual.slug}: source title`);
-    const sourceFile = path.join(SOURCES_ROOT, manual.source.file);
-    assert.ok(existsSync(sourceFile), `${manual.slug}: source file missing`);
+    assert.ok(
+      sourceExists(manual.source.file),
+      `${manual.slug}: source file missing`
+    );
     assert.ok(
       existsSync(new URL(manual.content, CONTENT)),
       `${manual.slug}: content json missing`

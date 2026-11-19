@@ -1,11 +1,13 @@
 import test from "node:test";
+import { readPageWithDomain } from "./page-source.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readAiDomain } from "./ai-source.js";
 
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("tutor has two answer modes with fixed temperatures", async () => {
-  const route = await source("../src/routes/ai.ts");
+  const route = await readAiDomain();
   assert.match(route, /MODE_TEMPERATURE: Record<ChatMode, number> = \{ precise: 0\.2, fast: 0\.5 \}/);
   assert.match(route, /value === "fast" \? "fast" : "precise"/);
   // Температура доезжает до провайдера, а не остаётся жёстко 0.25.
@@ -14,7 +16,7 @@ test("tutor has two answer modes with fixed temperatures", async () => {
 });
 
 test("workers ai fallback retries with a smaller budget instead of failing", async () => {
-  const route = await source("../src/routes/ai.ts");
+  const route = await readAiDomain();
   // Первый проход — 10 с, второй — быстрая модель на урезанном контексте, третий — 6 с.
   assert.match(route, /attempt\(messages, 900, 10000\)/);
   assert.match(route, /attempt\(compact, 300, 6000\)/);
@@ -26,7 +28,7 @@ test("workers ai fallback retries with a smaller budget instead of failing", asy
 });
 
 test("fast mode skips the lecture corpus, precise mode requires it", async () => {
-  const route = await source("../src/routes/ai.ts");
+  const route = await readAiDomain();
   // Решение вынесено в общий предикат: он учитывает и режим, и предмет,
   // и служебный срез /study (см. ai-rag-scope.test.js).
   assert.match(
@@ -37,7 +39,7 @@ test("fast mode skips the lecture corpus, precise mode requires it", async () =>
 });
 
 test("exactly one system message is built so RAG and study context are not dropped", async () => {
-  const route = await source("../src/routes/ai.ts");
+  const route = await readAiDomain();
   // generate() берёт только первый system-message — второй молча терялся.
   assert.match(route, /const system = messages\.find\(\(message\) => message\.role === "system"\)/);
   assert.match(route, /systemSections\.join\("\\n\\n"\)/);
@@ -45,7 +47,7 @@ test("exactly one system message is built so RAG and study context are not dropp
 });
 
 test("citations carry the lecture id and a footnote number", async () => {
-  const route = await source("../src/routes/ai.ts");
+  const route = await readAiDomain();
   assert.match(route, /export type LectureCitation = \{ n: number; title: string; lecture_id: string \| null; subject_slug: string \| null \}/);
   assert.match(route, /parts\.push\(`\[\$\{n\}\] Лекция «\$\{entry\.title\}»:/);
   assert.match(route, /citations\.push\(\{ n, title: entry\.title, lecture_id: entry\.id \|\| null/);
@@ -55,7 +57,7 @@ test("citations carry the lecture id and a footnote number", async () => {
 });
 
 test("persistent chat stores the answer mode and sources", async () => {
-  const route = await source("../src/routes/ai.ts");
+  const route = await readAiDomain();
   assert.match(route, /answer_mode: mode/);
   assert.match(route, /\.\.\.\(rag\.citations\.length \? \{ sources: rag\.citations \} : \{\}\)/);
 });
@@ -86,7 +88,7 @@ test("frontend renders sources and the explain-after-error button", async () => 
   assert.match(runner, /checked && !isCorrect\(picks, question\.answer\)/);
   assert.match(runner, /subjectSlug=\{subjectSlug\}/);
 
-  const tutor = await source("../../../src/app/tutor/page.tsx");
+  const tutor = await readPageWithDomain("app/tutor/page.tsx");
   assert.match(tutor, /\[\["precise","Точный"\],\["fast","Быстрый"\]\]/);
   // Выбор модели: модель уходит в сообщение только для конкретного провайдера.
   assert.match(tutor, /aiSendMessage\(conversation\.id,q,provider,subjectSlug\|\|undefined,mode,/);

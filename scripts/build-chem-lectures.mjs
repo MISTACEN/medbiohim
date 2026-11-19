@@ -15,7 +15,7 @@
  * { file, id, title }: файл существует → лекция добавляется/заменяется.
  */
 import fs from "node:fs";
-import path from "node:path";
+
 import JSZip from "jszip";
 
 const CFG_PATH = process.argv[2];

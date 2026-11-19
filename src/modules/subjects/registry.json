@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "updated": "2026-11-19",
+  "submodules": [
+    {
+      "slug": "chemistry",
+      "title": "Химия",
+      "summary": "Структуры, реакции, растворы, лаборатория, практика и таблица элементов — в одном модуле предмета.",
+      "subjectSlugs": ["chemistry", "chemistry_organic_physical", "organic_chemistry"],
+      "tabs": [
+        {
+          "key": "structures",
+          "label": "Структуры",
+          "hint": "Название, формула или SMILES → 2D, 3D, VSEPR, проекции Фишера/Haworth/Newman/Chair и механизмы со стрелками электронов.",
+          "href": "/chemistry"
+        },
+        {
+          "key": "reactions",
+          "label": "Реакции",
+          "hint": "Уравнение со знаком «->», «→» или «=»: решатель расставит коэффициенты и проверит атомы и заряд.",
+          "href": "/chemistry/balance"
+        },
+        {
+          "key": "solutions",
+          "label": "Растворы",
+          "hint": "Разведение C₁V₁ = C₂V₂, pH сильных и слабых электролитов, буферные системы.",
+          "href": "/chemistry/tools"
+        },
+        {
+          "key": "lab",
+          "label": "Лаборатория",
+          "hint": "Расчётные опыты: титрование с индикатором, уравнение Нернста, закон Бугера–Ламберта–Бера.",
+          "href": "/chemistry/lab"
+        },
+        {
+          "key": "practice",
+          "label": "Практика",
+          "hint": "Вариант задач по seed: ответы проверяются, решения по шагам, выгрузка CSV и печать.",
+          "href": "/chemistry/practice"
+        },
+        {
+          "key": "elements",
+          "label": "Элементы",
+          "hint": "118 элементов: поиск по символу и названию, фильтр по категориям, карточка элемента.",
+          "href": "/chemistry/elements"
+        }
+      ]
+    }
+  ]
+}

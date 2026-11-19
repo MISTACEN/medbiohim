@@ -1,8 +1,9 @@
+import { readSettingsDomain } from "./settings-source.js";
 // Привязка второго способа входа: адрес возврата после OAuth.
 // Живой баг: на dev-сервере localhost:3010 worker отвечал 400 «Недопустимый
 // адрес возврата», хотя CORS-список знал только localhost:3000.
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+
 import test from "node:test";
 import {
   defaultLinkRedirect,
@@ -44,7 +45,7 @@ test("отклоняет чужой origin, http вне localhost и мусор"
 });
 
 test("роут использует проверку и честно сообщает о выключенной привязке", async () => {
-  const route = await readFile(new URL("../src/routes/settings.ts", import.meta.url), "utf8");
+  const route = await readSettingsDomain();
   assert.match(route, /resolveLinkRedirect\(input\.redirect_to\.trim\(\), c\.env\.CORS_ORIGINS/);
   assert.match(route, /IDENTITY_LINK_DISABLED/);
   assert.match(route, /manual linking/);

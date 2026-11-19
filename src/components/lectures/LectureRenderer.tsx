@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChemicalFigure, ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { parseChemSpec } from "@/lib/chemistry/parseChemSpec";
 import { chemicalFormulaInHtml } from "@/lib/chemistry/formula";
+import { escapeHtml } from "@/lib/html-escape";
 import { checkLectureMiniQuizAnswer, getLectureMiniQuizQuestions, getTrainerFeedCard, getTrainerImageUrl } from "@/lib/api";
 import { ImageLightbox } from "@/components/media/ImageLightbox";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
@@ -29,15 +30,6 @@ type ChartSpec = {
   values?: number[];
   unit?: string;
 };
-
-function escapeHtml(s: string) {
-  // Concat form keeps entities intact through transports
-  return s
-    .replace(/&/g, "&" + "amp;")
-    .replace(/</g, "&" + "lt;")
-    .replace(/>/g, "&" + "gt;")
-    .replace(/"/g, "&" + "quot;");
-}
 
 
 type FoldSection = { title: string; md: string };

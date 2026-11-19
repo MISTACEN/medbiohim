@@ -13,7 +13,7 @@ function read(relative) {
 }
 
 test("§SA5 настройки не показывают переключатели уведомлений без движка доставки", () => {
-  const page = read("../src/app/settings/page.tsx");
+  const page = settingsPageSource();
 
   for (const key of ["notify_homework", "notify_lectures", "notify_email", "media_prefer_ru"]) {
     assert.equal(page.includes(`"${key}"`), false, `чекбокс-пустышка ${key} не должен остаться в UI`);
@@ -27,7 +27,7 @@ test("§SA5 настройки не показывают переключате�
 });
 
 test("§SA5 реальные настройки не пострадали", () => {
-  const page = read("../src/app/settings/page.tsx");
+  const page = settingsPageSource();
   // Формат тестов и тема остаются рабочими переключателями.
   assert.match(page, /saveAccountPreferences\(\{ trainer_layout: id \}\)/);
   assert.match(page, /useTheme\(\)/);
@@ -46,3 +46,29 @@ test("§SA5 сервер по-прежнему принимает старые �
   const cloudflare = read("../integrations/cloudflare-api/src/settings.js");
   assert.match(cloudflare, /notify_homework: true/);
 });
+
+// Страница настроек разнесена по карточкам, вынесенным из неё же: проверяем
+// их сборку, чтобы контракт не зависел от конкретного файла разметки.
+// AiModelSettings и ActiveDevices — отдельные домены со своими контрактами.
+const SETTINGS_CARDS = [
+  "AccountOverview.tsx",
+  "AiExplainCard.tsx",
+  "DataAccountCard.tsx",
+  "DensityCard.tsx",
+  "LoginMethodsCard.tsx",
+  "NotificationsCard.tsx",
+  "PasswordCard.tsx",
+  "ProfileCard.tsx",
+  "TelegramCard.tsx",
+  "TestLayoutCard.tsx",
+  "ThemesSection.tsx",
+  "useSettingsData.ts",
+];
+
+function settingsPageSource() {
+  const parts = [read("../src/app/settings/page.tsx")];
+  for (const file of SETTINGS_CARDS) {
+    parts.push(readFileSync(new URL("../src/components/settings/" + file, import.meta.url), "utf8"));
+  }
+  return parts.join("\n");
+}

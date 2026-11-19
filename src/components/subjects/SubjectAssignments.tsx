@@ -7,32 +7,26 @@
  * (полное тестирование, результат уходит преподавателю).
  */
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { CalendarClock, GraduationCap, PlayCircle, BookOpen } from "lucide-react";
+import { GraduationCap, PlayCircle, BookOpen } from "lucide-react";
+import { useApiRequest } from "@/hooks/useApiRequest";
 import { listAssignedTests, type AssignedTest } from "@/lib/api/tests";
 
 export function SubjectAssignments({ subjectId }: { subjectId: string }) {
-  const [items, setItems] = useState<AssignedTest[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
+  // D9: отмена и отказ от setState после unmount — слой useApiRequest.
+  // Ошибки загрузки, как и раньше, не показываются: блок рендерится null.
+  const { data } = useApiRequest<AssignedTest[]>(
+    async () => {
       const result = await listAssignedTests();
-      if (cancelled) return;
-      if (result.ok) {
-        setItems(
-          (result.data.items || []).filter((item: any) => String(item.subject_id || "") === String(subjectId)),
-        );
-      }
-      setLoaded(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [subjectId]);
+      if (!result.ok) return [];
+      return (result.data.items || []).filter((item: any) =>
+        String(item.subject_id || "") === String(subjectId),
+      );
+    },
+    [subjectId],
+  );
+  const items = data ?? [];
 
-  if (!loaded || items.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
     <section

@@ -1,8 +1,7 @@
+import { readStaffDomain } from "./staff-source.js";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 
-const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 const quickfix = await import(new URL("../src/lib/quickfix.ts", import.meta.url).href);
 
 test("Quick fix: предпросмотр показывает только реальные изменения", () => {
@@ -25,7 +24,7 @@ test("Quick fix: разрешены только безопасные поля �
 });
 
 test("Staff routes: роли, запросы, предпросмотр и 24-часовой откат", async () => {
-  const routes = await source("../src/routes/staff.ts");
+  const routes = await readStaffDomain();
   for (const contract of [
     'staff.get("/capabilities"',
     'staff.get("/groups/:id/manage"',

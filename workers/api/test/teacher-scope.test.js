@@ -1,3 +1,5 @@
+import { readHomeworkDomain } from "./homework-source.js";
+import { adminRoutesSource } from "./helpers/admin-routes.js";
 /**
  * Контракт области преподавателя (план §9–§10, этап H).
  *
@@ -17,6 +19,14 @@ const repoRoot = path.resolve(root, "..", "..");
 
 async function read(rel) {
   return readFile(path.join(root, rel), "utf8");
+}
+
+// admin-parity разнесён по доменам; контракт собираем в порядке регистрации.
+async function adminParitySource() {
+  return (await Promise.all(
+    ["shared", "community", "homeworks", "materials", "problem-center", "content", "audit", "index"]
+      .map((file) => read(`src/routes/admin-parity/${file}.ts`)),
+  )).join("\n");
 }
 
 test("миграция области преподавателя: таблица, RLS, уникальность, хелперы", async () => {
@@ -63,12 +73,12 @@ test("контент преподавателя: чужое не редакти�
   assert.match(helper, /String\(ownerId\) !== userId/);
   assert.match(helper, /canManageAnyContent/);
 
-  const admin = await read("src/routes/admin.ts");
+  const admin = await adminRoutesSource();
   assert.match(admin, /CONTENT_MODERATORS/);
   assert.match(admin, /requireContentOwnership\(c, store\.items\[index\]\.created_by/);
   assert.match(admin, /requireContentOwnership\(c, existing\.created_by/);
 
-  const parity = await read("src/routes/admin-parity.ts");
+  const parity = await adminParitySource();
   assert.match(parity, /select\("id,status,uploaded_by"\)/);
   assert.match(parity, /requireContentOwnership\(c, \(file as \{ uploaded_by\?: unknown \}\)\.uploaded_by\)/);
 
@@ -77,7 +87,7 @@ test("контент преподавателя: чужое не редакти�
 });
 
 test("homework: teacher правит и удаляет только задания своей области", async () => {
-  const route = await read("src/routes/homework.ts");
+  const route = await readHomeworkDomain();
   // Раньше teacher проходил проверку наравне с админом и мог менять ДЗ любой группы.
   assert.doesNotMatch(route, /isAdminOrTeacher/);
   assert.match(route, /isWithinTeachingScope\(scope, \{/);

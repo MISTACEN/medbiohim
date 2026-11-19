@@ -10,43 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, Check, Copy, Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { isolateStudentRow } from "@/lib/journal";
-
-const OCR_SCRIPT = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-
-type TesseractGlobal = {
-  createWorker: (lang: string, oem?: number, options?: Record<string, unknown>) => Promise<any>;
-};
-
-declare global {
-  interface Window {
-    Tesseract?: TesseractGlobal;
-  }
-}
-
-function loadTesseract(): Promise<TesseractGlobal> {
-  if (typeof window === "undefined") return Promise.reject(new Error("OCR доступен только в браузере"));
-  if (window.Tesseract) return Promise.resolve(window.Tesseract);
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${OCR_SCRIPT}"]`);
-    if (existing) {
-      existing.addEventListener("load", () => {
-        if (window.Tesseract) resolve(window.Tesseract);
-        else reject(new Error("OCR-движок не загрузился"));
-      });
-      existing.addEventListener("error", () => reject(new Error("Не удалось загрузить OCR-движок")));
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = OCR_SCRIPT;
-    script.async = true;
-    script.onload = () => {
-      if (window.Tesseract) resolve(window.Tesseract);
-      else reject(new Error("OCR-движок не загрузился"));
-    };
-    script.onerror = () => reject(new Error("Не удалось загрузить OCR-движок. Проверьте соединение."));
-    document.head.appendChild(script);
-  });
-}
+import { loadTesseract } from "@/lib/journal-ocr";
 
 export default function JournalPage() {
   const { user } = useAuth();

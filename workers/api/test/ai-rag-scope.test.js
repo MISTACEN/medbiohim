@@ -1,10 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 
 import { scopeMode, shouldUseLectureRag } from "../src/lib/ai-scope.ts";
+import { readAiDomain } from "./ai-source.js";
 
-const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("RAG выключается без явного предмета", () => {
   assert.equal(shouldUseLectureRag({ mode: "precise" }), false);
@@ -43,7 +42,7 @@ test("нормализация режима: всё, кроме fast, — precis
 });
 
 test("поиск по лекциям невозможен без предмета и в маршрутах", async () => {
-  const ai = await source("../src/routes/ai.ts");
+  const ai = await readAiDomain();
   // Оба места (чат и история) решают через общий предикат.
   const decisions = ai.match(/shouldUseLectureRag\(\{/g) || [];
   assert.ok(decisions.length >= 2, `shouldUseLectureRag применяется ${decisions.length} раз`);

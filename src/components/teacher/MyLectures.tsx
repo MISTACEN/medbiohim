@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { BookOpen, Loader2, Plus, Save } from "lucide-react";
 import { RichLectureEditor } from "@/components/editor/RichLectureEditor";
 import {
   createMyLecture,

@@ -1,3 +1,4 @@
+import { readCommunityDomain } from "./community-source.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -5,7 +6,7 @@ import { readFile } from "node:fs/promises";
 const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("FA5: комментарии постов видны только участникам группы, правка — только своя", async () => {
-  const routes = await source("../src/routes/community.ts");
+  const routes = await readCommunityDomain();
   for (const contract of [
     'community.get("/posts/:id/comments"',
     'community.post("/posts/:id/comments"',

@@ -23,8 +23,6 @@ import {
 } from "lucide-react";
 import { fmtDate } from "@/lib/study/agenda-fmt";
 import { isPrepTarget, type AgendaItem } from "@/lib/study/agenda";
-import { limitAgendaItems } from "@/lib/study/agenda-window.mjs";
-
 const KIND_ICON: Record<string, typeof CalendarDays> = {
   exam: GraduationCap,
   credit: ShieldCheck,

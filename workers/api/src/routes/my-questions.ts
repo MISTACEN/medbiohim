@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
+import { bodyJson } from "../lib/request-body";
 
 /**
  * Личный банк вопросов автора.
@@ -25,15 +26,6 @@ const MAX_OPTIONS = 10;
 function error(c: any, rid: string, status: number, code: string, message: string) {
   const { body, status: responseStatus } = fail(code, message, status, rid);
   return c.json(body, responseStatus as any);
-}
-
-async function bodyJson(c: any) {
-  try {
-    const value = await c.req.json();
-    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
-  } catch {
-    return null;
-  }
 }
 
 async function readStore(db: any) {

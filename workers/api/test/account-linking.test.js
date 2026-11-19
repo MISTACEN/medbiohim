@@ -1,7 +1,9 @@
+import { readSettingsDomain } from "./settings-source.js";
 // Полная привязка аккаунта: Google как второй способ входа и Telegram через бота.
 // Тест держит контракт, который нельзя увидеть в UI-тестах: метод GoTrue,
 // одноразовость токена, коды ответов и отсутствие обходов авторизации.
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
@@ -9,8 +11,19 @@ async function source(relative) {
   return readFile(new URL(relative, import.meta.url), "utf8");
 }
 
+// Страница настроек собирается из карточек домена: проверяем разметку и логику
+// привязки аккаунта целиком, где бы она ни лежала после разнесения.
+async function settingsPageSource() {
+  const dir = new URL("../../../src/components/settings/", import.meta.url);
+  const parts = [await source("../../../src/app/settings/page.tsx")];
+  for (const file of readdirSync(dir).sort()) {
+    if (/\.(ts|tsx)$/.test(file)) parts.push(await readFile(new URL(file, dir), "utf8"));
+  }
+  return parts.join("\n");
+}
+
 test("Google-привязка: GET authorize, дефолтный возврат в /settings, честные коды", async () => {
-  const settings = await source("../src/routes/settings.ts");
+  const settings = await readSettingsDomain();
   const start = settings.indexOf("async function startIdentityLink");
   assert.ok(start > 0, "startIdentityLink существует");
   const block = settings.slice(start, settings.indexOf("async function unlinkIdentity"));
@@ -34,7 +47,7 @@ test("Google-привязка: GET authorize, дефолтный возврат 
 });
 
 test("клиент Google: возврат проверяется по identities, отмена показывается текстом", async () => {
-  const page = await source("../../../src/app/settings/page.tsx");
+  const page = await settingsPageSource();
   assert.match(page, /oauthError/);
   assert.match(page, /error_description/);
   assert.match(page, /Привязка Google не завершена/);
@@ -49,7 +62,7 @@ test("клиент Google: возврат проверяется по identities
 });
 
 test("Telegram: одноразовая ссылка, автоподтверждение и честный таймер", async () => {
-  const settings = await source("../src/routes/settings.ts");
+  const settings = await readSettingsDomain();
   const link = settings.slice(settings.indexOf("async function startTelegramLink"), settings.indexOf("async function unlinkTelegramAccount"));
   assert.match(link, /requireAuth|startTelegramLink/);
   assert.match(link, /crypto\.getRandomValues\(new Uint8Array\(24\)\)/, "48 hex-символов энтропии");
@@ -59,7 +72,7 @@ test("Telegram: одноразовая ссылка, автоподтвержд�
   assert.match(link, /expires_in_seconds: 600/);
   assert.doesNotMatch(link, /rawToken\b.*console\./, "сырой токен не логируется");
 
-  const page = await source("../../../src/app/settings/page.tsx");
+  const page = await settingsPageSource();
   assert.match(page, /telegramWait/);
   assert.match(page, /setInterval\(\(\) => \{ void tick\(\); \}, 3000\)/, "статус опрашивается сам");
   assert.match(page, /formatWait\(telegramWait\.expiresAt - clock\)/);

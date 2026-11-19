@@ -4,6 +4,7 @@
  */
 import { api } from "./client";
 import { endpoints } from "../endpoints";
+import { downloadBlob } from "../download";
 
 export type TeacherScopeSummary = {
   groups: number;
@@ -292,14 +293,7 @@ export async function downloadAssignmentCsv(id: string, fileName: string) {
   });
   if (!result.ok) throw new Error("Не удалось скачать ведомость");
   const blob = await result.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, fileName);
 }
 
 /** Предпросмотр теста: вопросы с эталонами. Попытка на сервере не создаётся. */

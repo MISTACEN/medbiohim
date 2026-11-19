@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FilePlus2, Loader2 } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
-import { createTeacherTest, teacherSubjects, teacherTests } from "@/lib/api/teacher";
+import { createTeacherTest, teacherSubjects } from "@/lib/api/teacher";
 import { listMyQuestions } from "@/lib/api/myQuestions";
 
 type BankQuestion = { id: string; text: string; kind?: string; topic?: string };

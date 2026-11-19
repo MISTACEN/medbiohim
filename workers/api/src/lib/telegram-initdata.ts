@@ -10,6 +10,35 @@
  * every rejection is returned as a machine-readable `error` string.
  */
 
+
+const encoder = new TextEncoder();
+
+/**
+ * Constant-time string comparison. Length is not secret; content must not
+ * short-circuit so a timing side channel cannot reveal the expected hash.
+ */
+export function constantTimeEqual(actual: string, expected: string): boolean {
+  if (actual.length !== expected.length) return false;
+  let difference = 0;
+  for (let index = 0; index < actual.length; index += 1) {
+    difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+async function hmacSha256(keyBytes: Uint8Array, message: string): Promise<Uint8Array | null> {
+  // Resolved through globalThis so the module never depends on DOM typings.
+  const subtle = (globalThis as unknown as { crypto?: { subtle?: SubtleCrypto } }).crypto?.subtle;
+  if (!subtle) return null;
+  try {
+    const key = await subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const signature = await subtle.sign("HMAC", key, encoder.encode(message));
+    return new Uint8Array(signature);
+  } catch {
+    return null;
+  }
+}
+
 export type TelegramInitDataUser = {
   id: number;
   username: string | null;
@@ -42,38 +71,10 @@ export const TELEGRAM_INIT_DATA_MAX_AGE_SECONDS = 86400;
 /** Small clock-skew allowance for auth_date in the future. */
 export const TELEGRAM_INIT_DATA_FUTURE_SKEW_SECONDS = 60;
 
-const encoder = new TextEncoder();
-
-/**
- * Constant-time string comparison. Length is not secret; content must not
- * short-circuit so a timing side channel cannot reveal the expected hash.
- */
-export function constantTimeEqual(actual: string, expected: string): boolean {
-  if (actual.length !== expected.length) return false;
-  let difference = 0;
-  for (let index = 0; index < actual.length; index += 1) {
-    difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
-  }
-  return difference === 0;
-}
-
 function bytesToHex(bytes: Uint8Array): string {
   let out = "";
   for (const byte of bytes) out += byte.toString(16).padStart(2, "0");
   return out;
-}
-
-async function hmacSha256(keyBytes: Uint8Array, message: string): Promise<Uint8Array | null> {
-  // Resolved through globalThis so the module never depends on DOM typings.
-  const subtle = (globalThis as unknown as { crypto?: { subtle?: SubtleCrypto } }).crypto?.subtle;
-  if (!subtle) return null;
-  try {
-    const key = await subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const signature = await subtle.sign("HMAC", key, encoder.encode(message));
-    return new Uint8Array(signature);
-  } catch {
-    return null;
-  }
 }
 
 /** `application/x-www-form-urlencoded` decoding: `+` is a space, then %XX. */

@@ -3,6 +3,8 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import type { AuthVariables } from "../middleware/auth";
 import { createServiceClient } from "../lib/supabase";
+import { constantTimeEqual } from "../lib/timing";
+import { escapeHtml } from "../lib/html-escape";
 
 /**
  * FA1 + §9: внутренние данные для дайджеста Telegram-бота.
@@ -15,27 +17,11 @@ import { createServiceClient } from "../lib/supabase";
  */
 const telegramDigest = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-function constantTimeEqual(actual: string, expected: string): boolean {
-  if (!actual || !expected || actual.length !== expected.length) return false;
-  let difference = 0;
-  for (let i = 0; i < actual.length; i += 1) {
-    difference |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return difference === 0;
-}
-
 function internalSecret(env: Env): string {
   return String(env.TELEGRAM_INGEST_SECRET || env.TELEGRAM_WEBHOOK_SECRET || "").trim();
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-function escapeHtml(value: string | null | undefined): string {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 function formatTime(value: string | null): string {
   return value ? String(value).slice(0, 5) : "";

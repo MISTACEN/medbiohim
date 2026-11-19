@@ -27,40 +27,7 @@
 import http from "node:http";
 import https from "node:https";
 import zlib from "node:zlib";
-import {
-  BOILERPLATE_TITLES,
-  DISCLAIMER,
-  FACULTIES,
-  FEED_LABELS,
-  FEED_SOURCES,
-  KIND_LABELS,
-  KIND_ORDER,
-  PORTAL,
-  SCHEDULE_INDEX_URL,
-  SCHEDULE_NOTE,
-  SECTION_LABELS,
-  findFaculty,
-  staticServices,
-} from "../portals";
-import type {
-  DocumentFormat,
-  Faculty,
-  FacultySchedule,
-  FacultySummary,
-  Feed,
-  FeedItem,
-  FeedKind,
-  FesmuResponse,
-  Overview,
-  ScheduleItem,
-  ScheduleKind,
-  SchedulePage,
-  Semester,
-  ServiceStatusReport,
-  ServiceStatus,
-  StudyForm,
-  TitleSource,
-} from "../types";
+import type { FesmuResponse } from "../types";
 
 /* ------------------------------------------------------------------ *
  * Tunables (contract §1.1, §1.2, §1.5)

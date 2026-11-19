@@ -1,5 +1,8 @@
 "use client";
 
+import { downloadBlob } from "@/lib/download";
+import { escapeHtml } from "@/lib/html-escape";
+
 /**
  * Скачивание лекции локально: Word (.doc) и PDF (печать в файл).
  *
@@ -17,14 +20,6 @@ type LectureLike = {
   body_md?: string;
   published_at?: string;
 };
-
-function escapeHtml(value: string): string {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function inline(value: string): string {
   return escapeHtml(value)
@@ -191,14 +186,7 @@ export function downloadLectureWord(lecture: LectureLike): void {
   if (typeof window === "undefined") return;
   const html = buildLectureHtml(lecture);
   const blob = new Blob(["\ufeff", html], { type: "application/msword;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = safeFileName(lectureTitle(lecture)) + ".doc";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  downloadBlob(blob, safeFileName(lectureTitle(lecture)) + ".doc");
 }
 
 /** PDF — через системную печать: «Сохранить как PDF» без потери кириллицы. */

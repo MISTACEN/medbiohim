@@ -4,7 +4,7 @@
  * контрольная, зачёт, экзамен) и ДЗ, привязанные к занятию.
  */
 "use client";
-import { CheckCircle2, Clock, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { ScheduleItem } from "@/lib/api";
 import {
   GRID_START_MIN,

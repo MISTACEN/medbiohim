@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { cleanCitationNoise, ensureCitationFootnotes, formatAnswer } from "../src/lib/ai-citations.ts";
+import { readAiDomain } from "./ai-source.js";
 
 const citations = [
   { n: 1, title: "Физиология форменных элементов крови" },
@@ -64,7 +65,7 @@ test("formatAnswer чистит мусор и гарантирует сноск�
 });
 
 test("маршрут применяет сноски и на чате, и в истории сообщений", async () => {
-  const route = await readFile(new URL("../src/routes/ai.ts", import.meta.url), "utf8");
+  const route = await readAiDomain();
   assert.match(route, /content: formatAnswer\(result\.text, citations\)/);
   assert.match(route, /generated = \{ \.\.\.generated, text: formatAnswer\(generated\.text, rag\.citations\) \}/);
   // Инструкция о сносках повторена после фрагментов — модель лучше слушает конец.
@@ -75,7 +76,7 @@ test("маршрут применяет сноски и на чате, и в и�
 });
 
 test("второй проход идёт на быстрой модели и не выдаёт 502 сразу", async () => {
-  const route = await readFile(new URL("../src/routes/ai.ts", import.meta.url), "utf8");
+  const route = await readAiDomain();
   assert.match(route, /const FAST_WORKERS_AI_MODEL = "@cf\/meta\/llama-3\.2-3b-instruct"/);
   assert.match(route, /maxTokens: 400, timeoutMs: 8000, model: FAST_WORKERS_AI_MODEL/);
   const lib = await readFile(new URL("../src/lib/workers-ai.ts", import.meta.url), "utf8");

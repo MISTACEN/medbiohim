@@ -4,6 +4,7 @@ import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { checkLectureForPublish, syncPublishedLecture } from "../lib/lecture-quality";
 import { createServiceClient } from "../lib/supabase";
+import { bodyJson } from "../lib/request-body";
 
 /**
  * Авторские занятия: обычный пользователь видит, правит и публикует только
@@ -32,15 +33,6 @@ const EDITABLE = [
 function error(c: any, rid: string, status: number, code: string, message: string) {
   const { body, status: responseStatus } = fail(code, message, status, rid);
   return c.json(body, responseStatus as any);
-}
-
-async function bodyJson(c: any) {
-  try {
-    const value = await c.req.json();
-    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
-  } catch {
-    return null;
-  }
 }
 
 function pick(input: any, fields: string[]) {
@@ -106,7 +98,6 @@ myLectures.get("/", requireAuth, async (c) => {
 /** Черновик своего занятия — без генерации, текст приходит из редактора. */
 myLectures.post("/", requireAuth, async (c) => {
   const rid = requestId();
-  const db = c.get("supabase");
   const user = c.get("user");
   const input = await bodyJson(c);
   if (!input) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректное тело запроса");
@@ -181,7 +172,6 @@ myLectures.patch("/:id", requireAuth, async (c) => {
 // и черновые занятия нельзя было убрать).
 myLectures.delete("/:id", requireAuth, async (c) => {
   const rid = requestId();
-  const db = c.get("supabase");
   const user = c.get("user");
   const id = String(c.req.param("id") || "").trim();
   const service = createServiceClient(c.env);

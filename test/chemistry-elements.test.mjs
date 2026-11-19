@@ -14,7 +14,23 @@ const readJson = (relative) => JSON.parse(read(relative));
 const dataset = readJson("src/data/chemical-elements.json");
 const elements = dataset.elements;
 const libSource = read("src/lib/elements.ts");
-const tableSource = read("src/modules/subjects/submodules/chemistry/PeriodicTable.tsx");
+// После разнесения PeriodicTable — тонкая обёртка; реализация живёт в periodic/.
+// Читаем обёртку вместе с её фактической реализацией, как D9-тест читает домены.
+const TABLE_PARTS = [
+  "PeriodicTable.tsx",
+  "periodic/model.ts",
+  "periodic/usePeriodicTable.ts",
+  "periodic/PeriodicTableCell.tsx",
+  "periodic/ElementFilters.tsx",
+  "periodic/ElementGrid.tsx",
+  "periodic/CategoryLegend.tsx",
+  "periodic/SourcesFooter.tsx",
+  "periodic/ElementDetails.tsx",
+  "periodic/PeriodicTableContent.tsx",
+];
+const tableSource = TABLE_PARTS.map((part) =>
+  read(`src/modules/subjects/submodules/chemistry/${part}`)
+).join("\n");
 const pageSource = read("src/app/chemistry/elements/page.tsx");
 const chemistryIndexSource = read("src/app/chemistry/page.tsx");
 

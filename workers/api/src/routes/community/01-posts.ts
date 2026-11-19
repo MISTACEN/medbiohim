@@ -1,0 +1,119 @@
+import { ok, fail, requestId } from "../../lib/response";
+import { requireAuth } from "../../middleware/auth";
+import { assertGroupMember, GROUP_ID } from "./shared";
+
+import type { CommunityRouter } from "./types";
+
+export function registerPostRoutes(community: CommunityRouter) {
+community.get("/posts", requireAuth, async (c) => {
+  const rid = requestId();
+  const supabase = c.get("supabase");
+  const user = c.get("user");
+  // Раньше group_id из UI молча игнорировался, и «обсуждения группы» были общей лентой.
+  const groupId = (c.req.query("group_id") || "").trim();
+  if (groupId && !GROUP_ID.test(groupId)) {
+    const { body, status } = fail("VALIDATION", "Некорректный group_id", 422, rid);
+    return c.json(body, status as 422);
+  }
+  try {
+    if (groupId) {
+      const membership = await assertGroupMember(supabase, user.id, groupId);
+      if (membership === "error") {
+        const { body, status } = fail("DB_UNAVAILABLE", "Сообщество недоступно", 503, rid);
+        return c.json(body, status as 503);
+      }
+      if (membership === "denied") {
+        const { body, status } = fail("FORBIDDEN", "Вы не состоите в этой группе", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    let query = supabase
+      .from("community_posts")
+      .select("id,title,body,author_id,created_at,group_id")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    // Без выбранной группы показываем только общую ленту, а не посты чужих групп.
+    query = groupId ? query.eq("group_id", groupId) : query.is("group_id", null);
+    const { data, error } = await query;
+    if (error) {
+      const { body, status } = fail("DB_UNAVAILABLE", "Сообщество недоступно", 503, rid);
+      return c.json(body, status as 503);
+    }
+    // SA3: у поста показываем автора (имя + факт наличия аватара). Один
+    // запрос по списку авторов вместо join на каждый пост; наружу отдаём
+    // только имя и признак аватара — не профиль целиком.
+    const items = Array.isArray(data) ? [...data] : [];
+    const authorIds = [...new Set(items.map((post: any) => String(post.author_id || "")).filter(Boolean))];
+    if (authorIds.length) {
+      const { data: authors, error: authorsError } = await supabase
+        .from("users")
+        .select("id,full_name,avatar_key")
+        .in("id", authorIds);
+      if (authorsError) {
+        // Не роняем ленту из-за имён: посты важнее подписи автора.
+        console.error("[community:authors]", authorsError);
+      } else {
+        const byId = new Map((authors || []).map((row: any) => [String(row.id), row]));
+        for (const post of items as any[]) {
+          const author = byId.get(String(post.author_id || ""));
+          post.author_name = author?.full_name || null;
+          post.author_has_avatar = Boolean(author?.avatar_key);
+        }
+      }
+    }
+    return c.json(ok({ items, group_id: groupId || null }, rid));
+  } catch {
+    const { body, status } = fail("DB_UNAVAILABLE", "Сообщество недоступно", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
+community.post("/posts", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const supabase = c.get("supabase");
+  let payload: { title?: string; body?: string; group_id?: string } = {};
+  try {
+    payload = await c.req.json();
+  } catch {
+    const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const targetGroup = String(payload.group_id || "").trim();
+  if (targetGroup && !GROUP_ID.test(targetGroup)) {
+    const { body, status } = fail("VALIDATION", "Некорректный group_id", 422, rid);
+    return c.json(body, status as 422);
+  }
+  try {
+    if (targetGroup) {
+      const membership = await assertGroupMember(supabase, user.id, targetGroup);
+      if (membership === "error") {
+        const { body, status } = fail("DB_UNAVAILABLE", "Не удалось опубликовать", 503, rid);
+        return c.json(body, status as 503);
+      }
+      if (membership === "denied") {
+        const { body, status } = fail("FORBIDDEN", "Вы не состоите в этой группе", 403, rid);
+        return c.json(body, status as 403);
+      }
+    }
+    const { data, error } = await supabase
+      .from("community_posts")
+      .insert({
+        author_id: user.id,
+        title: String(payload.title || "").slice(0, 200),
+        body: String(payload.body || "").slice(0, 10000),
+        group_id: targetGroup || null,
+      })
+      .select("id,title,created_at")
+      .maybeSingle();
+    if (error) {
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось опубликовать", 503, rid);
+      return c.json(body, status as 503);
+    }
+    return c.json(ok(data, rid));
+  } catch {
+    const { body, status } = fail("DB_UNAVAILABLE", "Не удалось опубликовать", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+}

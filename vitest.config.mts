@@ -34,6 +34,7 @@ export default defineConfig({
             "src/lib/__tests__/session.test.ts",
             "src/hooks/__tests__/**/*.test.tsx",
             "src/components/**/__tests__/**/*.test.tsx",
+            "src/modules/**/__tests__/**/*.test.tsx",
           ],
         },
       },

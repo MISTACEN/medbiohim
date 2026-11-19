@@ -6,13 +6,7 @@
  * остаются в блоке «Химия» (SMILES/CID), это дополнение для быстрых записей.
  */
 
-function escapeHtml(value: string): string {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import { escapeHtml } from "@/lib/html-escape";
 
 /** H2SO4 → H₂SO₄, Ca(OH)2 → Ca(OH)₂, Fe^3+ → Fe³⁺. */
 export function chemicalFormulaHtml(input: string): string {

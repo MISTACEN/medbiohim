@@ -1,3 +1,5 @@
+import { readAssignedTestsDomain } from "./assigned-tests-source.js";
+import { readTestsDomain } from "./tests-source.js";
 /**
  * Назначения тестов преподавателем (кабинет 8.20–8.24).
  *
@@ -19,10 +21,6 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const repoRoot = path.resolve(root, "..", "..");
 
-async function read(rel) {
-  return readFile(path.join(root, rel), "utf8");
-}
-
 test("миграция test_assignments: таблицы, RLS, настройки, без копирования вопросов", async () => {
   const sql = await readFile(
     path.join(repoRoot, "supabase/migrations/20261107090000_test_assignments.sql"),
@@ -40,7 +38,7 @@ test("миграция test_assignments: таблицы, RLS, настройки
 });
 
 test("преподаватель назначает только в своей области и по capability", async () => {
-  const route = await read("src/routes/teacher/assigned-tests.ts");
+  const route = await readAssignedTestsDomain();
   const post = route.match(/teacher\.post\("\/test-assignments"[\s\S]*?\n\}\);/);
   assert.ok(post, "POST /teacher/test-assignments существует");
   assert.match(post[0], /requireTeachingCapability\(c, "teacher\.content\.manage"\)/);
@@ -53,9 +51,9 @@ test("преподаватель назначает только в своей �
 });
 
 test("сводка по назначениям — чтение по results.view, удаление только своего", async () => {
-  const route = await read("src/routes/teacher/assigned-tests.ts");
+  const route = await readAssignedTestsDomain();
   // \r?\n — рабочая копия на Windows имеет CRLF, регэксп не должен зависеть от autocrlf.
-  const list = route.match(/teacher\.get\("\/test-assignments"[\s\S]*?\n\}\);\r?\n\r?\n\/\*\* Отменить/);
+  const list = route.match(/teacher\.get\("\/test-assignments"[\s\S]*?\n\}\);/);
   assert.ok(list, "GET /teacher/test-assignments существует");
   assert.match(list[0], /requireTeachingCapability\(c, "teacher\.results\.view"\)/);
   assert.match(list[0], /avg_percent/);
@@ -68,7 +66,7 @@ test("сводка по назначениям — чтение по results.vie
 });
 
 test("студент видит назначения своей группы и персональные", async () => {
-  const tests = await read("src/routes/tests.ts");
+  const tests = await readTestsDomain();
   const route = tests.match(/tests\.get\("\/assignments"[\s\S]*?\n\}\);/);
   assert.ok(route, "GET /tests/assignments существует");
   assert.match(route[0], /group_memberships/);

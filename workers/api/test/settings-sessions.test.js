@@ -1,3 +1,4 @@
+import { readSettingsDomain } from "./settings-source.js";
 // SA4 (PRODUCT-AUDIT-PLAN-2026-10-27): активные сессии и «выйти на других устройствах».
 // Проверяем контракт по исходникам: гейт авторизации, отсутствие доступа к чужим
 // сессиям, честные коды ответов и то, что миграция не даёт роли anon вызывать функции.
@@ -10,7 +11,7 @@ async function source(relative) {
 }
 
 test("settings sessions routes are authenticated and never touch other users", async () => {
-  const settings = await source("../src/routes/settings.ts");
+  const settings = await readSettingsDomain();
 
   const listStart = settings.indexOf('settings.get("/sessions"');
   assert.ok(listStart >= 0, "GET /settings/sessions exists");
@@ -45,11 +46,14 @@ test("settings sessions routes are authenticated and never touch other users", a
   assert.match(client, /method: "DELETE"/);
 
   // UI: список устройств и кнопка «выйти на других», без фальшивого успеха.
+  // Блок вынесен в компонент, поэтому проверяем страницу и компонент вместе.
   const page = await source("../../../src/app/settings/page.tsx");
-  assert.match(page, /Активные устройства/);
-  assert.match(page, /describeUserAgent\(/);
-  assert.match(page, /onRevokeOtherSessions/);
-  assert.match(page, /is_current/, "текущее устройство помечено");
+  const devices = await source("../../../src/components/settings/ActiveDevices.tsx");
+  const settingsUi = page + "\n" + devices;
+  assert.match(settingsUi, /Активные устройства/);
+  assert.match(settingsUi, /describeUserAgent\(/);
+  assert.match(settingsUi, /onRevokeOtherSessions/);
+  assert.match(settingsUi, /is_current/, "текущее устройство помечено");
 });
 
 test("sessions migration is idempotent, restricted to auth.uid() and closed for anon", async () => {
