@@ -1,100 +1,135 @@
 # MEDBIOHIM
 
-> **Актуальный статус на 03.11.2026:** [единый срез проекта](docs/CURRENT-STATE-2026-11-03.md). Старые аудиты и handoff-документы — исторические снимки.
-
 Образовательная платформа для медико-биологической химии и смежных дисциплин.
 
-**Стек:** Next.js (Vercel) · Cloudflare Workers API · Supabase · Upstash.
+**Стек:** Next.js (Vercel) · Cloudflare Workers (Hono) · Supabase · Upstash Redis
+
+**Актуальный main:** `52e46b44` (2026-11-20). Все проверки зелёные.
+
+---
 
 ## Быстрый старт
 
-### Frontend (корень репозитория)
-
 ```bash
 npm install
-cp .env.example .env.local   # заполнить NEXT_PUBLIC_* и CLOUDFLARE_API_ORIGIN
-npm run dev
+cp .env.example .env.local   # NEXT_PUBLIC_SUPABASE_*, CLOUDFLARE_API_ORIGIN
+npm run dev                   # http://localhost:3000
+
+# Воркер (отдельно)
+cd workers/api
+npm install
+npm run dev                   # wrangler dev
 ```
 
-- Браузер ходит на `/api/v1/*` (same-origin).
-- Vercel-прокси пересылает запросы только в production Cloudflare Worker.
+## Что сделано (2026-10 → 2026-11)
 
-### Legacy backend (SpaceWeb)
+### Декомпозиция монолитов — ✅ выполнена
 
-```bash
-cd backend
-cp .env.example .env         # DB_URL, Supabase keys, B2 и т.д.
-# Document root на хостинге: backend/public/
-```
+**40 страниц** фронтенда разнесены (0 сверх лимита 200 строк):
+- admin.ts 1481 → 13 файлов · ai.ts 1366 → 10 файлов · search.ts 659 → 13 файлов
+- settings 872→157 · practice 752→194 · schedule 959→83 · subjects 884→55
 
-PHP backend оставлен в репозитории для миграционной совместимости и не обслуживает production API.
+**22 маршрута** воркера разнесены (0 сверх лимита 400):
+- tests.ts 991 → 6 файлов · lectures.ts 792 → 6 · workshop.ts 787 → 5
+- auth 550 → 3 домена · export 571 → 3 · итого 22 домена
 
-Папка `backend/data/` должна быть writable (если ещё используется).
+**2 модуля** химии разнесены (0 сверх 400):
+- PeriodicTable 614 → periodic/ (9 файлов)
+- LabBench 517 → lab/ (5 файлов)
 
-### Цепочка запросов (архитектура в исходниках `main`)
+### Дедупликация — ✅
+
+- constantTimeEqual ×6 → `workers/api/src/lib/timing.ts`
+- escapeHtml ×5 → `src/lib/html-escape.ts` + worker-версия
+- getCallerRoles ×2 → `workers/api/src/lib/caller-roles.ts`
+- bodyJson ×4 → `workers/api/src/lib/request-body.ts`
+- getJson ×4 → `src/lib/content-json.ts`
+- download-хелпер ×4 → `src/lib/download.ts`
+
+### Инфраструктура — ✅
+
+| Компонент | Где |
+|-----------|-----|
+| Кэш списков (TTL + stale-while-revalidate) | `workers/api/src/lib/cache.ts` |
+| Пагинация (limit/offset, необязательная) | `workers/api/src/lib/pagination.ts` |
+| Route guards (269 файлов проверены) | `test/route-guards.test.js` |
+| Реестр подмодулей предметов | `src/modules/subjects/registry.json` |
+| Генератор модулей | `scripts/new-module.mjs` |
+| LOC-бюджет (машиночитаемый) | `docs/architecture/registry/loc-budgets.json` |
+| Architecture fitness (6 тестов-стражей) | `test/architecture-fitness.test.mjs` |
+| ADR (4 решения) | `docs/architecture/adr/` |
+
+### Личный архив — ✅
+
+- 1 858 файлов (6.5 ГБ) рассортированы по предметам
+- 569 дублей (1.3 ГБ) в `_ДУБЛИКАТЫ`
+- Откат одной командой: `cd 00_ИНДЕКС && node tools/rollback.mjs --commit`
+
+---
+
+## Архитектура
 
 ```text
-Browser → Vercel /api/v1 → medbiohim-api (Cloudflare)
-                              └─ только HTTP 501 → MEDBIOHIM_UPSTREAM → medbiohim-api-shadow
+Browser / PWA
+  src/app/<domain>/            → page.tsx (≤200 строк, тонкая точка входа)
+  src/components/<domain>/     → UI-компоненты домена
+  src/modules/<domain>/        → модули предметов
+  src/lib/api/<domain>.ts      → API-клиент
+  src/lib/endpoints.ts         → ЕДИНСТВЕННОЕ место путей /api/v1/*
+      ↓ same-origin
+  src/app/api/v1/[...path]/route.ts  → Vercel proxy → Cloudflare Worker
+      ↓
+  workers/api/src/
+    routes/<domain>.ts         → barrel
+    routes/<domain>/           01-*.ts … shared.ts, types.ts
+    lib/                       cache, auth, permissions, timing
+    middleware/                 auth, CORS, security
+    jobs/                      account-deletion, course-rollover
+      ↓
+  supabase/migrations/         → 18 миграций (canonical source of truth)
+  Upstash Redis                 → кэш (fail-open)
 ```
 
-Vercel proxy (`src/app/api/v1/[...path]/route.ts`) не переключает запросы на PHP: при недоступности Cloudflare он возвращает 502. Canonical Worker (`workers/api/`) отправляет ответы 501 в shadow Worker через service binding. Поэтому shadow пока остаётся зависимостью до завершения route parity и проверки реального production bundle. Актуальная матрица: [API route parity audit](docs/archive/API-ROUTE-PARITY-AUDIT-2026-10-19.md).
+### Инструкция для новых разработчиков (и ИИ-агентов)
 
-## Рабочий процесс
+| Что нужно сделать | Как |
+|-------------------|-----|
+| **Новая страница** | Создать `src/app/<slug>/page.tsx` (≤200 строк) → компоненты в `src/components/<slug>/` |
+| **Новый маршрут API** | Создать `src/routes/<slug>.ts` (barrel) → `src/routes/<slug>/01-*.ts` … `shared.ts` |
+| **Новый подмодуль** | `node scripts/new-module.mjs <slug> --title "Название" --subject <slug> --tab key:Заголовок` |
+| **Кэш списка** | Добавить политику в `cache.ts`, обернуть GET в `cached()` |
+| **Проверить** | `npx tsc --noEmit && npm test && cd workers/api && npm run check && node scripts/audit-loc.mjs` |
 
-`main` — каноническая ветка и источник истины. При параллельной работе ИИ-агенты используют отдельные локальные копии/worktree и возвращают patch/diff; общий writable workspace и одновременная запись в один файл запрещены. После завершения независимых частей координатор назначает одного интегратора, который последовательно собирает изменения и проверяет их перед commit в `main`. Постоянные remote branches не создаются по умолчанию. См. [BRANCHES.md](BRANCHES.md) и [AGENT-TASK-PROTOCOL.md](AGENT-TASK-PROTOCOL.md).
+---
 
-Не запускайте старые ручные workflow, которые восстанавливают файлы из исторических commit или делают push в `main`, пока они не прошли отдельный аудит.
+## Проверки (последний прогон)
+
+| Команда | Результат |
+|---------|-----------|
+| `npx tsc --noEmit` | ✅ 0 ошибок |
+| `npm run lint` | ✅ 0 ошибок |
+| `npm test` | ✅ 368/368 |
+| `cd workers/api && npm run check` | ✅ 530/530 |
+| `npm run test:unit` (vitest) | ✅ 721/721 |
+| `npm run build` (next) | ✅ exit 0 |
+| `node scripts/audit-loc.mjs` | ✅ 0 файлов сверх лимита |
+
+---
 
 ## Документация
 
-| Документ | Назначение |
-|----------|------------|
-| [AGENTS.md](AGENTS.md) | Входные инструкции для ИИ-агентов |
-| [AGENT-ARCHITECTURE.md](AGENT-ARCHITECTURE.md) | Роли координатора, агентов и subagents |
-| [AGENT-OWNERSHIP.md](AGENT-OWNERSHIP.md) | Границы владения файлами |
-| [AGENT-TASK-PROTOCOL.md](AGENT-TASK-PROTOCOL.md) | Независимые задачи, patch и интеграция |
-| [API-CONTRACTS.md](API-CONTRACTS.md) | API и межслойные контракты |
-| [docs/README.md](docs/README.md) | Карта документации |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура приложения |
-| [docs/SPACEWEB-API-INVENTORY.md](docs/SPACEWEB-API-INVENTORY.md) | Полный список legacy API SpaceWeb для сверки |
-| [docs/STATUS.md](docs/archive/STATUS.md) | Исторический статус-снимок от 2026-10-15 |
-| [backend/MODULE-INTEGRATION.md](backend/MODULE-INTEGRATION.md) | Как добавлять новые модули в legacy PHP |
+| Файл | О чём |
+|------|-------|
+| [PROJECT-MAP.md](PROJECT-MAP.md) | Карта проекта и инструкции |
+| [PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md) | Структура директорий |
+| [ROADMAP.md](ROADMAP.md) | План и статус этапов |
+| [AGENTS.md](AGENTS.md) | Инструкции для ИИ-агентов |
+| [docs/architecture/MODULE-ARCHITECTURE.md](docs/architecture/MODULE-ARCHITECTURE.md) | Модульная архитектура |
+| [docs/architecture/adr/](docs/architecture/adr/) | ADR (реестр подмодулей, кэш) |
+| [docs/architecture/LECTURES-MAP.md](docs/architecture/LECTURES-MAP.md) | Карта трёх хранилищ лекций |
 
-## Frontend (repo root) → Vercel
+---
 
-Next.js App Router.
-- Browser API base: `/api/v1`
-- Vercel server-side proxy sends production API requests only to `medbiohim-api` on Cloudflare. SpaceWeb PHP is retained as migration/reference code and is not an API fallback.
-- Chemistry (на main): `/chemistry`, `/api/chemistry/resolve`, `/api/chemistry/health` — см. [docs/chemical-engine.md](docs/chemical-engine.md)
-- **Strict TypeScript**: see **[docs/dev-notes.md](docs/dev-notes.md)**.
+## Лицензия
 
-## Что уже есть
-
-- Auth (login/register/refresh/logout/recover/me), роли, academic context
-- Группы, предметы, расписание, homework/planner
-- Тесты с server-authoritative scoring и immutable snapshots
-- Question Library, жалобы на вопросы
-- Тренажёр гистологии (feed + answers + media)
-- Chemistry master catalog (436 элементов)
-- Admin database console, content package, import
-- Telegram bot (публичные команды), browser extension MVP
-
-## Zero-cost правило
-
-Функциональность не режется из-за бесплатной инфраструктуры.
-Сначала: cache, pagination, lazy loading, разделение metadata/binary, распределение нагрузки.
-
-## Важно
-
-- Supabase — единственный canonical source of truth для данных.
-- Секреты в Git не класть.
-- Cutover production на Cloudflare — только после явной сверки по [SPACEWEB-API-INVENTORY](docs/SPACEWEB-API-INVENTORY.md) и smoke-тестов.
-
-## Актуальные аудиты (2026-10-19)
-
-- [Production API и медиа гистологии](docs/archive/PRODUCTION-SMOKE-AND-MEDIA-AUDIT-2026-10-19.md)
-- [Сверка migration ledger](docs/archive/MIGRATION-LEDGER-RECONCILIATION-2026-10-19.md)
-- [CSV: 148 записей migration ledger](docs/MIGRATION-LEDGER-MAP-2026-10-19.csv)
-- [CSV: инвентарь SQL-файлов](docs/SQL-SOURCE-INVENTORY-2026-10-19.csv)
-- [Решения по очистке KEEP / ARCHIVE / REMOVE](docs/archive/REPOSITORY-CLEANUP-DECISIONS-2026-10-19.md)
+Не лицензирован. Личный студенческий проект «от студентов для студентов». Не является официальным сайтом университета.
