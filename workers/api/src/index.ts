@@ -84,6 +84,7 @@ import questionComments from "./routes/question-comments";
 import workshop from "./routes/workshop";
 import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import adminAiUsage from "./routes/admin-ai-usage";
+import mentor from "./routes/mentor";
 import staff from "./routes/staff";
 import teacher from "./routes/teacher/index";
 import access from "./routes/access";
@@ -280,6 +281,7 @@ v1.route("/external-platforms", externalPlatforms);
 v1.route("/questions", gatedModule("subjects", questionComments));
 // Блок 8: инвайт-ссылки в группы (с подтверждением старосты) + тревожная кнопка.
 v1.route("/", block8);
+v1.route("/mentor", mentor); // Bridge API для PdfMentor (SSO, документы, контекст)
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)

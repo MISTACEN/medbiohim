@@ -32,6 +32,10 @@ export const CACHE_POLICIES = {
   // Агрегат переходов на внешние платформы: публичный, одинаковый для всех,
   // каждый запрос без кэша читал до 5000 строк Supabase.
   "external:stats": { ttlSeconds: 60, staleSeconds: 600 },
+  // Каталог лекций: публикуется редко, читается студентами постоянно.
+  "lectures:catalog": { ttlSeconds: 300, staleSeconds: 3600 },
+  // Список материалов: файлы и ссылки меняются не чаще раза в день.
+  "materials:list": { ttlSeconds: 300, staleSeconds: 3600 },
 } as const satisfies Record<string, CachePolicy>;
 
 export type CachePolicyName = keyof typeof CACHE_POLICIES;
