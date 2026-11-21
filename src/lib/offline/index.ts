@@ -60,6 +60,9 @@ export function flushOutbox(): Promise<FlushReport> {
       if (result.ok) return { ok: true as const };
       return { ok: false as const, retryable: isTemporaryFailure(result.error.code) };
     })
+    // Хранилище легло (например, IndexedDB недоступна в рантайме) — очередь
+    // деградирует до «нет очереди», а не роняет страницу unhandled rejection.
+    .catch(() => ({ sent: 0, dropped: 0, pending: 0 }))
     .finally(() => {
       flushing = null;
     });

@@ -8,18 +8,22 @@
 import type { OutboxItem, OutboxStore } from "./queue";
 
 const DB_NAME = "medbiohim-offline";
-const DB_VERSION = 1;
+// v2: первая выкладка создавала базу «пустым» probe-открытием без апгрейда —
+// object store не возникал, и вся очередь падала с NotFoundError. Подъём
+// версии лечит уже затронутые браузеры: апгрейд досоздаёт store.
+const DB_VERSION = 2;
 const STORE = "outbox";
+
+function upgrade(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(STORE)) {
+    db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
+  }
+}
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
-      }
-    };
+    request.onupgradeneeded = () => upgrade(request.result);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error("indexedDB open failed"));
   });
@@ -41,7 +45,10 @@ export function createIndexedDbStore(): OutboxStore | null {
   if (typeof indexedDB === "undefined") return null;
   try {
     // Проверяем доступность сразу: Safari в приватном режиме бросает здесь.
+    // Probe обязан нести тот же апгрейд: иначе первое открытие создаёт базу
+    // без object store (прод-баг, пойманный playwright-смоком 2026-11-21).
     const probe = indexedDB.open(DB_NAME, DB_VERSION);
+    probe.onupgradeneeded = () => upgrade(probe.result);
     probe.onerror = () => undefined;
     probe.onsuccess = () => probe.result.close();
   } catch {
