@@ -170,11 +170,11 @@ session.post("/answer", requireAuth, async (c) => {
     return c.json(errorBody, status as 409);
   }
 
-  const result = gradeAnswer(
-    { parts: attempt.answers || {} },
-    submitted,
-    Number(attempt.hints_used || 0),
-  );
+  // В колонке answers лежит готовый AnswerKey ({parts: {...}}) — тот же объект,
+  // что строит buildQuestion (см. /start). Раньше его оборачивали в {parts}
+  // второй раз: key.correct был undefined и /answer падал INTERNAL на живой БД.
+  const answerKey = attempt.answers && typeof attempt.answers === "object" ? attempt.answers : { parts: {} };
+  const result = gradeAnswer(answerKey, submitted, Number(attempt.hints_used || 0));
   const feedback = { parts: result.parts, guide_key: attempt.guide_key };
 
   const update = await c

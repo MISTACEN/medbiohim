@@ -5,7 +5,7 @@
  * архитектурном бюджете и читался целиком.
  */
 import type { AuthVariables } from "../../middleware/auth";
-import type { CardRow, DiagnosticumMode, GuideRow } from "./model";
+import type { AnswerKey, CardRow, DiagnosticumMode, GuideRow } from "./model";
 
 export const MODE_LABELS: Record<DiagnosticumMode, string> = {
   identify: "Определи препарат",
@@ -91,7 +91,8 @@ export type AttemptRow = {
   mode: DiagnosticumMode;
   section: string | null;
   guide_key: string;
-  answers: Record<string, { correct: string[]; explanation: string }>;
+  /** Форма как в /start: готовый AnswerKey ({parts: {...}}), не отдельные части. */
+  answers: AnswerKey;
   hints: number[] | null;
   hints_used: number | null;
   answered_at: string | null;

@@ -128,6 +128,20 @@ test("подсказка и ответ читают попытку service-кл�
   assert.ok(shared.includes('.eq("user_id", userId)'), "владелец попытки проверяется явно (эквивалент RLS)");
 });
 
+test("ответ разбирает ключ той же формы, что строит /start", async () => {
+  // answers в БД — готовый AnswerKey ({parts}); двойная обёртка ломала /answer
+  // с INTERNAL на живой БД (прод-баг 2026-11-21).
+  const source = await read(SESSION);
+  assert.ok(
+    source.includes("const answerKey ="),
+    "ключ берётся из попытки без повторной обёртки",
+  );
+  assert.ok(
+    !source.includes("gradeAnswer(\n    { parts: attempt.answers || {} }"),
+    "двойная обёртка { parts: attempt.answers } запрещена",
+  );
+});
+
 test("реестр эндпоинтов и страница диагностикума на месте", async () => {
   const endpoints = await read("src/lib/endpoints.ts");
   for (const route of [
