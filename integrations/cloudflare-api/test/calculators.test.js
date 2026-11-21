@@ -9,12 +9,14 @@ function request(path, options = {}) {
 
 test("calculator catalog matches the PHP list projection and creates grouped categories", () => {
   const items = listCalculators();
-  assert.equal(items.length, 15);
+  // 2026-11-21: каталог давал 17 калькуляторов (bdbcb1b7 добавил gcs и curb65),
+  // а тест оставался на 15 — CI code-check был красным ещё до пакета PdfMentor.
+  assert.equal(items.length, 17);
   assert.deepEqual(items.map((item) => item.id), [
     "bmi", "bsa", "ckd_epi_2021", "cockcroft_gault",
     "anion_gap", "corrected_calcium", "serum_osmolality", "infusion_rate",
     "abg", "michaelis_menten", "arrhenius", "atp_glucose", "atp_fatty_acid",
-    "concentration_units", "pressure_units",
+    "concentration_units", "pressure_units", "gcs", "curb65",
   ]);
   assert.equal(items.find((item) => item.id === "anion_gap").fields.find((field) => field.key === "albumin").optional, true);
   assert.deepEqual(getCalculator("missing"), null);
