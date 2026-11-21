@@ -6,12 +6,19 @@ import { api } from "./client";
 import { apiCached } from "./cache";
 import { endpoints } from "../endpoints";
 import { trainerCardCache, trainerCardInflight } from "./files";
+// Офлайн-очередь лежит вне `api/`, поэтому импорт относительный, без цикла:
+// `offline` берёт транспорт из `./client`, а не из барреля `@/lib/api`.
+import { submitOrQueue } from "../offline";
 import { currentUserScope } from "@/lib/auth/session";
 
 export async function listMaterials(params: Record<string, unknown> = {}, options: RequestInit = {}) {
   const q = new URLSearchParams();
   Object.entries(params || {}).forEach(([k, v]) => { if (v != null && v !== "") q.set(String(k), String(v)); });
   return apiCached<any>(endpoints.content.materials(q.toString() || undefined), options);
+}
+/** Один материал с источником: нужен странице встроенного режима и читалке. */
+export async function getMaterial(id: string, options: RequestInit = {}) {
+  return apiCached<any>(endpoints.content.material(id), options);
 }
 /** Отметить материал открытым — для подсказки «что ещё не открыто» в плане темы. */
 export async function markMaterialOpened(materialId: string) {
@@ -94,7 +101,13 @@ export async function getTrainerFeedCard(id: string) {
   if (cacheKey) trainerCardInflight.set(cacheKey, promise);
   return promise;
 }
-export async function answerTrainerCard(payload: any) { return api<any>(endpoints.content.trainerFeedAnswer(), { method: "POST", body: JSON.stringify(payload) }); }
+/**
+ * Ответ карточки тренажёра. Без сети уходит в офлайн-очередь и повторяется
+ * позже с тем же `client_id`, поэтому повтор не создаёт второй ответ.
+ */
+export async function answerTrainerCard(payload: any) {
+  return submitOrQueue<any>(endpoints.content.trainerFeedAnswer(), payload);
+}
 
 // ---- Attestations (colloquium / exam / credit / test / control) ----
 export async function listAttestations(subjectSlug?: string, type?: string) {

@@ -737,3 +737,83 @@ telegram-initdata/widget) — только с тестом-инварианто�
 Только для ответов, одинаковых для всех ролей и редко меняющихся
 (ADR-0002): политика в `CACHE_POLICIES`, `cached(...)` в маршруте,
 `store: getRedis(c.env)`. Свежесть/оценки/сообщения кэшировать нельзя.
+
+### 12.9. PdfMentor bridge
+
+`workers/api/src/routes/mentor.ts` — оболочка (`export { default } from
+"./mentor/index"`), реализация в `routes/mentor/`:
+
+| Файл | Ответственность |
+|---|---|
+| `model.ts` | TTL кода, нормализация `PDFMENTOR_URL`, HMAC, constant-time сравнение |
+| `store.ts` | одноразовые коды: Upstash `getdel`, память — только dev-фоллбек |
+| `index.ts` | `config`, `sso`, `sso/exchange`, `context`; rate-limit и аудит |
+
+Правила: подпись проверяется до расходования кода; код не попадает в query и
+логи; без `BRIDGE_SECRET` обмен закрыт (fail-closed), а не «работает как-нибудь».
+Контракт — `MEDBIOHIM_PDFMENTOR_API_CONTRACT.md`, тест —
+`workers/api/test/mentor-bridge.test.js`. Фронтенд `/mentor` отправляет код
+POST-формой (form_post) и не содержит адресов PdfMentor в коде.
+
+### 12.10. Микропрепараты: методички
+
+Каталог препаратов остаётся в `trainer_feed_cards` / `trainer_atlas_cards`;
+методички — отдельная таблица, не второй каталог.
+
+| Файл | Ответственность |
+|---|---|
+| `workers/api/src/routes/preparations.ts` | `GET /preparations/guides`, `/guides/:key`, `/structures`; без миграции — `migrated: false`, а не 503 |
+| `src/lib/histologyAtlas.ts` | индекс гидов, `guideForCard`, фильтры атласа (структура → орган → ткань → сложность) |
+| `src/components/trainers/PreparationGuidePanel.tsx` | единственная панель методички: атлас и диагностикум |
+| `workers/api/src/routes/admin/preparation-guides.ts` | чтение (`admin`, `moderator`) и upsert по `key` (`admin`, service-role) |
+
+Контент правится в `src/data/histology-preparations.json`, SQL собирается
+`scripts/preparation-guides-sql.mjs` (идемпотентные upsert-ы); точечные правки —
+через `/admin/preparation-guides`. Второй просмотрщик/панель не заводится.
+
+### 12.11. Диагностикум
+
+Один движок и пять режимов — `identify`, `structures`, `differential`, `complex`,
+`schema`; отдельный «экзаменатор» не создаётся.
+
+| Файл | Ответственность |
+|---|---|
+| `routes/diagnosticum/model.ts` | сборка задания и ключа, подбор карточки с изображением |
+| `routes/diagnosticum/grading.ts` | проверка набора, баллы, 4 уровня подсказок |
+| `routes/diagnosticum/shared.ts` | загрузка гидов/карточек/структур, чтение попытки |
+| `routes/diagnosticum/index.ts` | обзор разделов, `POST /start` |
+| `routes/diagnosticum/session.ts` | `/hint`, `/answer`, `/stats`, `/mistakes` |
+
+Ключ ответа живёт в `diagnosticum_attempts.answers` и не входит в колоночные
+гранты — до ответа его нет в браузере. Попытка закрывается один раз (повтор — 409).
+UI — `/trainers/diagnosticum` (`DiagnosticumRunner`, `DiagnosticumStats`); ошибки
+уходят в повторение через `?cards=` существующего тренажёра, второй режим
+повторения не заводится.
+
+### 12.12. Офлайн-очередь и идемпотентность
+
+| Файл | Ответственность |
+|---|---|
+| `src/lib/offline/{db,queue,index}.ts` | IndexedDB-outbox: порядок, остановка на сети, снятие окончательных 4xx, лимит 200 |
+| `src/components/pwa/OfflineIndicator.tsx` | «ждут сети: N», автоотправка при `online`, ручная кнопка |
+| `workers/api/src/lib/idempotency.ts` | результат по `client_id` в Redis, TTL 7 дней |
+
+`origin` принимается только `"user"` (иначе 422); повтор с тем же `client_id`
+возвращает прежний результат с `replayed: true`, а не второй ответ. Service worker
+не кэширует `/api/` и `/auth/` — персональные данные в Cache Storage не попадают.
+
+### 12.13. Общие модули браузер ↔ Worker (`src/shared`)
+
+Правило, которое обязано совпадать на клиенте и на сервере, живёт в `src/shared`
+и импортируется обоими контурами; две копии такого правила запрещены (исключение —
+самодостаточные parity-копии с тестом-инвариантом, §12.8.1).
+
+| Модуль | Общее правило |
+|---|---|
+| `src/shared/histology/preparation-match.ts` | нормализация ключа препарата и «гид ↔ карточка» (атлас и диагностикум) |
+| `src/shared/lectures/lecture-title.ts` | сравнимое название лекции (лента портала и проверка дублей перед публикацией) |
+
+Модули чистые: без DOM, БД и `process.env`. Worker импортирует их относительным
+путём; в файле, который грузит node-тест напрямую, расширение `.ts` обязательно.
+Тесты: `src/lib/__tests__/preparation-match.test.ts`,
+`src/components/portals/__tests__/ArchiveLecturesMerge.test.tsx`.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Microscope, ScanSearch } from "lucide-react";
+import { ArrowRight, Crosshair, Microscope, ScanSearch } from "lucide-react";
 import { TrainerStatsCard } from "@/components/trainers/TrainerStatsCard";
 
 export default function TrainersPage() {
@@ -18,6 +18,18 @@ export default function TrainersPage() {
         <h2 className="mt-5 text-lg font-bold">Гистология · МБХ</h2>
         <p className="mt-1 text-sm text-slate-500">Микропрепараты, электронограммы, подписи и последовательное прохождение банка.</p>
         <span className="mt-4 inline-flex text-sm font-semibold text-indigo-700">Открыть тренажёр →</span>
+      </Link>
+      <Link href="/trainers/diagnosticum" className="card group block p-5 transition hover:-translate-y-0.5 hover:shadow-md">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-700"><Crosshair className="h-6 w-6" /></div>
+          <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-violet-600" />
+        </div>
+        <h2 className="mt-5 text-lg font-bold">Диагностикум</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Определить препарат, найти структуры, отличить похожие и комплексные задания. Подсказки по уровням
+          и разбор ошибок по разделам.
+        </p>
+        <span className="mt-4 inline-flex text-sm font-semibold text-violet-700">Начать тренировку →</span>
       </Link>
       <Link href="/atlas" className="card group block p-5 transition hover:-translate-y-0.5 hover:shadow-md">
         <div className="flex items-start justify-between gap-4">

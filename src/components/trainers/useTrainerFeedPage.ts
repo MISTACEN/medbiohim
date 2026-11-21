@@ -105,7 +105,18 @@ export function useTrainerFeedPage(params: Promise<{ subject: string }>) {
     setSelected(optionId);
     setBusy(true);
     const r = await answerTrainerCard({ card_id: card.id, option_id: optionId, time_ms: Date.now() - startedAt });
-    if (r.ok) setResult(r.data.correct); else setActionNote(describeApiError(r.error));
+    if (r.ok) {
+      const data = r.data as { queued?: boolean; correct?: boolean } | null;
+      if (data?.queued) {
+        // Без сети проверка недоступна: ответ сохранён и уйдёт автоматически.
+        setActionNote("Нет сети: ответ сохранён на устройстве и отправится сам");
+        next();
+      } else {
+        setResult(Boolean(data?.correct));
+      }
+    } else {
+      setActionNote(describeApiError(r.error));
+    }
     setBusy(false);
   }
 

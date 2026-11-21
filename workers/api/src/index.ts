@@ -69,6 +69,7 @@ import storage from "./routes/storage";
 import adminRoutes from "./routes/admin";
 import adminSchedule from "./routes/admin-schedule";
 import histology from "./routes/histology";
+import preparations from "./routes/preparations";
 import files from "./routes/files";
 import telegram from "./routes/telegram";
 import telegramIngest from "./routes/telegram-ingest";
@@ -85,6 +86,7 @@ import workshop from "./routes/workshop";
 import adminWorkshopConvert from "./routes/admin-workshop-convert";
 import adminAiUsage from "./routes/admin-ai-usage";
 import mentor from "./routes/mentor";
+import diagnosticum from "./routes/diagnosticum";
 import staff from "./routes/staff";
 import teacher from "./routes/teacher/index";
 import access from "./routes/access";
@@ -274,6 +276,7 @@ v1.route("/admin", adminAccount);
 // Журнал ИИ-вызовов: маршрут, провайдер, модель, задержка, результат + лимиты.
 v1.route("/admin", adminAiUsage);
 v1.route("/histology", histology);
+v1.route("/preparations", preparations); // методические карточки микропрепаратов (атлас/диагностикум)
 v1.route("/labs", labs);
 v1.route("/attestations", gatedModule("attestations", attestations));
 v1.route("/integrations", integrations);
@@ -282,6 +285,7 @@ v1.route("/questions", gatedModule("subjects", questionComments));
 // Блок 8: инвайт-ссылки в группы (с подтверждением старосты) + тревожная кнопка.
 v1.route("/", block8);
 v1.route("/mentor", mentor); // Bridge API для PdfMentor (SSO, документы, контекст)
+v1.route("/diagnosticum", diagnosticum); // Диагностикум гистологии (18 препаратов)
 
 v1.get("/subjects-catalog", (c) =>
   plans.fetch(rewriteRequest(c.req.raw, "/subjects-catalog"), c.env)

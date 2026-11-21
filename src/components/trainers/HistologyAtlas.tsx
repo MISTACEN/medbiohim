@@ -3,20 +3,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { GraduationCap, Maximize2, Microscope, Search, X } from "lucide-react";
-import { listTrainerFeed } from "@/lib/content-api";
+import {
+  listPreparationGuides,
+  listPreparationStructures,
+  listTrainerFeed,
+} from "@/lib/content-api";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCards } from "@/components/ui/Skeleton";
 import { AtlasThumb, topicLabel } from "@/components/trainers/HistologyTrainerParts";
 import { TrainerImageViewer } from "@/components/trainers/TrainerImageViewer";
+import { PreparationGuidePanel } from "@/components/trainers/PreparationGuidePanel";
 import { lessonKeyOf } from "@/lib/histologyOrder";
 import {
   atlasCardName,
   atlasStats,
+  difficultyLabel,
   flattenAtlasGroups,
   groupAtlasCards,
+  guideFacets,
+  guideForCard,
+  indexGuides,
   type AtlasCard,
+  type AtlasFilters,
   type AtlasKind,
   type AtlasSort,
+  type PreparationGuide,
 } from "@/lib/histologyAtlas";
 
 export type AtlasTrainSelection = { ids: string[]; lesson: string; kind: AtlasKind };
@@ -68,6 +79,10 @@ export function HistologyAtlas({
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AtlasSort>("plan");
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [guides, setGuides] = useState<PreparationGuide[]>([]);
+  const [structureTitles, setStructureTitles] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<AtlasFilters>({});
+  const [openGuide, setOpenGuide] = useState<{ key: string; title: string } | null>(null);
   const focusedRef = useRef(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
@@ -92,17 +107,54 @@ export function HistologyAtlas({
     };
   }, [cards]);
 
+  // Методические карточки: без них атлас работает как раньше, поэтому ошибка
+  // загрузки гидов не показывается как ошибка атласа.
+  useEffect(() => {
+    let alive = true;
+    void Promise.all([listPreparationGuides(), listPreparationStructures()])
+      .then(([guidesResult, structuresResult]) => {
+        if (!alive) return;
+        if (guidesResult.ok) setGuides(guidesResult.data.items || []);
+        if (structuresResult.ok) {
+          const titles: Record<string, string> = {};
+          for (const item of structuresResult.data.items || []) titles[item.slug] = item.title;
+          setStructureTitles(titles);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const guideIndex = useMemo(() => indexGuides(guides), [guides]);
+  const facets = useMemo(() => guideFacets(guides), [guides]);
+  const structureOptions = useMemo(() => {
+    const present = new Set<string>();
+    for (const guide of guides) for (const slug of guide.structures || []) present.add(String(slug));
+    return Array.from(present)
+      .map((slug) => ({ slug, title: structureTitles[slug] || slug.replace(/-/g, " ") }))
+      .sort((a, b) => a.title.localeCompare(b.title, "ru"));
+  }, [guides, structureTitles]);
+
   const all = cards ?? fetched;
   const stats = useMemo(() => atlasStats(all), [all]);
 
   const lessons = useMemo(
-    () => groupAtlasCards(all, { kind, query, singleElectronogramBlock: false }),
-    [all, kind, query],
+    () =>
+      groupAtlasCards(all, {
+        kind,
+        query,
+        singleElectronogramBlock: false,
+        guides: guideIndex,
+        filters,
+      }),
+    [all, kind, query, guideIndex, filters],
   );
 
   const groups = useMemo(
-    () => groupAtlasCards(all, { kind, lesson, query, sort }),
-    [all, kind, lesson, query, sort],
+    () => groupAtlasCards(all, { kind, lesson, query, sort, guides: guideIndex, filters }),
+    [all, kind, lesson, query, sort, guideIndex, filters],
   );
   const visible = useMemo(() => flattenAtlasGroups(groups), [groups]);
   const visibleIds = useMemo(
@@ -125,6 +177,7 @@ export function HistologyAtlas({
 
   const viewerIndex = viewerId ? visible.findIndex((card) => String(card.id || "") === viewerId) : -1;
   const viewerCard = viewerIndex >= 0 ? visible[viewerIndex] : null;
+  const viewerGuide = viewerCard ? guideForCard(viewerCard, guideIndex) : null;
 
   function step(direction: -1 | 1) {
     if (viewerIndex < 0 || visible.length < 2) return;
@@ -158,13 +211,22 @@ export function HistologyAtlas({
     setLesson("");
     setQuery("");
     setSort("plan");
+    setFilters({});
   }
 
   if (externalLoading || fetching) {
     return <SkeletonCards count={3} />;
   }
 
-  const filtersActive = Boolean(lesson || query || kind !== "preparation");
+  const filtersActive = Boolean(
+    lesson ||
+      query ||
+      kind !== "preparation" ||
+      filters.structure ||
+      filters.organ ||
+      filters.tissue ||
+      Number(filters.difficulty || 0) > 0,
+  );
 
   return (
     <section className="space-y-4">
@@ -276,6 +338,79 @@ export function HistologyAtlas({
               </button>
             ))}
           </div>
+        ) : null}
+
+        {structureOptions.length || facets.organs.length ? (
+          <details className="rounded-xl border border-[var(--border)] bg-white p-3">
+            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-slate-500">
+              Сортировка по структурам и сложности
+            </summary>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Структура
+                <select
+                  value={filters.structure || ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, structure: event.target.value || undefined }))
+                  }
+                  className="mt-1 min-h-9 w-full rounded-lg border border-[var(--border)] bg-white px-2 py-1 text-xs font-semibold normal-case tracking-normal text-slate-700"
+                >
+                  <option value="">Любая структура</option>
+                  {structureOptions.map((item) => (
+                    <option key={item.slug} value={item.slug}>{item.title}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Орган
+                <select
+                  value={filters.organ || ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, organ: event.target.value || undefined }))
+                  }
+                  className="mt-1 min-h-9 w-full rounded-lg border border-[var(--border)] bg-white px-2 py-1 text-xs font-semibold normal-case tracking-normal text-slate-700"
+                >
+                  <option value="">Любой орган</option>
+                  {facets.organs.map((organ) => (
+                    <option key={organ} value={organ}>{organ}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Ткань
+                <select
+                  value={filters.tissue || ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, tissue: event.target.value || undefined }))
+                  }
+                  className="mt-1 min-h-9 w-full rounded-lg border border-[var(--border)] bg-white px-2 py-1 text-xs font-semibold normal-case tracking-normal text-slate-700"
+                >
+                  <option value="">Любая ткань</option>
+                  {facets.tissues.map((tissue) => (
+                    <option key={tissue} value={tissue}>{tissue}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Сложность
+                <select
+                  value={filters.difficulty ? String(filters.difficulty) : ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      difficulty: Number(event.target.value) || undefined,
+                    }))
+                  }
+                  className="mt-1 min-h-9 w-full rounded-lg border border-[var(--border)] bg-white px-2 py-1 text-xs font-semibold normal-case tracking-normal text-slate-700"
+                >
+                  <option value="">Любая сложность</option>
+                  {facets.difficulties.map((level) => (
+                    <option key={level} value={level}>{difficultyLabel(level)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </details>
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
@@ -397,6 +532,17 @@ export function HistologyAtlas({
           position={viewerIndex >= 0 ? { index: viewerIndex + 1, total: visible.length } : undefined}
           actions={
             <div className="flex flex-wrap gap-2">
+              {viewerGuide ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenGuide({ key: viewerGuide.key, title: atlasCardName(viewerCard) })
+                  }
+                  className="inline-flex w-fit rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                >
+                  Методика поиска
+                </button>
+              ) : null}
               {onTrain ? (
                 <button
                   type="button"
@@ -414,6 +560,14 @@ export function HistologyAtlas({
               </Link>
             </div>
           }
+        />
+      ) : null}
+
+      {openGuide ? (
+        <PreparationGuidePanel
+          guideKey={openGuide.key}
+          title={openGuide.title}
+          onClose={() => setOpenGuide(null)}
         />
       ) : null}
 

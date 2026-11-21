@@ -31,16 +31,11 @@ export function lectureBodyLength(lecture: any): number {
   return plainLectureText(lecture).length;
 }
 
-/** Сравнимое название: без «Неделя 3 · Лекция 3», регистра, «ё» и пунктуации. */
-export function normalizeLectureTitle(value: unknown): string {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/^(?:неделя|недели)\s*[\d\s.,–\-—/]*/i, "")
-    .replace(/(?:лекция|лекции|практика|семинар)\s*[\d\s.,–\-—/·]*/gi, "")
-    .replace(/[^a-zа-я0-9]+/gi, " ")
-    .trim();
-}
+// Расширение обязательно: этот модуль импортируется node-тестом напрямую.
+import { normalizeLectureTitle } from "../../../../src/shared/lectures/lecture-title.ts";
+
+/** Сравнимое название — общее правило с порталом (`ArchiveLectures`). */
+export { normalizeLectureTitle };
 
 /**
  * Проверка перед публикацией. `published` — уже опубликованные лекции

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { AuthHashCatcher } from "@/components/auth/AuthHashCatcher";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
+import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 // F5: self-hosted Inter вместо блокирующего @import Google Fonts; кириллица
@@ -73,6 +74,7 @@ export default function RootLayout({
       <body className="antialiased">
         <a href="#main" className="skip-link">Перейти к содержимому</a>
         <PwaRegister />
+        <OfflineIndicator />
         <ThemeProvider>
           <AuthProvider>
             <AuthHashCatcher />

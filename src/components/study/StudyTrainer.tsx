@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clock, Loader2, RotateCcw, TriangleAlert } from "lucide-react";
 import { krGrade } from "@/lib/study/plan";
+import { readJson } from "@/components/study/study-hub-model";
 
 type Em = { n: number; id: string; name: string; file: string; labels: string; theory: string };
 type Question = { id: string; text: string; options: string[]; correct: number | null; answer: string; bank: string };
@@ -25,15 +26,6 @@ type Run = { items: RunItem[]; index: number; kr: boolean; left: number; phase: 
 
 const LS_PREFIX = "study.trainer.";
 const emImage = (file: string) => `/study/img/${file.replace(/\.png$/i, ".jpg")}`;
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(LS_PREFIX + key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function writeJson(key: string, value: unknown) {
   try {
@@ -96,8 +88,8 @@ export function StudyTrainer() {
   };
 
   useEffect(() => {
-    setEmKnow(readJson<Record<string, boolean>>("emKnow", {}));
-    setErrors(readJson<string[]>("errors", []));
+    setEmKnow(readJson<Record<string, boolean>>(LS_PREFIX + "emKnow", {}));
+    setErrors(readJson<string[]>(LS_PREFIX + "errors", []));
   }, []);
 
   useEffect(() => {

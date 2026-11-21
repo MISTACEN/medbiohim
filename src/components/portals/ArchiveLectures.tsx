@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BookOpen, Loader2, Search, X } from "lucide-react";
 import { LectureRenderer } from "@/components/lectures/LectureRenderer";
 import { loadLectureSet, type PortalLectureSet } from "@/lib/portalContent";
+import { normalizeLectureTitle } from "@/shared/lectures/lecture-title";
 
 type LectureSetId = "bio" | "math" | "chem" | "chem-organic" | "phys" | "latin" | "english" | "history" | "hist";
 
@@ -21,17 +22,6 @@ type Props = {
 };
 
 type ArchiveItem = PortalLectureSet["items"][number];
-
-/** Сравнимое название: без «Лекция 3:», «Тема 2.», регистра и пунктуации. */
-function normalizeLectureTitle(value: unknown): string {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/^(?:тема|неделя)\s*[\d\s.,–\-—/]*/i, "")
-    .replace(/(?:лекция|конспект|практика|семинар)\s*[\d\s.,–\-—/·:]*/gi, "")
-    .replace(/[^a-zа-я0-9]+/gi, " ")
-    .trim();
-}
 
 /** Слияние наборов: сначала по id, затем по нормализованному названию. */
 function mergeLectureSets(sets: PortalLectureSet[]): { subject: string; items: ArchiveItem[] } {

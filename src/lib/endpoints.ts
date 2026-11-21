@@ -119,6 +119,7 @@ export const endpoints = {
   /** Контент: материалы, лекции, вопросы, тренажёры, гистология, аттестации. */
   content: {
     materials: (query?: string): string => withQuery("/materials", query),
+    material: (id: string): string => `/materials/${enc(id)}`,
     materialFileUrl: (id: string): string => `/materials/${enc(id)}/file-url`,
     materialFile: (id: string): string => `/materials/${enc(id)}/file`,
     materialOpen: (id: string): string => `/materials/${enc(id)}/open`,
@@ -305,6 +306,8 @@ export const endpoints = {
     contentArchive: (): string => "/admin/content/archive",
     contentMove: (): string => "/admin/content/move",
     contentImport: (): string => "/admin/content/import",
+    preparationGuides: (): string => "/admin/preparation-guides",
+    preparationGuide: (key: string): string => `/admin/preparation-guides/${enc(key)}`,
     contentPackageImport: (): string => "/admin/content/package/import",
     contentValidate: (): string => "/admin/content/validate",
     announcements: (): string => "/admin/announcements",
@@ -343,6 +346,31 @@ export const endpoints = {
   },
 
   /** Системные/смешанные: здоровье, присутствие, дашборд, прогресс, academic, заметки. */
+  /** Микропрепараты: методические карточки и словарь структур. */
+  preparations: {
+    guides: (): string => "/preparations/guides",
+    guide: (key: string): string => `/preparations/guides/${enc(key)}`,
+    structures: (): string => "/preparations/structures",
+  },
+  /** Bridge PdfMentor: состояние, SSO-код, учебный контекст. */
+  mentor: {
+    config: (): string => "/mentor/config",
+    sso: (): string => "/mentor/sso",
+    context: (): string => "/mentor/context",
+    /** Document Bridge: вызывает только сервер PdfMentor (HMAC, без сессии). */
+    documentAccess: (): string => "/mentor/documents/access",
+    documentContent: (fileId: string, userId: string): string =>
+      `/mentor/documents/${enc(fileId)}/content?user_id=${enc(userId)}`,
+  },
+  /** Диагностикум: разделы, старт задания, подсказки, ответ, статистика. */
+  diagnosticum: {
+    root: (): string => "/diagnosticum",
+    start: (): string => "/diagnosticum/start",
+    hint: (): string => "/diagnosticum/hint",
+    answer: (): string => "/diagnosticum/answer",
+    stats: (): string => "/diagnosticum/stats",
+    mistakes: (): string => "/diagnosticum/mistakes",
+  },
   misc: {
     health: (): string => "/health",
     presenceHeartbeat: (): string => "/presence/heartbeat",

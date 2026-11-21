@@ -23,13 +23,14 @@ const SETS = [
 
 const readSet = (id) => JSON.parse(readFileSync(new URL(`lectures-${id}.json`, PORTALS), "utf8"));
 
-/** То же сравнение, что в ArchiveLectures: без «Тема 2.», «Лекция 3:» и пунктуации. */
+/** То же сравнение, что в ArchiveLectures (src/shared/lectures/lecture-title.ts):
+ *  парити-копия — node --test не импортирует .ts, инвариант закреплён тестом ниже. */
 const normalize = (value) =>
   String(value || "")
     .toLowerCase()
     .replace(/ё/g, "е")
-    .replace(/^(?:тема|неделя)\s*[\d\s.,–\-—/]*/i, "")
-    .replace(/(?:лекция|конспект|практика|семинар)\s*[\d\s.,–\-—/·:]*/gi, "")
+    .replace(/^(?:тема|неделя|недели)\s*[\d\s.,–\-—/]*/i, "")
+    .replace(/(?:лекция|лекции|конспект|практика|семинар)\s*[\d\s.,–\-—/·:]*/gi, "")
     .replace(/[^a-zа-я0-9]+/gi, " ")
     .trim();
 

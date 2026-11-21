@@ -1,4 +1,5 @@
 import { api, apiCached, getTrainerImageUrl } from "@/lib/api";
+import { endpoints } from "@/lib/endpoints";
 
 export type SubjectMaterial = {
   id: string;
@@ -206,4 +207,57 @@ export async function cancelTraining(id: string) {
     method: "POST",
     body: "{}",
   });
+}
+
+// --- Методические карточки микропрепаратов ---------------------------------
+// Гиды приходят из /preparations/guides (миграция 20261120). Пока миграция не
+// применена, воркер отдаёт пустой список с migrated: false, и атлас работает
+// без методичек — а не падает.
+
+export type PreparationGuideSummary = {
+  key: string;
+  name: string;
+  section?: string | null;
+  system?: string | null;
+  organ?: string | null;
+  tissue?: string | null;
+  stain?: string | null;
+  difficulty?: number | null;
+  structures?: string[] | null;
+};
+
+export type PreparationGuideSource = {
+  manual?: string;
+  page?: number;
+  file_id?: string;
+  url?: string;
+};
+
+export type PreparationGuideDetail = PreparationGuideSummary & {
+  low_magnification?: string | null;
+  high_magnification?: string | null;
+  steps?: string[] | null;
+  features?: string[] | null;
+  inclusions?: string[] | null;
+  differential?: string[] | null;
+  mistakes?: string[] | null;
+  sources?: PreparationGuideSource[] | null;
+};
+
+export async function listPreparationGuides() {
+  return apiCached<{ items: PreparationGuideSummary[]; total: number; migrated: boolean }>(
+    endpoints.preparations.guides(),
+  );
+}
+
+export async function getPreparationGuide(key: string) {
+  return api<{ item: PreparationGuideDetail; migrated: boolean }>(endpoints.preparations.guide(key));
+}
+
+export type PreparationStructure = { slug: string; title: string; kind: string; sort_order?: number | null };
+
+export async function listPreparationStructures() {
+  return apiCached<{ items: PreparationStructure[]; migrated: boolean }>(
+    endpoints.preparations.structures(),
+  );
 }

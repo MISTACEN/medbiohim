@@ -29,7 +29,8 @@
 9. `docs/architecture/registry/**`, `test/component-registry.test.mjs` и `test/ui-barrel.test.mjs` — контракт реестра общих компонентов (этапы A и D). Данные реестра — shared surface с одним writer (архитектура/Frontend); `test/**` остаётся QA-owned. Изменение реестра принимается только вместе с прохождением теста-стража; записи в обход контракта не принимаются.
 10. `src/modules/subjects/registry.json` + `registry.ts` + `submodules/<slug>/**` — реестр подмодулей предмета (ADR-0001). Один writer на цикл; новые подмодули добавляются только генератором `scripts/new-module.mjs` (рукописные правки `registry.json` не принимаются — стражи `test/subject-submodules.test.mjs` и `test/architecture-fitness.test.mjs`). `src/modules/**` не импортирует `src/app/**` и чужие подмодули — проверяет fitness-тест.
 11. `docs/architecture/registry/loc-budgets.json` (v2) — LOC-бюджеты: страницы 200 / маршруты 400 / модули 400. Исключения — только через ADR; проверка `scripts/audit-loc.mjs` + fitness.
-12. `workers/api/test/route-guards.test.js` — страж guard-хелперов маршрутов. Новый публичный маршрут без auth обязан получить rate limit либо обоснованную запись в ALLOWLIST файла-стража (QA-owned, согласование с Backend).
+12. `src/shared/**` — общие чистые модули, которые импортируют и Next, и Worker (`histology/preparation-match.ts`, `lectures/lecture-title.ts`). Один writer на цикл; изменение правила требует прогона обоих контуров (`npm test`, `npm run test:unit`, `cd workers/api && npm run check`) — иначе копии снова разойдутся. Новые копии такого правила в `src/lib/**` или `workers/api/src/**` не принимаются.
+13. `workers/api/test/route-guards.test.js` — страж guard-хелперов маршрутов. Новый публичный маршрут без auth обязан получить rate limit либо обоснованную запись в ALLOWLIST файла-стража (QA-owned, согласование с Backend).
 
 ## Legacy и замороженные зоны
 

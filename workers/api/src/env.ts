@@ -91,6 +91,13 @@ export type Env = {
   GEMINI_VERCEL_PROXY_SECRET?: string;
   AI_CHAT_PRIMARY_PROVIDER?: string;
 
+  // Bridge для PdfMentor: адрес документного движка и HMAC-секрет обмена
+  // одноразовым SSO-кодом (PdfMentor → MEDBIOHIM). Без секрета обмен закрыт.
+  PDFMENTOR_URL?: string;
+  BRIDGE_SECRET?: string;
+  /** "0" выключает встроенный режим PdfMentor и оставляет старый просмотрщик. */
+  MENTOR_ENABLED?: string;
+
   // App
   APP_ENV?: string;
   APP_ORIGIN?: string;

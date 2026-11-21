@@ -30,6 +30,8 @@ const navItems = [
 const moreItems = [
   { href: "/search", label: "Поиск", icon: Search, moduleKey: "search" },
   { href: "/library", label: "Библиотека", icon: BookOpen, moduleKey: "library" },
+  // PdfMentor — документный движок; без пункта страница /mentor была недостижима.
+  { href: "/mentor", label: "PdfMentor", icon: BookOpen },
   { href: "/university", label: "Вуз и ЕИОС", icon: Landmark, moduleKey: "university" },
   // Атлас, калькуляторы и тьютор объединены в хаб /tools (старые маршруты
   // редиректят с сохранением параметров).

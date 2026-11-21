@@ -103,6 +103,9 @@ export async function adminContentMove(table: string, id: string, payload: Recor
 export async function adminContentImport(payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.contentImport(), { method: "POST", body: JSON.stringify(payload) }) as any; }
 export async function adminImportContentPackage(payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.contentPackageImport(), { method: "POST", body: JSON.stringify(payload) }) as any; }
 export async function adminValidateContent(): Promise<any> { return api(endpoints.admin.contentValidate()) as any; }
+/** Методические карточки препаратов: список и сохранение по ключу. */
+export async function adminListPreparationGuides(): Promise<any> { return api(endpoints.admin.preparationGuides()) as any; }
+export async function adminSavePreparationGuide(key: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.preparationGuide(key), { method: "PUT", body: JSON.stringify(payload) }) as any; }
 export async function adminCreateAnnouncement(title: string, body: string, pinned = false): Promise<any> { return api(endpoints.admin.announcements(), { method: "POST", body: JSON.stringify({ title, body, pinned }) }) as any; }
 export async function adminListAnnouncements(): Promise<any> { return api(endpoints.admin.announcements()) as any; }
 export async function adminUpdateAnnouncement(id: string, patch: { title?: string; body?: string; pinned?: boolean }): Promise<any> { return api(endpoints.admin.announcement(id), { method: "PATCH", body: JSON.stringify(patch) }) as any; }

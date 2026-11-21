@@ -55,9 +55,14 @@ import {
   type NerveElectronogram,
 } from "@/components/study/Electronograms";
 import { StudyTrainer } from "@/components/study/StudyTrainer";
+// Единые ключи и helpers прогресса: копии здесь расходились бы с useStudyHub.
+import {
+  DONE_KEY,
+  KR_KEY,
+  daysBetween,
+  readJson,
+} from "@/components/study/study-hub-model";
 
-const DONE_KEY = "study.program.done.v2";
-const KR_KEY = "study.program.krDate.v2";
 const STATUS_LABEL: Record<MyAssignmentStatus, string> = {
   pending: "Ожидает",
   retake_needed: "На отработку",
@@ -66,15 +71,6 @@ const STATUS_LABEL: Record<MyAssignmentStatus, string> = {
 };
 
 type Tab = "overview" | "plan" | "em" | "tests";
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function writeJson(key: string, value: unknown) {
   try {
@@ -88,12 +84,6 @@ function fingerprint(text: string): string {
   let hash = 5381;
   for (let index = 0; index < text.length; index += 1) hash = ((hash << 5) + hash + text.charCodeAt(index)) | 0;
   return Math.abs(hash).toString(36);
-}
-
-function daysBetween(a: string, b: string): number {
-  const [ay, am, ad] = a.split("-").map(Number);
-  const [by, bm, bd] = b.split("-").map(Number);
-  return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86_400_000);
 }
 
 function topicFor(block: { short: string }): string {

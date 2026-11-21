@@ -5,9 +5,15 @@ import {
   atlasCardName,
   atlasStats,
   dedupeAtlasCards,
+  difficultyLabel,
   filterAtlasCards,
   flattenAtlasGroups,
   groupAtlasCards,
+  guideFacets,
+  guideForCard,
+  indexGuides,
+  preparationKey,
+  type PreparationGuide,
 } from "@/lib/histologyAtlas";
 
 const card = (overrides: Record<string, unknown> = {}) => {
@@ -137,5 +143,95 @@ describe("atlasStats", () => {
         card({ id: "c3", tags: ["electron"] }),
       ]),
     ).toEqual({ total: 3, preparations: 1, electronograms: 2 });
+  });
+});
+
+describe("методические карточки препаратов", () => {
+  const guides: PreparationGuide[] = [
+    {
+      key: "cytology-mitosis",
+      name: "Митоз",
+      organ: "Клетка",
+      tissue: "Клеточный уровень",
+      difficulty: 1,
+      structures: ["mitotic-figures", "chromosomes"],
+    },
+    {
+      key: "ct-blood-smear",
+      name: "Мазок крови",
+      organ: "Кровь",
+      tissue: "Соединительная (жидкая)",
+      difficulty: 2,
+      structures: ["erythrocytes", "leukocytes"],
+    },
+  ];
+  const index = indexGuides(guides);
+
+  it("нормализует ключ: регистр, ё, пунктуация", () => {
+    expect(preparationKey("Мазок крови")).toBe("мазок-крови");
+    expect(preparationKey("  Ёж — иглы! ")).toBe("еж-иглы");
+    expect(preparationKey("cytology-mitosis")).toBe("cytology-mitosis");
+    expect(preparationKey(null)).toBe("");
+  });
+
+  it("находит гид по ключу и по названию препарата", () => {
+    expect(guideForCard(card({ preparation: { name: "Митоз" } }), index)?.key).toBe("cytology-mitosis");
+    expect(guideForCard(card({ preparation: { name: "мазок крови" } }), index)?.key).toBe("ct-blood-smear");
+  });
+
+  it("находит гид, если название карточки длиннее названия методички", () => {
+    const found = guideForCard(card({ preparation: { name: "Митоз (корешок лука)" } }), index);
+    expect(found?.key).toBe("cytology-mitosis");
+  });
+
+  it("без индекса методичек не падает и не подменяет карточку", () => {
+    expect(guideForCard(card(), null)).toBeNull();
+    expect(guideForCard(card(), indexGuides([]))).toBeNull();
+  });
+
+  it("фильтрует по диагностической структуре", () => {
+    const cards = [
+      card({ id: "a", preparation: { name: "Митоз" } }),
+      card({ id: "b", preparation: { name: "Мазок крови" } }),
+    ];
+    const erythrocytes = filterAtlasCards(cards, {
+      guides: index,
+      filters: { structure: "erythrocytes" },
+    });
+    expect(erythrocytes.map((item) => item.id)).toEqual(["b"]);
+  });
+
+  it("фильтры комбинируются: структура + орган + сложность", () => {
+    const cards = [
+      card({ id: "a", preparation: { name: "Митоз" } }),
+      card({ id: "b", preparation: { name: "Мазок крови" } }),
+    ];
+    expect(
+      filterAtlasCards(cards, {
+        guides: index,
+        filters: { structure: "leukocytes", organ: "Кровь", difficulty: 2 },
+      }).map((item) => item.id),
+    ).toEqual(["b"]);
+    expect(
+      filterAtlasCards(cards, {
+        guides: index,
+        filters: { structure: "leukocytes", difficulty: 1 },
+      }),
+    ).toEqual([]);
+  });
+
+  it("при активном фильтре карточки без методички не показываются", () => {
+    const cards = [card({ id: "a", preparation: { name: "Неизвестный препарат" } })];
+    expect(filterAtlasCards(cards, { guides: index, filters: { structure: "erythrocytes" } })).toEqual([]);
+    expect(filterAtlasCards(cards, { guides: index, filters: {} })).toHaveLength(1);
+  });
+
+  it("собирает параметры фильтров и подписи сложности", () => {
+    const facets = guideFacets(guides);
+    expect(facets.organs).toEqual(["Клетка", "Кровь"]);
+    expect(facets.difficulties).toEqual([1, 2]);
+    expect(difficultyLabel(1)).toBe("Начальный");
+    expect(difficultyLabel(3)).toBe("Продвинутый");
+    expect(difficultyLabel(null)).toBe("Без уровня");
   });
 });

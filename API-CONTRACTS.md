@@ -96,3 +96,96 @@ Browser / PWA
 5. явно указать migration/deploy order и rollback.
 
 Если реализация в коде расходится с документом, не подгоняй код под устаревшую документацию вслепую: сначала зафиксируй расхождение и назначь владельца решения.
+
+## 8. PdfMentor bridge contract
+
+Канон: `docs/architecture/MEDBIOHIM_PDFMENTOR_API_CONTRACT.md`. Кратко для слоёв:
+
+- `POST /api/v1/mentor/sso` — только `requireAuth`; выдаёт одноразовый код
+  (60 с, Upstash Redis) и `form_action` PdfMentor. Код не передаётся в query.
+- `POST /api/v1/mentor/sso/exchange` — без пользовательской сессии, но с
+  `x-bridge-timestamp` + `x-bridge-signature` = HMAC-SHA256(`BRIDGE_SECRET`,
+  `"<ts>.<code>"`). Подпись проверяется до расходования кода; код одноразовый
+  (`getdel`), в логи не пишется.
+- `POST /api/v1/mentor/context` — учебный контекст конкретной операции.
+- `GET /api/v1/mentor/config` — состояние подключения; `MENTOR_ENABLED=0`
+  выключает встроенный режим, не ломая старый просмотрщик.
+- Адрес PdfMentor берётся только из `PDFMENTOR_URL` (https или loopback в dev),
+  а не из тела запроса.
+- `POST /api/v1/mentor/documents/access` и
+  `GET /api/v1/mentor/documents/:id/content` — Document Bridge. Без
+  пользовательской сессии: HMAC `"<ts>.document:<file_id>:<user_id>"` от
+  `BRIDGE_SECRET`, права проверяются на каждом чтении (отзыв группы действует
+  сразу), содержимое отдаётся потоком с `Cache-Control: private, no-store` (без
+  редиректа на подписанный URL), каждое чтение пишется в `bridge_document_reads`.
+  Отказ по правам — `200 { allowed: false }` в `access` и `403` в `content`.
+  Метаданные в `access`: `name` из `files.original_name`, `checksum` из
+  `files.sha256`, `version` — `null` (версию оригинала ведёт PdfMentor).
+- Регистрация внешних документов, версии/checksum на стороне PdfMentor, Result
+  и Sync Bridge не реализованы.
+
+Тесты контракта: `workers/api/test/mentor-bridge.test.js`.
+
+## 9. Микропрепараты: методические карточки и диагностикум
+
+Каталог препаратов остаётся в `trainer_feed_cards`; новые таблицы — только
+методички (`preparation_guides`), словарь структур (`preparation_structures`) и
+попытки диагностикума (`diagnosticum_attempts`).
+
+- `GET /api/v1/preparations/guides`, `GET /api/v1/preparations/guides/:key`,
+  `GET /api/v1/preparations/structures` — `requireAuth`. До применения миграции
+  отдают `migrated: false` и пустой список, а не 503: атлас продолжает работать
+  без методичек и фильтров.
+- `GET /api/v1/admin/preparation-guides` — список карточек для редактора (`admin`,
+  `moderator`); `PUT /api/v1/admin/preparation-guides/:key` — сохранение одной
+  карточки (`key`: латиница/цифры/дефис, `name` обязателен, `difficulty` 1–3
+  как в ограничении таблицы, пустые текстовые поля сохраняются как `""`,
+  списки до 30 строк по 400 символов). Запись идёт upsert-ом по `key` через
+  service-role: политик на insert/update у таблицы нет намеренно, поэтому обойти
+  редактор нельзя. Без миграции — `503 NOT_MIGRATED`.
+- `GET /api/v1/diagnosticum` — разделы (из `preparation_guides.section`) и режимы.
+- `POST /api/v1/diagnosticum/start` — `{mode, section?}`; вопрос собирается на
+  сервере, ответ содержит `attempt_id`, `question` и `hints_total`, но не ключ.
+- `POST /api/v1/diagnosticum/hint` — `{attempt_id, level?}`; уровни 1–4 только по
+  порядку, каждая подсказка −10 баллов.
+- `POST /api/v1/diagnosticum/answer` — `{attempt_id, submitted}`; проверка
+  набора (`missing`/`extra`), балл и `guide_key` для открытия методички.
+- `GET /api/v1/diagnosticum/stats` — по своим попыткам: точность, средний балл,
+  разбивка по режимам и разделам, `weak_sections`.
+- `GET /api/v1/diagnosticum/mistakes` — очередь повторения: уникальные `card_id`
+  неверных попыток (до 20) для deep-link `?cards=` тренажёра гистологии; второй
+  режим повторения не заводится.
+
+Правила доступа: `diagnosticum_attempts` под RLS (`user_id = auth.uid()`), колонка
+`answers` (ключ) не входит в колоночные гранты — правильные варианты приходят
+только в ответе `/answer`. Попытка закрывается один раз: повторный ответ — 409.
+
+Тесты контракта: `workers/api/test/preparations-guides.test.js`,
+`workers/api/test/diagnosticum.test.js`,
+`workers/api/test/admin-preparation-guides.test.js`; логика заданий —
+`src/lib/__tests__/diagnosticum-model.test.ts`. Методички правятся в админке:
+`/admin/preparation-guides` (`PreparationGuideEditor`).
+
+## 10. Офлайн-ответы и идемпотентность
+
+Офлайн-очередь живёт в браузере (`src/lib/offline/`, IndexedDB) и не подменяет
+транспорт: это тот же `api()` с теми же путями.
+
+- Запись в очереди — `{ path, method, body }`, где `body` уже содержит
+  `origin: "user"` и `client_id` (UUID). Очередь отправляется в исходном порядке:
+  сеть/таймаут останавливают её, окончательный 4xx снимает запись; хранится не
+  больше 200 записей.
+- `POST /api/v1/trainers/feed/answer` принимает необязательные `client_id` и
+  `origin`. `origin` допускается только `"user"` (иначе 422): клиент не может
+  выдать свой ответ за импорт или синхронизацию.
+- Повтор с тем же `client_id` возвращает сохранённый результат с `replayed: true`
+  и **не создаёт второй ответ**; память о выполнении живёт 7 дней (Redis, в dev —
+  память процесса).
+- Пока ответ в очереди, клиент получает `{ queued: true }` вместо результата:
+  проверку `is_correct` по-прежнему делает только сервер.
+- Service worker не кэширует `/api/` и `/auth/`: персональные данные и токены не
+  остаются в Cache Storage, офлайн работает только оболочка и статика.
+
+Тесты: `src/lib/__tests__/offline-queue.test.ts` (порядок, остановка, снятие,
+лимит, происхождение), `workers/api/test/offline-answers.test.js` (origin,
+идемпотентность, отсутствие API-кэша).
