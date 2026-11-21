@@ -110,6 +110,25 @@ function studentOnly(
 }
 
 /**
+ * Авторский маршрут (личный банк вопросов, авторские лекции, инструменты
+ * импорта): каждая строка серверно помечена автором (author_id/created_by),
+ * чтение/запись фильтруются по текущему пользователю — студенческих данных
+ * здесь нет по построению. Рабочее место преподавателя легитимно пишет в эти
+ * домены (ImportTest → «личный банк», публикации), поэтому teacherBlock здесь
+ * не применяется: он рвал спроектированный учительский поток, приёмка
+ * 2026-11-22 зафиксировала отказ «студенческие разделы недоступны» на
+ * сохранении вопросов из импорта теста.
+ */
+function authorOnly(
+  router: Hono<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const wrapped = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+  wrapped.use("*", requireAuth);
+  wrapped.route("/", router);
+  return wrapped;
+}
+
+/**
  * Маршруты раздела под централизованным доступом (Access Control).
  * requireAuth уже требует токен на каждом внутреннем маршруте, поэтому
  * повторная аутентификация безопасна; moduleGate после неё проверяет,
@@ -207,11 +226,11 @@ v1.route("/study-prep", gatedModule("academic", studyPrep));
 v1.route("/attendance", studentOnly(attendance));
 v1.route("/lectures", gatedModule("subjects", lectures));
 // Авторские занятия: пользователь видит и публикует только свои лекции.
-v1.route("/my-lectures", studentOnly(myLectures));
+v1.route("/my-lectures", authorOnly(myLectures));
 // Импорт документов (PDF) и OCR-шлюз для авторских лекций.
-v1.route("/my-tools", studentOnly(myTools));
+v1.route("/my-tools", authorOnly(myTools));
 // Личный банк вопросов автора.
-v1.route("/my-questions", studentOnly(myQuestions));
+v1.route("/my-questions", authorOnly(myQuestions));
 v1.route("/materials", gatedModule("library", materials));
 // Метаданные первоисточников контента — та же «библиотека», что и материалы.
 v1.route("/content-sources", gatedModule("library", contentSources));
