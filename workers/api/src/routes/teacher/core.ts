@@ -192,4 +192,83 @@ teacher.get("/subjects", requireAuth, async (c) => {
   }
 });
 
+/**
+ * PUT /subjects — полная замена набора предметов преподавателя (только админ).
+ *
+ * Прод-баг (найден приёмкой 2026-11-22): фронтовый teacherSetSubjects давно
+ * шлёт PUT /teacher/subjects, но обработчика не было — кнопка «Сохранить
+ * предметы» в админке падала «Не удалось выполнить запрос». Замена полная и
+ * атомарная по смыслу: удалить старые строки учителя, вставить новый набор.
+ * created_by = администратор, выполнивший замену.
+ */
+teacher.put("/subjects", requireAuth, async (c) => {
+  const rid = requestId();
+  if (!(await requireAdmin(c))) return c.res;
+  const db = c.get("supabase") as any;
+  const adminId = c.get("user").id;
+  let input: any = {};
+  try { input = await c.req.json(); } catch {
+    return error(c, rid, 400, "VALIDATION_ERROR", "Некорректный JSON");
+  }
+  const teacherId = String(input?.teacher_id || "");
+  const subjectIds = uniqueIds(Array.isArray(input?.subject_ids) ? input.subject_ids : []);
+  if (!UUID.test(teacherId)) return error(c, rid, 422, "VALIDATION_ERROR", "Некорректный teacher_id");
+  if (subjectIds.length > 200) return error(c, rid, 422, "VALIDATION_ERROR", "Максимум 200 предметов");
+
+  try {
+    // Учитель должен существовать; роль не навязываем — панель уже листает
+    // только преподавателей, а серверная проверка роли учителями отдельно.
+    const { data: teacher, error: teacherError } = await db
+      .from("users")
+      .select("id")
+      .eq("id", teacherId)
+      .maybeSingle();
+    if (teacherError) throw teacherError;
+    if (!teacher) return error(c, rid, 404, "NOT_FOUND", "Преподаватель не найден");
+
+    // Предметы должны существовать: иначе тишина при опечатке id.
+    const { data: subjectRows, error: subjectsError } = await db
+      .from("subjects")
+      .select("id")
+      .in("id", subjectIds)
+      .limit(200);
+    if (subjectsError) throw subjectsError;
+    if ((subjectRows || []).length !== subjectIds.length) {
+      return error(c, rid, 422, "VALIDATION_ERROR", "Некоторые предметы не найдены");
+    }
+
+    const { error: deleteError } = await db
+      .from("teacher_subjects")
+      .delete()
+      .eq("teacher_id", teacherId);
+    if (deleteError) throw deleteError;
+
+    let items: Array<{ id: string; name: string }> = [];
+    if (subjectIds.length) {
+      const { data: inserted, error: insertError } = await db
+        .from("teacher_subjects")
+        .insert(subjectIds.map((subjectId: string) => ({
+          teacher_id: teacherId,
+          subject_id: subjectId,
+          created_by: adminId,
+        })))
+        .select("subject_id");
+      if (insertError) throw insertError;
+      const ids = (inserted || []).map((row: any) => String(row.subject_id));
+      const { data: named, error: namedError } = await db
+        .from("subjects")
+        .select("id,name")
+        .in("id", ids)
+        .limit(200);
+      if (namedError) throw namedError;
+      items = (named || []).map((row: any) => ({ id: String(row.id), name: String(row.name || "") }));
+    }
+
+    return c.json(ok({ items, teacher_id: teacherId }, rid));
+  } catch (saveError) {
+    console.error("[teacher:subjects:put]", saveError);
+    return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось сохранить предметы преподавателя");
+  }
+});
+
 export default teacher;
