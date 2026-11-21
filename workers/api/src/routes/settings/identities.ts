@@ -1,6 +1,7 @@
 import { ok, fail, requestId } from "../../lib/response";
 import { defaultLinkRedirect, identityAuthorizeUrl, resolveLinkRedirect } from "../../lib/link-redirect";
 import { readAccount } from "./shared";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 export async function startIdentityLink(c: any) {
   const rid = requestId();
@@ -34,7 +35,7 @@ export async function startIdentityLink(c: any) {
     // linkIdentity → _getUrlForProvider). POST с JSON отвечал 404, и привязка
     // Google не начиналась вовсе.
     const authorizeUrl = identityAuthorizeUrl(c.env.SUPABASE_URL, provider, redirectTo);
-    const response = await fetch(authorizeUrl, {
+    const response = await fetchWithTimeout(authorizeUrl, {
       method: "GET",
       headers: {
         apikey: c.env.SUPABASE_ANON_KEY,
@@ -91,7 +92,7 @@ export async function unlinkIdentity(c: any) {
     return c.json(body, status as 409);
   }
   try {
-    const response = await fetch(new URL(`/auth/v1/user/identities/${encodeURIComponent(identityId)}`, c.env.SUPABASE_URL), {
+    const response = await fetchWithTimeout(new URL(`/auth/v1/user/identities/${encodeURIComponent(identityId)}`, c.env.SUPABASE_URL), {
       method: "DELETE",
       headers: {
         apikey: c.env.SUPABASE_ANON_KEY,
@@ -103,7 +104,7 @@ export async function unlinkIdentity(c: any) {
       const { body, status } = fail("IDENTITY_UNLINK_FAILED", "Не удалось отвязать способ входа", 422, rid);
       return c.json(body, status as 422);
     }
-    const refreshed = await fetch(new URL("/auth/v1/user", c.env.SUPABASE_URL), {
+    const refreshed = await fetchWithTimeout(new URL("/auth/v1/user", c.env.SUPABASE_URL), {
       headers: { apikey: c.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${c.get("accessToken")}` },
       signal: AbortSignal.timeout(10000),
     });

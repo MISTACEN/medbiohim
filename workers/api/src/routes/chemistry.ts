@@ -9,6 +9,7 @@ import { clientIp } from "./auth/shared";
 import { rateLimit } from "../lib/redis";
 import { cached } from "../lib/cache";
 import { getRedis } from "../lib/redis";
+import { fetchWithTimeout } from "../lib/fetch-with-timeout";
 
 const chemistry = new Hono<{ Bindings: Env }>();
 
@@ -35,7 +36,7 @@ chemistry.get("/resolve", async (c) => {
   try {
     const molecule = await cached("chem:resolve", { query: query.toLowerCase() }, async () => {
       const searchUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/property/MolecularFormula,MolecularWeight,ConnectivitySMILES,IsomericSMILES,IUPACName,Title/JSON`;
-      const res = await fetch(searchUrl, {
+      const res = await fetchWithTimeout(searchUrl, {
         signal: AbortSignal.timeout(10000),
         headers: { Accept: "application/json" },
       });

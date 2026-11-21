@@ -2,6 +2,7 @@ import type { Env } from "../../../env";
 import { ok } from "../../../lib/response";
 import { decodeBase64Url } from "./text";
 import type { ImageExtract } from "./text";
+import { fetchWithTimeout } from "../../../lib/fetch-with-timeout";
 
 /**
  * Расшифровка аудио в текст (roadmap 2.5.2 «конспект из записи»): Groq Whisper.
@@ -21,7 +22,7 @@ export async function transcribeAudio(env: Env, base64: string, mime: string, fi
   form.append("language", "ru");
   form.append("response_format", "json");
   form.append("temperature", "0");
-  const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+  const res = await fetchWithTimeout("https://api.groq.com/openai/v1/audio/transcriptions", {
     method: "POST",
     headers: { authorization: `Bearer ${key}` },
     body: form,
@@ -57,7 +58,7 @@ export async function extractImageText(env: Env, base64: string, mime: string): 
   const prompt = "Это фото страницы конспекта/слайда/учебника по медицине. Перепиши весь видимый текст дословно в markdown: заголовки, списки, таблицы. Формулы — латиницей. Ничего не добавляй от себя, неразборчивые места помечай [неразборчиво].";
   if (env.GEMINI_API_KEY && (region !== "ru" || proxyReady)) {
     const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent";
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: { "x-goog-api-key": String(env.GEMINI_API_KEY).trim(), "content-type": "application/json" },
       body: JSON.stringify({
@@ -76,7 +77,7 @@ export async function extractImageText(env: Env, base64: string, mime: string): 
   }
   const ocrEndpoint = String(env.OCR_API_URL || "").trim();
   if (ocrEndpoint) {
-    const response = await fetch(ocrEndpoint, {
+    const response = await fetchWithTimeout(ocrEndpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",

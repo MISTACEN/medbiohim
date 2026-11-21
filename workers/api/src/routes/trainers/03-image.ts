@@ -4,6 +4,7 @@ import { BlobError } from "@upstash/blob";
 import { getBlobBucket, trainerImageCandidateKeys, findHistologyDriveItem, imageContentType } from "./shared";
 
 import type { TrainersRouter } from "./types";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 export function registerImageRoutes(trainers: TrainersRouter) {
 trainers.get("/feed/:id/image", async (c) => {
@@ -137,7 +138,7 @@ trainers.get("/feed/:id/image", async (c) => {
           ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(driveItem.id)}`
           : `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveItem.id)}&sz=w1600`;
       try {
-        const driveResponse = await fetch(driveUrl, { redirect: "follow" });
+        const driveResponse = await fetchWithTimeout(driveUrl, { redirect: "follow" });
         const driveContentType = driveResponse.headers.get("content-type") || driveItem.mime;
         if (driveResponse.ok && driveResponse.body && driveContentType.toLowerCase().startsWith("image/")) {
           return new Response(driveResponse.body, {
@@ -180,7 +181,7 @@ trainers.get("/feed/:id/image", async (c) => {
     for (const candidate of candidates) {
       const publicUrl = `${publicBlobBase}/${candidate.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
       try {
-        const publicResponse = await fetch(publicUrl, { redirect: "follow" });
+        const publicResponse = await fetchWithTimeout(publicUrl, { redirect: "follow" });
         if (publicResponse.ok && publicResponse.body) {
           return new Response(publicResponse.body, {
             headers: {

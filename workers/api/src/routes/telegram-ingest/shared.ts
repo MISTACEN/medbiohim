@@ -6,6 +6,7 @@ import type { Classification, LevelBuckets } from "../../lib/telegram-classify";
 
 import { constantTimeEqual } from "../../lib/timing";
 import { escapeHtml } from "../../lib/html-escape";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 export { constantTimeEqual, escapeHtml };
 export const MAX_BODY_BYTES = 256 * 1024;
@@ -51,7 +52,7 @@ export async function verifyIngestRequest(c: any): Promise<IngestVerification> {
   if (verifyRateLimited(c)) return "rate_limited";
 
   try {
-    const response = await fetch(verifier, {
+    const response = await fetchWithTimeout(verifier, {
       method: "POST",
       headers: {
         "content-type": "application/json",

@@ -23,12 +23,18 @@ export const RULES = {
   routeFileLimit: 400,
   /** Один файл модуля (src/modules/**). */
   moduleFileLimit: 400,
+  /** Один компонент/хук/модель домена (src/components/**). */
+  componentLimit: 600,
+  /** Один файл логики/данных (src/lib/**). */
+  libLimit: 600,
 };
 
 const LIMIT_BY_KIND = {
   pages: "appPageLimit",
   routes: "routeFileLimit",
   modules: "moduleFileLimit",
+  components: "componentLimit",
+  lib: "libLimit",
 };
 
 export async function walk(dir, predicate = () => true) {
@@ -69,6 +75,12 @@ export async function collect() {
     ),
     modules: await withLines(
       await walk(path.join(ROOT, "src/modules"), (file) => /\.(ts|tsx)$/.test(file)),
+    ),
+    components: await withLines(
+      await walk(path.join(ROOT, "src/components"), (file) => /\.(ts|tsx)$/.test(file)),
+    ),
+    lib: await withLines(
+      await walk(path.join(ROOT, "src/lib"), (file) => file.endsWith(".ts")),
     ),
   };
 }
@@ -166,7 +178,7 @@ export async function buildBaseline() {
     for (const file of files) if (file.lines > limit) budgets[file.path] = file.lines;
   }
   return {
-    version: 1,
+    version: 3,
     updated: new Date().toISOString().slice(0, 10),
     rules: RULES,
     budgets,
@@ -183,6 +195,8 @@ async function main() {
     pages: inventory.pages.length,
     routes: inventory.routes.length,
     modules: inventory.modules.length,
+    components: inventory.components.length,
+    lib: inventory.lib.length,
   });
 
   for (const [kind, files] of Object.entries(inventory)) {
@@ -201,6 +215,13 @@ async function main() {
   if (cycles.length > 0) {
     console.log("\nЦиклы в src/modules:");
     for (const cycle of cycles) console.log(`  ${cycle}`);
+  }
+  for (const dir of ["src/lib", "src/components"]) {
+    const domainCycles = await findImportCycles(path.join(ROOT, dir));
+    if (domainCycles.length > 0) {
+      console.log(`\nЦиклы в ${dir}:`);
+      for (const cycle of domainCycles) console.log(`  ${cycle}`);
+    }
   }
 
   if (write) {

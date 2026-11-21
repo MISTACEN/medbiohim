@@ -1,6 +1,7 @@
 import { ok, requestId } from "../../lib/response";
 
 import type { TelegramIngestRouter } from "./types";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 export function registerHealthRoutes(telegramIngest: TelegramIngestRouter) {
 telegramIngest.get("/ingest/health", async (c) => {
@@ -9,7 +10,7 @@ telegramIngest.get("/ingest/health", async (c) => {
   if (!verifier) return c.json(ok({ configured: false, verifier: "none" }, rid));
   const started = Date.now();
   try {
-    const response = await fetch(verifier, {
+    const response = await fetchWithTimeout(verifier, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",

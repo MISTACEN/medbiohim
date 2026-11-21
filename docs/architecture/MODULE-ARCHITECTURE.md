@@ -1,6 +1,6 @@
 # Модульная архитектура MEDBIOHIM — зафиксированная схема
 
-**Срез:** 7 ноября 2026, base commit `be763295` (`main`).
+**Срез:** 7 ноября 2026, base commit `be763295` (`main`). **Ревизия:** 2026-11-22 — добавлены §12.10–12.13 (методички, диагностикум, офлайн, src/shared), бюджеты расширены на src/components и src/lib (registry/loc-budgets.json v3).
 **Статус:** схема зафиксирована; идёт поэтапный перенос. **Сделано (этап A2, химия):** UI химии живёт в `src/modules/subjects/submodules/chemistry/` с публичным баррелем, старые пути удалены, импорты переведены на баррель, границы проверяет `test/module-boundaries.test.mjs`. БД, RLS и API не менялись.
 **Связанные документы:** [../PROJECT-MAP.md](../PROJECT-MAP.md) — где что лежит сейчас; [SHARED-COMPONENT-REGISTRY.md](SHARED-COMPONENT-REGISTRY.md) — реестр общих компонентов (контракт, проверяется `test/component-registry.test.mjs`); [../API-CONTRACTS.md](../API-CONTRACTS.md) — контракты API.
 

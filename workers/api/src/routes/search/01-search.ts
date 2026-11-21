@@ -1,4 +1,5 @@
 import { ok, fail, requestId } from "../../lib/response";
+import { rateLimit } from "../../lib/redis";
 import { requireAuth } from "../../middleware/auth";
 import { SEARCH_EXAMPLES, normalizeSearchText, parseSearchIntent } from "../../lib/search-query";
 import { readKind } from "./shared";
@@ -9,6 +10,12 @@ import type { SearchRouter } from "./types";
 export function registerSearchRoute(search: SearchRouter) {
 search.get("/", requireAuth, async (c) => {
   const rid = requestId();
+  // Поиск — тяжёлый fan-out по 8+ таблицам: лимитируем на пользователя.
+  const rl = await rateLimit(c.env, `search:${c.get("user").id}`, 60, 60);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много поисковых запросов", 429, rid);
+    return c.json(body, status as 429);
+  }
   const rawQuery = (c.req.query("q") || c.req.query("query") || "").trim().slice(0, 160);
   const limit = Math.min(Math.max(Number(c.req.query("limit") || 20), 1), 50);
   const subjectSlug = c.req.query("subject_slug")?.trim().toLowerCase() || undefined;

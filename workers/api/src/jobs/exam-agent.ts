@@ -8,6 +8,7 @@
 import type { Env } from "../env";
 import { createServiceClient } from "../lib/supabase";
 import { AGENT_PLAN_KIND, agentDay, buildAgentItems } from "../lib/exam-agent";
+import { fetchWithTimeout } from "../lib/fetch-with-timeout";
 
 const MAX_PLANS = 200;
 const MAX_REPORT_QUESTIONS = 5;
@@ -56,7 +57,7 @@ export async function notifyPlanReport(
     .join("\n");
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetchWithTimeout(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: body, disable_web_page_preview: true }),

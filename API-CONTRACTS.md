@@ -16,7 +16,7 @@ Browser / PWA
 - Browser-клиент использует relative `/api/v1`; не обращается к `workers.dev` напрямую.
 - Proxy принимает GET/POST/PUT/PATCH/DELETE и OPTIONS; передаёт ограниченный набор заголовков (`content-type`, `authorization`, `accept`, `x-request-id`).
 - Если Authorization отсутствует, proxy может преобразовать HttpOnly cookie `mb_at` в Bearer для upstream. Не передавай cookie как произвольный заголовок.
-- Proxy использует no-store, timeout сейчас 18 секунд и Next route `maxDuration = 30`; не расширяй их без оценки runtime.
+- Proxy использует no-store, timeout сейчас 45 секунд и Next route `maxDuration = 60` (18 с обрывали AI-фолбэк; не расширяй без оценки runtime).
 - Proxy пропускает выбранные response headers (`content-type`, `location`, `content-disposition`, `cache-control`, `etag`, `last-modified`, `x-request-id`) и сохраняет HTTP status.
 - Для JSON ответов `trainings` применяется `protectTrainingPayload`; не обходи sanitizer ради удобства клиента.
 - Если основной Worker недоступен, proxy возвращает 502 envelope `UPSTREAM`; он не переключается на PHP/SpaceWeb.
@@ -46,7 +46,7 @@ Browser / PWA
 - Сохраняй HTTP status. Типичные значения: 400 validation, 401 unauthenticated, 403 forbidden, 404 not found, 409 conflict, 413 payload too large, 422 semantic validation, 429 rate limit, 500 internal, 502 upstream, 503 dependency unavailable, 501 not implemented. Это ориентир, а не замена контракту конкретного route.
 - Не отправляй stack trace, SQL text, credentials, private object keys или персональные данные в `message/details`.
 - Binary/media endpoints — исключение: возвращают bytes с корректными `Content-Type`, `Cache-Control`, `Content-Disposition`, `ETag` и status, а не JSON envelope.
-- Worker выставляет `x-request-id`; response helpers формируют `requestId` в body. Не предполагай, что header и body всегда идентичны: при изменении tracing добавь тест на сквозное совпадение.
+- Worker выставляет `x-request-id`; response helpers формируют `requestId` в body. Header и body requestId совпадают всегда: root-middleware воркера кладёт rid в контекст (с 2026-11-22), middleware/auth берёт его из заголовка. Сквозное совпадение — часть контракта.
 
 ## 3. Authentication и authorization
 

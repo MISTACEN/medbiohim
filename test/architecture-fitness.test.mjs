@@ -19,26 +19,29 @@ import {
  * Это не тесты поведения, а «крыса» на архитектуру: правила, которые иначе
  * тихо размываются первым же удобным коммитом.
  *
- * - `page.tsx ≤ 200`, файл маршрутов воркера ≤ 400, файл модуля ≤ 400;
+ * - `page.tsx ≤ 200`, файл маршрутов воркера ≤ 400, файл модуля ≤ 400,
+ *   компонент ≤ 600, файл логики src/lib ≤ 600;
  *   уже существующие монолиты зафиксированы в registry/loc-budgets.json и
  *   расти им нельзя (baseline обновляется только осознанно:
  *   `node scripts/audit-loc.mjs --write`).
  * - каждый файл маршрутов импортируется из `workers/api/src/index.ts`
  *   (мёртвый маршрут не считается «на будущее»).
- * - в `src/modules` нет циклов импортов.
+ * - в src/modules, src/lib и src/components нет циклов импортов.
  * - модуль не импортирует `src/app` и не лезет в чужой модуль напрямую.
  */
 const LIMIT_BY_KIND = {
   pages: RULES.appPageLimit,
   routes: RULES.routeFileLimit,
   modules: RULES.moduleFileLimit,
+  components: RULES.componentLimit,
+  lib: RULES.libLimit,
 };
 
 const baseline = JSON.parse(await readFile(path.join(ROOT, BASELINE_FILE), "utf8"));
 
 test("baseline описывает те же лимиты, что и скрипт аудита", () => {
   assert.deepEqual(baseline.rules, RULES);
-  assert.equal(baseline.version, 2);
+  assert.equal(baseline.version, 3);
 });
 
 test("размер файлов не превышает бюджет и общий лимит", async () => {
@@ -75,8 +78,11 @@ test("каждый файл маршрутов достижим из workers/api
   assert.deepEqual(resolved, [], `эти маршруты снова смонтированы, уберите их из baseline: ${resolved.join(", ")}`);
 });
 
-test("в src/modules нет циклов импортов", async () => {
-  const cycles = await findImportCycles(path.join(ROOT, "src/modules"));
+test("в src/modules, src/lib и src/components нет циклов импортов", async () => {
+  const cycles = [];
+  for (const dir of ["src/modules", "src/lib", "src/components"]) {
+    cycles.push(...(await findImportCycles(path.join(ROOT, dir))));
+  }
   assert.deepEqual(cycles, [], `циклы импортов:\n${cycles.join("\n")}`);
 });
 

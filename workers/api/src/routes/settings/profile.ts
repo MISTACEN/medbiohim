@@ -1,6 +1,7 @@
 import { ok, fail, requestId } from "../../lib/response";
 import { isPwnedPassword } from "../../lib/password-guard";
 import { readAccount } from "./shared";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 export async function updateProfile(c: any) {
   const rid = requestId();
@@ -57,7 +58,7 @@ export async function updateProfile(c: any) {
     // Update email through Supabase Auth so its confirmation/security flow remains authoritative.
     if (email && email.toLowerCase() !== String(user.email || "").toLowerCase()) {
       const authUrl = new URL("/auth/v1/user", c.env.SUPABASE_URL);
-      const authResponse = await fetch(authUrl, {
+      const authResponse = await fetchWithTimeout(authUrl, {
         method: "PUT",
         headers: {
           apikey: c.env.SUPABASE_ANON_KEY,
@@ -134,7 +135,7 @@ export async function changePassword(c: any) {
   }
   try {
     // 1. Подтверждение владения: текущий пароль проверяет сам Supabase Auth.
-    const verify = await fetch(new URL("/auth/v1/token?grant_type=password", c.env.SUPABASE_URL), {
+    const verify = await fetchWithTimeout(new URL("/auth/v1/token?grant_type=password", c.env.SUPABASE_URL), {
       method: "POST",
       headers: { apikey: c.env.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ email, password: currentPassword }),
@@ -145,7 +146,7 @@ export async function changePassword(c: any) {
       return c.json(body, status as 401);
     }
     // 2. Смена пароля под access-токеном пользователя.
-    const response = await fetch(new URL("/auth/v1/user", c.env.SUPABASE_URL), {
+    const response = await fetchWithTimeout(new URL("/auth/v1/user", c.env.SUPABASE_URL), {
       method: "PUT",
       headers: {
         apikey: c.env.SUPABASE_ANON_KEY,
@@ -164,7 +165,7 @@ export async function changePassword(c: any) {
     let sessionsRevoked = false;
     if (c.env.SUPABASE_SERVICE_ROLE_KEY && user?.id) {
       try {
-        const revoke = await fetch(new URL(`/auth/v1/admin/users/${encodeURIComponent(String(user.id))}/logout`, c.env.SUPABASE_URL), {
+        const revoke = await fetchWithTimeout(new URL(`/auth/v1/admin/users/${encodeURIComponent(String(user.id))}/logout`, c.env.SUPABASE_URL), {
           method: "POST",
           headers: {
             apikey: c.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -196,7 +197,7 @@ export async function resendEmailChange(c: any) {
     return c.json(body, status as 409);
   }
   try {
-    const response = await fetch(new URL("/auth/v1/resend", c.env.SUPABASE_URL), {
+    const response = await fetchWithTimeout(new URL("/auth/v1/resend", c.env.SUPABASE_URL), {
       method: "POST",
       headers: { apikey: c.env.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ type: "email_change", email: pending }),

@@ -47,37 +47,22 @@ export async function collect(c: any, options: CollectOptions) {
     db, query, term, subjectSlug, materialHint, results, subjects, matchedSubjects, matchedIds, matchedSlugs, subjectNameBySlug, TYPE_PRIORITY,
   };
 
-  if (include("subjects") && allowed("subjects")) {
-    await addSubjects(ctx);
-  }
-
-  if (include("preparations") && allowed("preparations") && (!subjectSlug || subjectSlug === "histology")) {
-    await addPreparations(ctx);
-  }
-
-  if (include("materials") && allowed("materials")) {
-    await addMaterials(ctx);
-  }
-
-  if (include("lectures") && allowed("lectures")) {
-    await addLectures(ctx);
-  }
-
-  if (include("questions") && allowed("questions")) {
-    await addQuestions(ctx);
-  }
-
-  if (include("tickets") && allowed("tickets")) {
-    await addTickets(ctx);
-  }
-
-  if (include("packs") && allowed("packs")) {
-    await addPacks(ctx);
-  }
-
-  if (include("tests") && allowed("tests")) {
-    await addTests(ctx);
-  }
+  // Источники независимы: каждый только пушит в results и читает precomputed
+  // ctx-поля. Порядок восстанавливается сортировкой (score → TYPE_PRIORITY →
+  // title), поэтому fan-out безопасно параллелится — 8 последовательных
+  // запросов были главным узким местом поиска.
+  await Promise.allSettled([
+    include("subjects") && allowed("subjects") ? addSubjects(ctx) : undefined,
+    include("preparations") && allowed("preparations") && (!subjectSlug || subjectSlug === "histology")
+      ? addPreparations(ctx)
+      : undefined,
+    include("materials") && allowed("materials") ? addMaterials(ctx) : undefined,
+    include("lectures") && allowed("lectures") ? addLectures(ctx) : undefined,
+    include("questions") && allowed("questions") ? addQuestions(ctx) : undefined,
+    include("tickets") && allowed("tickets") ? addTickets(ctx) : undefined,
+    include("packs") && allowed("packs") ? addPacks(ctx) : undefined,
+    include("tests") && allowed("tests") ? addTests(ctx) : undefined,
+  ]);
 
   results.sort((a, b) => (
     b.score - a.score

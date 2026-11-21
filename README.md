@@ -86,7 +86,8 @@ Browser / PWA
     middleware/                 auth, CORS, security
     jobs/                      account-deletion, course-rollover
       ↓
-  supabase/migrations/         → 18 миграций (canonical source of truth)
+  database/migrations/         → живой журнал миграций; канон — история удалённой БД
+                              (database/SUPABASE_SYNC.md; supabase/migrations заморожена)
   Upstash Redis                 → кэш (fail-open)
 ```
 

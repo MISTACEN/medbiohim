@@ -4,6 +4,7 @@ import type { Env } from "../env";
 import { fail, ok, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { bodyJson } from "../lib/request-body";
+import { fetchWithTimeout } from "../lib/fetch-with-timeout";
 
 /**
  * Инструменты автора: извлечение текста из PDF и OCR сканов.
@@ -76,7 +77,7 @@ myTools.post("/ocr", requireAuth, async (c) => {
   const mime = String(input?.mime || "image/png");
   const dataUrl = "data:" + mime + ";base64," + image;
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",

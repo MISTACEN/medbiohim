@@ -60,7 +60,7 @@ medbiohim-main/
 ├── supabase/migrations/          # 18 миграций
 ├── test/                         # Фронтенд-тесты (368 node + 721 vitest)
 └── docs/architecture/            # Архитектурная документация
-    ├── ADR/                     # Architectural Decision Records (4 файла)
+    ├── adr/                     # Architectural Decision Records (4 файла)
     ├── patches/                  # Патчи декомпозиции
     └── registry/                # LOC-бюджеты
 ```

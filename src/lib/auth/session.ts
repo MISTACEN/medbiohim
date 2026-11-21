@@ -17,7 +17,10 @@
  * Legacy-ключи токенов (`mb_access_token`/`mb_refresh_token`) только
  * удаляются — никогда не читаются и не пишутся.
  */
-import type { ApiResult } from "@/lib/api";
+// Тип из узкого модуля, не из барреля "@/lib/api": баррель стягивает весь
+// домен api/*, который сам опирается на session — получался импорт-цикл
+// в статическом графе (26 вариантов обхода, виден линтерам и бандлеру).
+import type { ApiResult } from "@/lib/api/types";
 
 const AUTH_SESSION_URL = "/api/auth/session";
 const AUTH_REFRESH_URL = "/api/auth/refresh";

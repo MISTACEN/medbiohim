@@ -11,6 +11,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { contentHash, matchByTitle, parseIcal, splitTitle, type IcalEvent } from "../lib/ical";
+import { fetchWithTimeout } from "../lib/fetch-with-timeout";
 
 const ical = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -45,7 +46,7 @@ async function fetchFeed(url: URL): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12_000);
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithTimeout(url.toString(), {
       signal: controller.signal,
       headers: { accept: "text/calendar, text/plain;q=0.9, */*;q=0.5", "user-agent": "medbiohim-ical/1.0" },
       redirect: "follow",

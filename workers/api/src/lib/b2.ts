@@ -10,6 +10,7 @@
  */
 import { BlobError, Bucket } from "@upstash/blob";
 import type { Env } from "../env";
+import { fetchWithTimeout } from "./fetch-with-timeout";
 
 export type StorageBackend = {
   provider: "b2" | "upstash";
@@ -97,7 +98,7 @@ function b2Backend(env: Env): StorageBackend | null {
       const path = `/${config.bucket}/${encodeKey(key)}`;
       const headers = await sigv4Headers(config, "PUT", path, payloadHash);
       headers.set("content-type", options.contentType);
-      const response = await fetch(objectUrl(key), { method: "PUT", headers, body: payload });
+      const response = await fetchWithTimeout(objectUrl(key), { method: "PUT", headers, body: payload });
       if (!response.ok) {
         const detail = await response.text().catch(() => "");
         throw new BlobError(response.status === 404 ? "not_found" : "request_failed", `B2 put failed: HTTP ${response.status} ${detail.slice(0, 120)}`);
@@ -106,7 +107,7 @@ function b2Backend(env: Env): StorageBackend | null {
     async get(key: string): Promise<{ body: ArrayBuffer; contentType: string | null }> {
       const path = `/${config.bucket}/${encodeKey(key)}`;
       const headers = await sigv4Headers(config, "GET", path, await sha256Hex(new ArrayBuffer(0)));
-      const response = await fetch(objectUrl(key), { method: "GET", headers });
+      const response = await fetchWithTimeout(objectUrl(key), { method: "GET", headers });
       if (response.status === 404) throw new BlobError("not_found", "B2 object not found");
       if (!response.ok) throw new BlobError("request_failed", `B2 get failed: HTTP ${response.status}`);
       return { body: await response.arrayBuffer(), contentType: response.headers.get("content-type") };
@@ -114,7 +115,7 @@ function b2Backend(env: Env): StorageBackend | null {
     async del(key: string): Promise<void> {
       const path = `/${config.bucket}/${encodeKey(key)}`;
       const headers = await sigv4Headers(config, "DELETE", path, await sha256Hex(new ArrayBuffer(0)));
-      const response = await fetch(objectUrl(key), { method: "DELETE", headers });
+      const response = await fetchWithTimeout(objectUrl(key), { method: "DELETE", headers });
       if (!response.ok && response.status !== 404) {
         throw new BlobError("request_failed", `B2 delete failed: HTTP ${response.status}`);
       }

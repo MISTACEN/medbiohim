@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {CheckCheck,Save,Plus,CheckCircle2,Search,Flag} from "lucide-react";
-import {adminCommunityReports,adminProblemCenter,adminUpdateBankQuestion,adminUpdateCommunityReport,adminUpdateQuestionReport,adminCreateWork,adminUpdateWork,hasToken} from "@/lib/api";
+import {adminCommunityReports,adminProblemCenter,adminUpdateBankQuestion,adminUpdateCommunityReport,adminUpdateQuestionReport,adminCreateWork,adminUpdateWork,adminSosReports,adminCloseSos,hasToken} from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 
 const labels:Record<string,string>={wrong_answer:"Неверный ответ",wording:"Ошибка формулировки",multiple_correct:"Несколько правильных",no_correct:"Нет правильного",typo:"Опечатка",other:"Другое"};
@@ -16,8 +16,8 @@ export default function ProblemCenter(){
  async function loadReports(){const r=await adminCommunityReports();if(r.ok)setReports(r.data.items||[]);else setMsg(describeApiError(r.error))}
  useEffect(()=>{if(hasToken())void load()},[]);
  useEffect(()=>{if(hasToken()&&tab==="reports")void loadReports()},[tab]);
- useEffect(()=>{if(hasToken()&&tab==="sos")void fetch("/api/v1/admin/sos").then(r=>r.json()).then(j=>{if(j.ok)setSos(j.data.items)}).catch(()=>{})},[tab]);
- async function closeSos(id:string){const r=await fetch(`/api/v1/admin/sos/${id}/close`,{method:"POST"});if(r.ok)setSos((cur:any[])=>cur.filter((x:any)=>x.id!==id))}
+ useEffect(()=>{if(hasToken()&&tab==="sos")void adminSosReports().then((j:any)=>{if(j.ok)setSos(j.data.items)}).catch(()=>{})},[tab]);
+ async function closeSos(id:string){const r=await adminCloseSos(id);if(r.ok)setSos((cur:any[])=>cur.filter((x:any)=>x.id!==id))}
  async function closeReport(id:string,status:string){const r=await adminUpdateCommunityReport(id,status);if(r.ok){setMsg("Жалоба закрыта.");await loadReports()}else setMsg(describeApiError(r.error))}
  useEffect(()=>setDraft(selected?.question?{...selected.question}:null),[selected]);
  async function save(){if(!draft?.id)return;const r=await adminUpdateBankQuestion(draft.id,{text:draft.text,answer:draft.answer,options:draft.options});if(r.ok){setMsg("Вопрос исправлен.");setDraft(r.data.question);await load()}else setMsg(describeApiError(r.error))}

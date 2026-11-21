@@ -8,6 +8,7 @@ import { generateAiCompletion } from "../../../../../integrations/cloudflare-api
 import { loadLectureForCloze, clozeCache, pcmToWav, base64ToBytes, bytesToBase64 } from "./shared";
 
 import type { LecturesRouter } from "./types";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 export function registerMediaRoutes(lectures: LecturesRouter) {
 lectures.post("/:id/cheatsheet", requireAuth, async (c) => {
@@ -174,7 +175,7 @@ lectures.post("/:id/podcast", requireAuth, async (c) => {
       return c.json(body, status as 502);
     }
 
-    const ttsResponse = await fetch(
+    const ttsResponse = await fetchWithTimeout(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent",
       {
         method: "POST",

@@ -5,6 +5,7 @@ import { publishTelegramHomework, updateMessageClassification } from "../../lib/
 import { gigachatConfigured, gigachatTransport } from "../../lib/gigachat";
 import { workersAiConfigured, workersAiModel } from "../../lib/workers-ai";
 import { STRICT_ADMINS, UUID, bodyJson, error, gate, type AdminApp } from "./shared";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 /**
  * Telegram-чаты, очередь сообщений, публикация задания и webhook.
@@ -156,7 +157,7 @@ export function registerTelegram(admin: AdminApp) {
     if (!token || (!origin && !explicitWebhookUrl)) return error(c, rid, 503, "TELEGRAM_NOT_CONFIGURED", "Настройте TELEGRAM_BOT_TOKEN и TELEGRAM_WEBHOOK_URL (или TELEGRAM_WEBHOOK_ORIGIN)");
     let response: Response;
     try {
-      response = await fetch("https://api.telegram.org/bot" + token + "/setWebhook", {
+      response = await fetchWithTimeout("https://api.telegram.org/bot" + token + "/setWebhook", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url: explicitWebhookUrl || (() => { try { const parsed = new URL(origin); if (parsed.pathname !== "/" && parsed.pathname !== "") return parsed.toString(); return origin.includes(".workers.dev") ? origin + "/api/webhook" : origin + "/api/v1/telegram/webhook"; } catch { return origin; } })(), allowed_updates: ["message","edited_message"], ...(secret ? { secret_token: secret } : {}) }),

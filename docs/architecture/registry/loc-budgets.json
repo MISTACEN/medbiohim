@@ -1,12 +1,29 @@
 {
-  "version": 2,
-  "updated": "2026-11-20",
+  "version": 3,
+  "updated": "2026-11-21",
   "rules": {
     "appPageLimit": 200,
     "routeFileLimit": 400,
-    "moduleFileLimit": 400
+    "moduleFileLimit": 400,
+    "componentLimit": 600,
+    "libLimit": 600
   },
-  "budgets": {},
-  "budgetsNote": "Исключений нет: после декомпозиции 2026-11-20 ни один page/route/module не превышает лимит. Новые исключения добавлять только через ADR с обоснованием.",
+  "budgets": {
+    "src/components/lectures/LeukocyteDifferentialTrainer.tsx": 1012,
+    "src/components/editor/RichLectureEditor.tsx": 1005,
+    "src/components/lectures/LectureRenderer.tsx": 923,
+    "src/components/physiology/PhysiologyPractice.tsx": 918,
+    "src/components/tests/TestsHub.tsx": 822,
+    "src/components/admin/AdminDatabaseConsole.tsx": 782,
+    "src/components/lectures/ExamModePanel.tsx": 752,
+    "src/components/study/StudyTrainer.tsx": 688,
+    "src/components/trainers/HistologyMaterials.tsx": 670,
+    "src/components/media/ImageLightbox.tsx": 666,
+    "src/lib/study/program.ts": 995,
+    "src/lib/learning/modules.ts": 779,
+    "src/lib/histology/embryologySelfWork.ts": 769,
+    "src/lib/sim/biochem.ts": 700,
+    "src/lib/sim/catalog_physiology.ts": 611
+  },
   "unreachableRoutes": []
 }

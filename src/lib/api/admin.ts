@@ -115,6 +115,8 @@ export async function adminUpdateCommunity(id: string, payload: Record<string, u
 export async function adminDeleteCommunity(id: string): Promise<any> { return api(endpoints.admin.communityDetail(id), { method: "DELETE" }) as any; }
 export async function adminCommunityReports() { return api(endpoints.community.adminReports()) as any; }
 export async function adminUpdateCommunityReport(id: string, status: string) { return api(endpoints.community.adminReport(id), { method: "PATCH", body: JSON.stringify({ status }) }) as any; }
+export async function adminSosReports(): Promise<any> { return api(endpoints.block8.adminSos()) as any; }
+export async function adminCloseSos(id: string): Promise<any> { return api(endpoints.block8.adminSosClose(id), { method: "POST" }) as any; }
 export async function adminListHomeworks(): Promise<any> { return api(endpoints.admin.homeworks()) as any; }
 export async function adminCreateHomework(payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.homeworks(), { method: "POST", body: JSON.stringify(payload) }) as any; }
 export async function adminDeleteHomework(id: string): Promise<any> { return api(endpoints.admin.homework(id), { method: "DELETE" }) as any; }

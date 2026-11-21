@@ -7,6 +7,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { encryptSecret, keyHint } from "../lib/user-ai-config";
+import { fetchWithTimeout } from "../lib/fetch-with-timeout";
 
 type Variables = AuthVariables;
 
@@ -146,7 +147,7 @@ aiConfig.post("/test", requireAuth, async (c) => {
   try {
     let response: Response;
     if (provider === "anthropic") {
-      response = await fetch(baseUrl + "/v1/messages", {
+      response = await fetchWithTimeout(baseUrl + "/v1/messages", {
         method: "POST",
         headers: {
           "x-api-key": apiKey,
@@ -161,7 +162,7 @@ aiConfig.post("/test", requireAuth, async (c) => {
         signal: AbortSignal.timeout(12_000),
       });
     } else {
-      response = await fetch(baseUrl.replace(/\/$/, "") + "/chat/completions", {
+      response = await fetchWithTimeout(baseUrl.replace(/\/$/, "") + "/chat/completions", {
         method: "POST",
         headers: { authorization: "Bearer " + apiKey, "content-type": "application/json" },
         body: JSON.stringify({ model, max_tokens: 8, messages: [{ role: "user", content: "ping" }] }),

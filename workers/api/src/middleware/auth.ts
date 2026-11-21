@@ -13,7 +13,7 @@ export type AuthVariables = {
 };
 
 export async function requireAuth(c: Context<{ Bindings: Env; Variables: AuthVariables }>, next: Next) {
-  const rid = c.get("requestId") || crypto.randomUUID().slice(0, 16);
+  const rid = c.req.header("x-request-id") || crypto.randomUUID().slice(0, 16);
   try {
     const verified = await verifyBearerUser(c.env, c.req.header("Authorization"));
     if (!verified) {
@@ -32,7 +32,7 @@ export async function requireAuth(c: Context<{ Bindings: Env; Variables: AuthVar
 
 /** Проверка роли admin (user_roles → roles.code). */
 export async function requireAdmin(c: Context<{ Bindings: Env; Variables: AuthVariables }>, next: Next) {
-  const rid = c.get("requestId") || crypto.randomUUID().slice(0, 16);
+  const rid = c.req.header("x-request-id") || crypto.randomUUID().slice(0, 16);
   try {
     const verified = await verifyBearerUser(c.env, c.req.header("Authorization"));
     if (!verified) {

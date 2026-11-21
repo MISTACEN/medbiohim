@@ -38,10 +38,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: workers/api/package.json
+          cache-dependency-path: workers/api/package-lock.json
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Typecheck
         run: npm run typecheck
@@ -49,6 +49,17 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # Bundle gate: тяжёлый pdf-парсинг в request-path может раздуть бандл;
+      # лимит старта paid-плана — 10 MiB gzip, гейтимся сухим прогоном до деплоя.
+      - name: Bundle size gate (wrangler dry-run)
+        working-directory: workers/api
+        run: |
+          npx wrangler deploy --dry-run --outdir=.wrangler-bundle > dry-run.log 2>&1 || { cat dry-run.log; exit 1; }
+          LINE=$(grep -iE "Total Upload" dry-run.log | tail -1)
+          echo "$LINE"
+          KIB=$(echo "$LINE" | grep -oE "[0-9]+(.[0-9]+)?" | head -1)
+          AWK_RES=$(awk -v k="$KIB" 'BEGIN { print (k > 8192) ? "over" : "ok" }')
+          if [ "$AWK_RES" = "over" ]; then echo "Бандл воркера ${KIB} KiB > 8192 KiB — вынеси pdf-парсинг из request-path"; exit 1; fi
       - name: Deploy production Worker (medbiohim-api ONLY)
         run: npx wrangler deploy
         env:

@@ -3,6 +3,7 @@ import { requireAuth } from "../../middleware/auth";
 import { UUID, getBlobBucket, materialSourceCandidateKeys, readMaterial, resolveSourceMeta, fetchBlobObject } from "./shared";
 
 import type { MaterialsRouter } from "./types";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 export function registerFileRoutes(materials: MaterialsRouter) {
 materials.get("/:id/file-url", requireAuth, async (c) => {
@@ -82,7 +83,7 @@ materials.get("/:id/file", requireAuth, async (c) => {
     for (const candidate of candidates) {
       const publicUrl = `${publicBlobBase}/${candidate.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
       try {
-        const publicResponse = await fetch(publicUrl, {
+        const publicResponse = await fetchWithTimeout(publicUrl, {
           method: "GET",
           redirect: "follow",
           signal: AbortSignal.timeout(15_000),

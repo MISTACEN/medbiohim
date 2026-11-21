@@ -4,6 +4,7 @@ import { aiDailyQuota, aiQuotaMessage, logAiCall, logAiQuotaRejection } from "..
 import { requireContentOwnership } from "../../lib/content-access";
 import { checkLectureForPublish, syncPublishedLecture } from "../../lib/lecture-quality";
 import { CONTENT_MODERATORS, LECTURE_FIELDS, MANAGERS, bodyJson, error, gate, pick, validText, type AdminApp } from "./shared";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 /**
  * Черновики, правка, публикация и отклонение платформенных лекций.
@@ -88,7 +89,7 @@ export function registerLectures(admin: AdminApp) {
     };
     let generated: any;
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { authorization: "Bearer " + apiKey, "content-type": "application/json" },
         body: JSON.stringify({

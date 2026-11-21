@@ -30,7 +30,12 @@ test("Cloudflare proxy preserves caller request context and uses a bounded timeo
   assert.ok(seconds * 1000 >= timeoutMs, `maxDuration ${seconds} с меньше таймаута прокси ${timeoutMs} мс`);
   assert.ok(seconds <= 60, `maxDuration ${seconds} с выходит за лимит платформы`);
 
-  // x-bootstrap-secret пробрасывается сознательно: одноразовый маршрут
-  // миграций сам проверяет секрет на воркере.
-  assert.match(route, /\["content-type", "authorization", "accept", "x-request-id", "x-bootstrap-secret"\]/);
+  // Список заголовков прокси зафиксирован: bootstrap-маршрут удалён
+  // (test/bootstrap-route-removed.test.mjs) — секретный заголовок больше не
+  // должен пробрасываться.
+  assert.match(route, /\["content-type", "authorization", "accept", "x-request-id"\]/);
+  assert.ok(
+    !/\["content-type", "authorization", "accept", "x-request-id", "x-bootstrap-secret"\]/.test(route),
+    "bootstrap-заголовок удалён из allowlist прокси",
+  );
 });
