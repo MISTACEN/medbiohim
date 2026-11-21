@@ -98,14 +98,23 @@ export type AttemptRow = {
   created_at: string;
 };
 
+/**
+ * Попытка читается service-клиентом: колонка `answers` намеренно не выдана
+ * грантами `authenticated`, поэтому user-клиент ловил permission denied
+ * на колонке, и /hint с /answer маскировали это в NOT_FOUND (только на
+ * реальной БД). Владение строкой проверяем явным user_id — эквивалент RLS
+ * «только свои попытки» без обхода границы.
+ */
 export async function loadAttempt(
   client: Client,
   id: string,
+  userId: string,
 ): Promise<{ row: AttemptRow } | { error: "NOT_FOUND" | "DB_UNAVAILABLE" }> {
   const { data, error } = await client
     .from("diagnosticum_attempts")
     .select("id,mode,section,guide_key,answers,hints,hints_used,answered_at,created_at")
     .eq("id", id)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error || !data) {

@@ -6,6 +6,7 @@
  */
 import { Hono } from "hono";
 import { ok, fail, requestId } from "../../lib/response";
+import { createServiceClient } from "../../lib/supabase";
 import { requireAuth, type AuthVariables } from "../../middleware/auth";
 import type { Env } from "../../env";
 import {
@@ -40,7 +41,14 @@ session.post("/hint", requireAuth, async (c) => {
     return c.json(errorBody, status as 422);
   }
 
-  const loaded = await loadAttempt(c.get("supabase"), attemptId);
+  // Колонка `answers` не входит в гранты authenticated — попытку с ключом читает
+  // service-клиент, владение проверяется явным user_id (эквивалент RLS).
+  const service = createServiceClient(c.env);
+  if (!service) {
+    const { body: errorBody, status } = fail("DB_UNAVAILABLE", "Сервис данных недоступен", 503, rid);
+    return c.json(errorBody, status as 503);
+  }
+  const loaded = await loadAttempt(service, attemptId, c.get("user").id);
   if ("error" in loaded) {
     const notFound = loaded.error === "NOT_FOUND";
     const { body: errorBody, status } = fail(
@@ -138,7 +146,13 @@ session.post("/answer", requireAuth, async (c) => {
     submitted[partId] = stringList(value);
   }
 
-  const loaded = await loadAttempt(c.get("supabase"), attemptId);
+  // Service-клиент: ключ ответа не входит в колоночные гранты authenticated.
+  const service = createServiceClient(c.env);
+  if (!service) {
+    const { body: errorBody, status } = fail("DB_UNAVAILABLE", "Сервис данных недоступен", 503, rid);
+    return c.json(errorBody, status as 503);
+  }
+  const loaded = await loadAttempt(service, attemptId, c.get("user").id);
   if ("error" in loaded) {
     const notFound = loaded.error === "NOT_FOUND";
     const { body: errorBody, status } = fail(

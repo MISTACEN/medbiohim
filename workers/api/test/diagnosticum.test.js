@@ -109,6 +109,25 @@ test("очередь повторения отдаёт уникальные ка
   );
 });
 
+test("подсказка и ответ читают попытку service-клиентом с проверкой владельца", async () => {
+  // Колонка `answers` не входит в гранты authenticated: loadAttempt на
+  // user-клиенте давал permission denied на колонке и маскировал его в
+  // NOT_FOUND — падало только на живой БД (прод-баг 2026-11-21).
+  const source = await read(SESSION);
+  assert.ok(
+    source.includes("loadAttempt(service, attemptId, c.get(\"user\").id)"),
+    "hint/answer должны читать попытку service-клиентом с user_id",
+  );
+  const hintBlock = source.slice(source.indexOf('session.post("/hint"'), source.indexOf('session.post("/answer"'));
+  const answerBlock = source.slice(source.indexOf('session.post("/answer"'));
+  for (const block of [hintBlock, answerBlock]) {
+    assert.ok(block.includes("createServiceClient(c.env)"), "service-клиент для ключа ответа");
+    assert.ok(!block.includes("loadAttempt(c.get(\"supabase\")"), "user-клиент не читает ключ");
+  }
+  const shared = await read("workers/api/src/routes/diagnosticum/shared.ts");
+  assert.ok(shared.includes('.eq("user_id", userId)'), "владелец попытки проверяется явно (эквивалент RLS)");
+});
+
 test("реестр эндпоинтов и страница диагностикума на месте", async () => {
   const endpoints = await read("src/lib/endpoints.ts");
   for (const route of [

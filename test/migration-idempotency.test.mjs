@@ -11,7 +11,7 @@ import path from "node:path";
  */
 
 const MIGRATIONS = path.resolve(import.meta.dirname, "../database/migrations");
-const TARGET = /^20261120_.*\.sql$/;
+const TARGET = /^2026112[01]_.*\.sql$/;
 
 const stripComments = (sql) => sql.replace(/--[^\n]*/g, "");
 
