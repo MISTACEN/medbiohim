@@ -86,7 +86,17 @@ type Turn = { role: "user" | "assistant"; content: string };
  * и жирный текст — ответ короткий.
  */
 function AnswerMarkdown({ content }: { content: string }) {
-  const html = useMemo(() => mdToHtml(content), [content]);
+  // mdToHtml понимает только маркеры в начале строки, а модели любят вложенные
+  // списки с отступом и «•». Иначе вместо списка получался абзац с дефисами.
+  const html = useMemo(
+    () => mdToHtml(
+      String(content || "")
+        .replace(/\r\n?/g, "\n")
+        .replace(/^[ \t]*[•·]\s+/gm, "- ")
+        .replace(/^[ \t]+(-\s+|\d+\.\s+)/gm, "$1"),
+    ),
+    [content],
+  );
   return (
     <div
       className="prose prose-sm min-w-0 max-w-none break-words dark:prose-invert [&_.lec-table-wrap]:my-2 [&_.lec-table-wrap]:w-full [&_.lec-table-wrap]:max-w-full [&_.lec-table-wrap]:overflow-x-auto [&_table]:my-2 [&_table]:w-max [&_table]:min-w-full [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1"
