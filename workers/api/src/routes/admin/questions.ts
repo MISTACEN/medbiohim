@@ -1,5 +1,5 @@
 import { requireAuth } from "../../middleware/auth";
-import { ok, requestId } from "../../lib/response";
+import { fail, ok, requestId } from "../../lib/response";
 import { createServiceClient } from "../../lib/supabase";
 import { CONTENT_MODERATORS, QUESTION_FIELDS, UUID, bodyJson, error, gate, pick, validText, type AdminApp } from "./shared";
 
@@ -160,7 +160,15 @@ export function registerQuestions(admin: AdminApp) {
       if ((writeResult.error || !writeResult.data) && service) writeResult = await update(service);
       if (writeResult.error) {
         console.error("[admin:question-bank]", writeResult.error.code || "", writeResult.error.message || "");
-        return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
+        // Админ и так видит свою БД: без кода ошибки 503 невозможно починить
+        // (именно так «Не удалось сохранить вопрос» скрывало missing column).
+        const { body, status } = fail("DB_ERROR", "Не удалось сохранить вопрос", 503, rid);
+        (body as any).error.details = {
+          db_code: writeResult.error.code ?? null,
+          db_message: writeResult.error.message ?? null,
+          db_hint: writeResult.error.hint ?? null,
+        };
+        return c.json(body, status as 503);
       }
       if (!writeResult.data) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
       return c.json(ok({ question: writeResult.data, version_no: versionNo }, rid));

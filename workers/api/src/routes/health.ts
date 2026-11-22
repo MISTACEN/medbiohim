@@ -6,12 +6,16 @@ import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
 
 const health = new Hono<{ Bindings: Env }>();
 
+/** Маркер сборки: по нему видно, доехал ли конкретный коммит до прода. */
+export const API_REVISION = "2026-11-22-question-bank";
+
 function payload(env: Env) {
   const rid = requestId();
   return ok(
     {
       status: "ok",
       service: "medbiohim-api",
+      revision: API_REVISION,
       mode: "production",
       env: env.APP_ENV || "production",
       time: new Date().toISOString(),
