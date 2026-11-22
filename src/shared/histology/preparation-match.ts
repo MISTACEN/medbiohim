@@ -24,9 +24,38 @@ export function preparationKey(value: unknown): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Нормализованные варианты названия гида: `key` и `name`, без повторов. */
+/**
+ * Как тот же препарат назван в банке карточек, когда написание расходится.
+ * Правила вхождения тут не помогают: «Мазок крови» и «Кровь мазок» — разные
+ * строки, падежи («миелиновое нервное волокно» ↔ «миелинового нервного
+ * волокна»), сокращения («Хрящ.тк. Эласт. хрящ») и названия без органа
+ * («Эпителий.Многосл. неорог.эпит» для роговицы). Ключ — `key` методички,
+ * значения сверены с `trainer_feed_cards` на 2026-11-22. «Поперечнополосатая
+ * мускулатура» алиаса не имеет: препарата в банке нет.
+ */
+export const PREPARATION_ALIASES: Record<string, string[]> = {
+  "ct-blood-smear": ["Кровь мазок"],
+  "ct-elastic-cartilage": ["Хрящ.тк. Эласт. хрящ"],
+  "epithelium-ciliated-trachea": [
+    "Эпителий. Многорядный эпителий",
+    "Поверхность многорядного реснитчатого эпителия",
+    "Трахея",
+  ],
+  "epithelium-columnar-intestine": ["Тонкая кишка"],
+  "epithelium-nonkeratinized-cornea": ["Эпителий.Многосл. неорог.эпит"],
+  "epithelium-transitional-bladder": ["Мочевой пузырь"],
+  "nerve-myelin": ["Поперечный срез миелинового нервного волокна", "Нервная тк.Миел. нервн. вол"],
+};
+
+/** Нормализованные варианты названия гида: `key`, `name` и алиасы, без повторов. */
 export function preparationNames(guide: { key?: unknown; name?: unknown }): string[] {
-  return [...new Set([preparationKey(guide.key), preparationKey(guide.name)].filter(Boolean))];
+  const key = preparationKey(guide.key);
+  const aliases = key ? PREPARATION_ALIASES[key] || [] : [];
+  return [
+    ...new Set(
+      [key, preparationKey(guide.name), ...aliases.map((alias) => preparationKey(alias))].filter(Boolean),
+    ),
+  ];
 }
 
 /**

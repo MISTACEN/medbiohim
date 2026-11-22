@@ -14,6 +14,7 @@ import {
   MIN_MATCH_LENGTH,
   preparationContains,
   preparationKey,
+  preparationNames,
 } from "../../../../../src/shared/histology/preparation-match";
 
 /**
@@ -128,16 +129,22 @@ export function hasImage(card: CardRow): boolean {
  */
 export function pickImageCard(guide: GuideRow, cards: CardRow[]): CardRow | null {
   const withImage = cards.filter(hasImage);
-  const names = new Set([normalizeName(guide.name), normalizeName(guide.key)].filter(Boolean));
+  // `preparationNames` включает алиасы: препарат в банке может называться иначе
+  // («Кровь мазок» для методички «Мазок крови»), см. PREPARATION_ALIASES.
+  const names = preparationNames(guide);
 
-  const exact = withImage.find((card) => names.has(preparationKey(card?.preparation?.name)));
+  const exact = withImage.find((card) => names.includes(preparationKey(card?.preparation?.name)));
   if (exact) return exact;
 
   // Вхождение в любую сторону и только от MIN_MATCH_LENGTH: карточка без
   // названия больше не совпадает с первым гидом подряд.
-  const guideName = preparationKey(guide.name);
-  if (guideName.length < MIN_MATCH_LENGTH) return null;
-  return withImage.find((card) => preparationContains(guideName, card?.preparation?.name)) ?? null;
+  const usable = names.filter((name) => name.length >= MIN_MATCH_LENGTH);
+  if (!usable.length) return null;
+  return (
+    withImage.find((card) =>
+      usable.some((name) => preparationContains(name, card?.preparation?.name)),
+    ) ?? null
+  );
 }
 
 export function shuffle<T>(items: T[], random: () => number): T[] {

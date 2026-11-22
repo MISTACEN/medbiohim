@@ -1,5 +1,5 @@
 import { compareLessons, emPlanRank, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
-import { preparationContains, preparationKey } from "@/shared/histology/preparation-match";
+import { preparationContains, preparationKey, preparationNames } from "@/shared/histology/preparation-match";
 
 // Ключ препарата — общее правило с Worker (`diagnosticum/model.ts`).
 export { preparationKey };
@@ -215,14 +215,19 @@ export type AtlasFilters = {
   difficulty?: number;
 };
 
-/** Индекс гидов по ключу и по нормализованному названию препарата. */
+/**
+ * Индекс гидов по ключу, нормализованному названию препарата и алиасам из
+ * `PREPARATION_ALIASES` — тем же, что использует воркер в диагностикуме.
+ */
 export function indexGuides(guides: PreparationGuide[]): Map<string, PreparationGuide> {
   const index = new Map<string, PreparationGuide>();
   for (const guide of guides) {
     if (!guide?.key) continue;
-    index.set(preparationKey(guide.key), guide);
-    const byName = preparationKey(guide.name);
-    if (byName && !index.has(byName)) index.set(byName, guide);
+    const key = preparationKey(guide.key);
+    if (key) index.set(key, guide);
+    for (const name of preparationNames(guide)) {
+      if (name && !index.has(name)) index.set(name, guide);
+    }
   }
   return index;
 }

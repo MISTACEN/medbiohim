@@ -184,6 +184,22 @@ describe("методические карточки препаратов", () =>
     expect(found?.key).toBe("cytology-mitosis");
   });
 
+  it("связывает методичку с препаратом под другим названием (алиасы банка)", () => {
+    const aliased = indexGuides([
+      { key: "ct-blood-smear", name: "Мазок крови", structures: [] },
+      { key: "epithelium-nonkeratinized-cornea", name: "Неороговевающий эпителий роговицы", structures: [] },
+      { key: "ct-elastic-cartilage", name: "Эластический хрящ", structures: [] },
+    ]);
+    expect(guideForCard(card({ preparation: { name: "Кровь мазок" } }), aliased)?.key).toBe("ct-blood-smear");
+    expect(
+      guideForCard(card({ preparation: { name: "Эпителий.Многосл. неорог.эпит" } }), aliased)?.key,
+    ).toBe("epithelium-nonkeratinized-cornea");
+    expect(guideForCard(card({ preparation: { name: "Хрящ.тк. Эласт. хрящ" } }), aliased)?.key).toBe(
+      "ct-elastic-cartilage",
+    );
+    expect(guideForCard(card({ preparation: { name: "Печень" } }), aliased)).toBeNull();
+  });
+
   it("без индекса методичек не падает и не подменяет карточку", () => {
     expect(guideForCard(card(), null)).toBeNull();
     expect(guideForCard(card(), indexGuides([]))).toBeNull();

@@ -44,6 +44,24 @@ describe("сопоставление препарата с методичкой"
     expect("abc".length).toBeLessThan(MIN_MATCH_LENGTH);
   });
 
+  it("подставляет названия препарата из банка карточек (алиасы)", () => {
+    expect(preparationNames({ key: "ct-blood-smear", name: "Мазок крови" })).toEqual([
+      "ct-blood-smear",
+      "мазок-крови",
+      "кровь-мазок",
+    ]);
+    expect(
+      preparationNames({ key: "epithelium-transitional-bladder", name: "Переходный эпителий мочевого пузыря" }),
+    ).toContain("мочевой-пузырь");
+  });
+
+  it("не выдумывает алиасы для гида без расхождений", () => {
+    expect(preparationNames({ key: "muscle-striated", name: "Поперечнополосатая мускулатура" })).toEqual([
+      "muscle-striated",
+      "поперечнополосатая-мускулатура",
+    ]);
+  });
+
   it("атлас находит гид по удлинённому названию карточки", () => {
     const index = indexGuides([
       { key: "cytology-mitosis", name: "Митоз", structures: [] },
