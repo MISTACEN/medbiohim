@@ -134,24 +134,31 @@ export function registerQuestions(admin: AdminApp) {
       let versionNo: number | null = null;
       let versionErrorText: string | null = null;
       try {
-        // row_key — jsonb: достаём id текстовым оператором, иначе сравнение не
-        // совпадает, версия всегда считается первой и вставка падает на unique.
-        const readVersion = (client: any) => client.from("content_versions").select("version_no")
-          .eq("table_name", "questions").filter("row_key->>id", "eq", id)
-          .order("version_no", { ascending: false }).limit(1);
-        let versions = await readVersion(scoped);
-        if (versions.error && service) versions = await readVersion(service);
-        versionNo = Number(versions?.data?.[0]?.version_no || 0) + 1;
-        const insertVersion = (client: any) => client.from("content_versions").insert({
-          table_name: "questions", row_key: { id }, version_no: versionNo,
-          data: current, source: "admin_ui", actor_user_id: c.get("user").id,
-        });
-        let versionWrite = await insertVersion(scoped);
-        if (versionWrite.error && service) versionWrite = await insertVersion(service);
-        if (versionWrite.error) {
-          console.warn("[admin:question-version]", versionWrite.error.message);
+        // row_key — jsonb, а точечное сравнение через PostgREST не совпадает
+        // (сравнивается jsonb со строкой): берём последние версии таблицы и
+        // отбираем свою в памяти, иначе версия всегда «1» и вставка падает на unique.
+        const readVersions = (client: any) => client.from("content_versions")
+          .select("version_no,row_key").eq("table_name", "questions")
+          .order("version_no", { ascending: false }).limit(200);
+        let versions = await readVersions(scoped);
+        if (versions.error && service) {
+          const viaService = await readVersions(service);
+          if (!viaService.error) versions = viaService;
+        }
+        let candidate = (versions?.data || [])
+          .filter((row: any) => String(row?.row_key?.id || "") === id)
+          .reduce((max: number, row: any) => Math.max(max, Number(row?.version_no) || 0), 0) + 1;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const insertVersion = (client: any) => client.from("content_versions").insert({
+            table_name: "questions", row_key: { id }, version_no: candidate,
+            data: current, source: "admin_ui", actor_user_id: c.get("user").id,
+          });
+          let versionWrite = await insertVersion(scoped);
+          if (versionWrite.error && service) versionWrite = await insertVersion(service);
+          if (!versionWrite.error) { versionNo = candidate; break; }
           versionErrorText = String(versionWrite.error.message || versionWrite.error.code || "insert failed");
-          versionNo = null;
+          if (!/duplicate key/i.test(versionErrorText)) break;
+          candidate += 1;
         }
       } catch (versionError) {
         console.warn("[admin:question-version]", versionError instanceof Error ? versionError.message : String(versionError));
