@@ -130,8 +130,11 @@ test("frontend renders sources and the explain-after-error button", async () => 
   assert.match(runner, /checked && !isCorrect\(picks, question\.answer\)/);
   assert.match(runner, /subjectSlug=\{subjectSlug\}/);
 
-  const tutor = await readPageWithDomain("app/tutor/page.tsx");
-  assert.match(tutor, /\[\["precise","Точный"\],\["fast","Быстрый"\]\]/);
+  // Чат тьютора живёт вкладкой хаба «Инструменты»: компонент TutorWorkspace,
+  // а /tutor остался редиректом.
+  const tutor = await source("../../../src/components/tutor/TutorWorkspace.tsx");
+  assert.match(tutor, /\[\s*\["precise",\s*"Точный"\],\s*\["fast",\s*"Быстрый"\],?\s*\]/);
   // Выбор модели: модель уходит в сообщение только для конкретного провайдера.
-  assert.match(tutor, /aiSendMessage\(conversation\.id,q,provider,subjectSlug\|\|undefined,mode,/);
+  const chat = await source("../../../src/components/tutor/useTutorChat.ts");
+  assert.match(chat, /aiSendMessage\(conversation\.id,q,provider,subjectSlug\|\|undefined,mode,/);
 });

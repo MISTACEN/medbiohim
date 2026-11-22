@@ -14,7 +14,11 @@ const materialsSource = await readMaterialsDomain();
 const trainersSource = await readTrainersDomain();
 const histologyDriveIndexSource = await readFile(new URL("../src/data/histology-drive-index.json", import.meta.url), "utf8");
 const curriculumSource = await readFile(new URL("../src/routes/curriculum.ts", import.meta.url), "utf8");
-const curriculumPageSource = readPageWithDomain("app/curriculum/page.tsx");
+// Учебный план — блок «План» страницы «Учёба»: контракт живёт в общем хуке,
+// а /curriculum остался редиректом.
+const curriculumPageSource = await readFile(new URL("../../../src/components/curriculum/useCurriculumData.ts", import.meta.url), "utf8");
+const curriculumEntrySource = readPageWithDomain("app/curriculum/page.tsx");
+const studyPageSource = readPageWithDomain("app/study/page.tsx");
 const settingsSource = await readSettingsDomain();
 const academicSource = await readFile(new URL("../src/routes/academic.ts", import.meta.url), "utf8");
 const telegramSource = await readFile(new URL("../src/routes/telegram.ts", import.meta.url), "utf8");
@@ -129,7 +133,8 @@ test("curriculum API and page use canonical active curriculum data and persist p
   assert.ok(curriculumPageSource.includes("saveAcademicState("));
   assert.ok(curriculumPageSource.includes('target_type: "curriculum_item"'));
   assert.ok(curriculumPageSource.includes("metadata"));
-  assert.ok(!curriculumPageSource.includes('redirect("/academic")'));
+  assert.ok(curriculumEntrySource.includes('redirect("/study#plan")'));
+  assert.ok(studyPageSource.includes("<AcademicSection"));
 });
 
 test("settings API uses the canonical Supabase preferences table and protects account mutations", () => {
