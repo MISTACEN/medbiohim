@@ -172,6 +172,29 @@ describe("buildQuestion", () => {
     expect(JSON.stringify(built.question)).not.toContain("correct");
   });
 
+  it("обманки-утверждения — связные фразы, а не обрубки в одно слово", () => {
+    const noisy = guide({
+      key: "ct-noise",
+      name: "Шумный препарат",
+      section: "3. Соединительная ткань",
+      features: ["Хвост", "Наружная капсула", "капсула лимфатического узла с трабекулами"],
+      structures: [],
+    });
+    const built = buildQuestion({
+      guide: guides[0],
+      guides: [guides[0], noisy],
+      cards,
+      mode: "complex",
+      structureTitles,
+      random: () => 0.42,
+    })!;
+    const statements = built.question.parts.find((part) => part.id === "statements")!;
+    const labels = statements.options.map((option) => option.label);
+    expect(labels).not.toContain("Хвост");
+    expect(labels).not.toContain("Наружная капсула");
+    expect(labels).toContain("капсула лимфатического узла с трабекулами");
+  });
+
   it("«схема» без признаков в источнике не строится", () => {
     const built = buildQuestion({
       guide: guide({ features: [] }),

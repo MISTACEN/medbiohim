@@ -238,6 +238,27 @@ export function buildQuestion(input: {
     };
   };
 
+  // Раньше обманкой могло стать любое чужое «утверждение», включая обрубки вроде
+  // «Хвост» или «Ядро»: они выдавали себя формой, а не содержанием. Берём только
+  // связные формулировки и сначала из того же раздела — там ошибка правдоподобнее.
+  const informativeFact = (fact: string) =>
+    fact.trim().split(/\s+/).filter(Boolean).length >= 3 && fact.trim().length >= 18;
+  const statementOptions = (facts: string[], groups: GuideRow[][]) => {
+    const pool = new Set<string>();
+    for (const group of groups) {
+      for (const item of group) {
+        for (const fact of stringList(item.features)) {
+          if (!informativeFact(fact) || facts.includes(fact)) continue;
+          pool.add(fact);
+        }
+      }
+    }
+    return sample(Array.from(pool), 2, random).map((fact, index) => ({
+      id: `x${index}`,
+      label: fact,
+    }));
+  };
+
   const base = {
     image_card_id: String(card.id),
   };
@@ -260,15 +281,8 @@ export function buildQuestion(input: {
     }
 
     const facts = stringList(guide.features).slice(0, 3);
-    if (facts.length >= 2) {
-      const strangers = new Set<string>();
-      for (const item of others) {
-        for (const fact of stringList(item.features)) if (!facts.includes(fact)) strangers.add(fact);
-      }
-      const fakes = sample(Array.from(strangers), 2, random).map((fact, index) => ({
-        id: `x${index}`,
-        label: fact,
-      }));
+    const fakes = facts.length >= 2 ? statementOptions(facts, [sameSection, others]) : [];
+    if (facts.length >= 2 && fakes.length) {
       parts.push({
         id: "statements",
         kind: "multi",
@@ -333,14 +347,8 @@ export function buildQuestion(input: {
     // Ось 1 — сверка утверждений с источником (features гида против чужих).
     const facts = stringList(guide.features).slice(0, 3);
     if (facts.length < 2) return null;
-    const strangers = new Set<string>();
-    for (const item of others) {
-      for (const fact of stringList(item.features)) if (!facts.includes(fact)) strangers.add(fact);
-    }
-    const fakes = sample(Array.from(strangers), 2, random).map((fact, index) => ({
-      id: `x${index}`,
-      label: fact,
-    }));
+    const fakes = statementOptions(facts, [sameSection, others]);
+    if (!fakes.length) return null;
     return {
       question: {
         ...base,
