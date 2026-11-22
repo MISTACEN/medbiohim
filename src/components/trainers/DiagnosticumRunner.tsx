@@ -26,9 +26,20 @@ import {
 import { PreparationGuidePanel } from "@/components/trainers/PreparationGuidePanel";
 import { DiagnosticumStats } from "@/components/trainers/DiagnosticumStats";
 
-export function DiagnosticumRunner() {
+/**
+ * Режим можно задать снаружи — так тренажёр выбирает диагностикум форматом
+ * заданий, а не отдельной вкладкой. Внутренний переключатель в этом случае
+ * скрывается (`showModeChips={false}`), чтобы выбор был в одном месте.
+ */
+type DiagnosticumRunnerProps = {
+  mode?: DiagnosticumMode;
+  showModeChips?: boolean;
+};
+
+export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true }: DiagnosticumRunnerProps = {}) {
   const [overview, setOverview] = useState<DiagnosticumOverview | null>(null);
-  const [mode, setMode] = useState<DiagnosticumMode>("identify");
+  const [localMode, setLocalMode] = useState<DiagnosticumMode>("identify");
+  const mode = controlledMode ?? localMode;
   const [section, setSection] = useState("");
   const [attempt, setAttempt] = useState<DiagnosticumAttempt | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -53,6 +64,15 @@ export function DiagnosticumRunner() {
       alive = false;
     };
   }, []);
+
+  // Смена режима снаружи должна сбросить текущее задание, иначе останется
+  // картинка и вопрос предыдущего формата.
+  useEffect(() => {
+    setAttempt(null);
+    setResult(null);
+    setSelected({});
+    setHints([]);
+  }, [mode]);
 
   useEffect(() => {
     const cardId = attempt?.question.image_card_id;
@@ -158,13 +178,14 @@ export function DiagnosticumRunner() {
   return (
     <div className="space-y-4">
       <div className="card space-y-3 p-4">
+        {showModeChips ? (
         <div className="flex flex-wrap gap-2">
           {(overview?.modes ?? []).map((item) => (
             <button
               key={item.mode}
               type="button"
               onClick={() => {
-                setMode(item.mode);
+                setLocalMode(item.mode);
                 setAttempt(null);
                 setResult(null);
               }}
@@ -179,6 +200,7 @@ export function DiagnosticumRunner() {
             </button>
           ))}
         </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={section}

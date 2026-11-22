@@ -19,6 +19,31 @@ import { groupAtlasCards } from "@/lib/histologyAtlas";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { compareRu } from "@/lib/collation";
+import type { DiagnosticumMode } from "@/lib/diagnosticum-api";
+
+/**
+ * Формат задания — это то, что раньше было отдельной вкладкой «Диагностикум».
+ * «Карточки препаратов» — прежний тренажёр, остальные значения — режимы
+ * диагностикума, которые запускаются прямо здесь.
+ */
+type TrainingFormat = "cards" | DiagnosticumMode;
+
+const TRAINING_FORMATS: Array<{ id: TrainingFormat; label: string }> = [
+  { id: "cards", label: "Карточки препаратов" },
+  { id: "identify", label: "Определить препарат" },
+  { id: "structures", label: "Найти структуры" },
+  { id: "differential", label: "Отличить похожие" },
+  { id: "complex", label: "Комплексно" },
+  { id: "schema", label: "Схема препарата" },
+];
+
+function formatFromParams(params: { get(key: string): string | null }): TrainingFormat {
+  const raw = params.get("format");
+  const found = TRAINING_FORMATS.find((item) => item.id === raw);
+  if (found) return found.id;
+  // Старые ссылки на отдельный диагностикум.
+  return params.get("section") === "diagnosticum" ? "identify" : "cards";
+}
 
 type AnswerRow = {
   id: string;
@@ -56,10 +81,14 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const [labelMode, setLabelMode] = useState<TrainingLabelMode>("without");
   const [layout, setLayout] = useState<TrainingLayout>("top");
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  // Атлас, тренажёр и диагностикум — три режима одного экрана: у них один и тот же
-  // банк препаратов, поэтому отдельной страницы диагностикума больше нет.
-  const [section, setSection] = useState<"atlas" | "trainer" | "diagnosticum">(
-    searchParams.get("section") === "diagnosticum" ? "diagnosticum" : "atlas",
+  // Атлас и тренажёр — два режима одного экрана. Диагностикум — не отдельный
+  // режим, а формат заданий внутри тренажёра: тот же банк препаратов, тот же
+  // экран, тот же атлас рядом.
+  const [format, setFormat] = useState<TrainingFormat>(() => formatFromParams(searchParams));
+  const [section, setSection] = useState<"atlas" | "trainer">(
+    formatFromParams(searchParams) !== "cards" || searchParams.get("section") === "diagnosticum"
+      ? "trainer"
+      : "atlas",
   );
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -282,10 +311,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас</button>
           <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Тренажёр</button>
-          <button type="button" onClick={() => setSection("diagnosticum")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "diagnosticum" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Диагностикум</button>
         </div>
-
-        {section === "diagnosticum" && <DiagnosticumRunner />}
 
         {section === "atlas" && (
           <HistologyAtlas
@@ -303,6 +329,34 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
         {section === "trainer" && (
           <div className="space-y-5">
             <section className="card space-y-4 p-5">
+              <div>
+                <h2 className="font-bold">Формат заданий</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {TRAINING_FORMATS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setFormat(item.id);
+                        // Формат живёт в адресе: ссылку «определить препарат»
+                        // можно дать группе, и она откроется тем же заданием.
+                        try {
+                          const url = new URL(window.location.href);
+                          if (item.id === "cards") url.searchParams.delete("format");
+                          else url.searchParams.set("format", item.id);
+                          window.history.replaceState(null, "", url.toString());
+                        } catch {
+                          /* без истории формат всё равно выбран */
+                        }
+                      }}
+                      className={"rounded-xl border px-3 py-2 text-sm " + (format === item.id ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {format === "cards" && (<>
               <div>
                 <h2 className="font-bold">Тип</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -396,7 +450,14 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
               <button disabled={working} onClick={() => void start()} className="btn-primary">
                 {selectedCardIds.length ? `Начать (${selectedCardIds.length})` : "Начать"}
               </button>
+              </>)}
             </section>
+
+            {format !== "cards" && (
+              <section className="card p-4 sm:p-5">
+                <DiagnosticumRunner mode={format} showModeChips={false} />
+              </section>
+            )}
 
             {sessions.length > 0 && (
               <section className="card p-5">

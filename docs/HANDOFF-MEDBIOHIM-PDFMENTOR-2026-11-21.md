@@ -99,10 +99,10 @@ CLI локально); `wrangler deploy --dry-run` собирает бандл 6
   `user_id`, колоночные гранты — ключ ответов не читается клиентом.
 - API: `GET /diagnosticum`, `POST /start`, `POST /hint`, `POST /answer`, `GET /stats`,
   `GET /mistakes`.
-- UI: режим «Диагностикум» внутри тренажёра
-  (`/trainers/feed/histology?section=diagnosticum`), `DiagnosticumRunner`,
-  `DiagnosticumStats`; `src/app/trainers/diagnosticum/page.tsx` — редирект на
-  этот режим (отдельной страницы и отдельной карточки на `/trainers` больше нет).
+- UI: **формат заданий** в настройках тренажёра
+  (`/trainers/feed/histology?format=identify|structures|differential|complex|schema`),
+  `DiagnosticumRunner`, `DiagnosticumStats`; `src/app/trainers/diagnosticum/page.tsx`
+  — редирект на тренажёр. Отдельной вкладки, страницы и карточки на `/trainers` нет.
 - Тесты: `workers/api/test/diagnosticum.test.js`, `src/lib/__tests__/diagnosticum-model.test.ts`.
 
 ### P1-G — Пятый режим `schema` (готово)
