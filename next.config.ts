@@ -72,7 +72,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/trainers", destination: "/subjects", permanent: false },
+      // Тренажёры больше не отдельный раздел: все упражнения живут во вкладке
+      // предмета, поэтому старые ссылки ведут сразу туда.
+      { source: "/trainers", destination: "/subjects/histology?tab=trainers", permanent: false },
       { source: "/me", destination: "/settings", permanent: false },
       // Help и changelog объединены: «Что нового» — вкладка страницы помощи.
       { source: "/changelog", destination: "/help?tab=news", permanent: false },
