@@ -31,12 +31,17 @@ export function PreparationRunner({ page }: { page: PreparationController }) {
           <h1 className="page-title">{meta?.title || "Тест"}</h1>
           <p className="page-subtitle">
             {view.hideNumbers ? "Вопрос" : `Вопрос ${idx + 1} из ${questions.length}`} · отвечено {score.answeredCount}
-            {mode === "sequential" ? " · проход всего банка" : ""}
-            {view.isOpen
-              ? " · письменный ответ"
-              : view.isMulti
-                ? " · можно выбрать несколько вариантов"
-                : " · выберите вариант"} · незавершённый тест сохраняется
+            {/* На телефоне подзаголовок — четыре переноса строки из правил,
+                которые понятны по самим вариантам ответа: оставляем счётчик
+                вопроса и режим проверки. */}
+            <span className="hidden sm:inline">
+              {mode === "sequential" ? " · проход всего банка" : ""}
+              {view.isOpen
+                ? " · письменный ответ"
+                : view.isMulti
+                  ? " · можно выбрать несколько вариантов"
+                  : " · выберите вариант"} · незавершённый тест сохраняется
+            </span>
             {" · "}
             {experience === "exam"
               ? "эталоны после завершения"
