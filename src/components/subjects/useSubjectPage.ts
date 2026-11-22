@@ -332,9 +332,9 @@ export function useSubjectPage({ params }: { params: Promise<{ id: string }> }) 
               { id: "trainers", label: "Тренажёры" },
               { id: "trainer", label: histology ? "Микропрепараты" : "Препараты" },
               { id: "labs", label: "Лабораторные" },
-              ...(chemistry
-                ? [{ id: "chem" as TabId, label: subjectSubmodule?.tabs[0]?.label ?? "Структуры" }]
-                : []),
+              // Химия — один вход на все её разделы: ядро, элементы, реакции,
+              // растворы, практика, лаборатория, растворимость.
+              ...(chemistry ? [{ id: "chem" as TabId, label: "Химия" }] : []),
               ...(latin ? [{ id: "latin" as TabId, label: "Рецепты" }] : []),
             ]
           : group === "attestations"

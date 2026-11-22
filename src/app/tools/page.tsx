@@ -8,22 +8,21 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Atom, Bot, Calculator, Droplets, Languages, Microscope } from "lucide-react";
+import { Bot, Calculator, Languages, Microscope } from "lucide-react";
 import clsx from "clsx";
 import { AtlasView } from "@/components/tools/AtlasView";
 import { CalculatorsView } from "@/components/tools/CalculatorsView";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
-import { PeriodicTable } from "@/modules/subjects/submodules/chemistry";
-import { SolubilityTableView } from "@/components/tools/SolubilityTableView";
 
-type Tab = "atlas" | "calculators" | "tutor" | "periodic" | "solubility" | "languages";
+type Tab = "atlas" | "calculators" | "tutor" | "languages";
+
+/** Периодическая таблица и растворимость принадлежат химии и живут в предмете. */
+const CHEM_SECTIONS: Record<string, string> = { periodic: "elements", solubility: "solubility" };
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; hint: string }> = [
   { id: "atlas", label: "Атлас", icon: Microscope, hint: "препараты и электронограммы" },
   { id: "calculators", label: "Калькуляторы", icon: Calculator, hint: "клиника, лаборатория, дозы" },
   { id: "tutor", label: "ИИ-тьютор", icon: Bot, hint: "чат с контекстом предметов" },
-  { id: "periodic", label: "Периодическая таблица", icon: Atom, hint: "118 элементов, массы и группы" },
-  { id: "solubility", label: "Растворимость", icon: Droplets, hint: "катионы × анионы" },
   { id: "languages", label: "Языки", icon: Languages, hint: "латынь: рецепты и термины, английский: топики" },
 ];
 
@@ -32,8 +31,6 @@ function isValidTab(value: string | null): value is Tab {
     value === "atlas" ||
     value === "calculators" ||
     value === "tutor" ||
-    value === "periodic" ||
-    value === "solubility" ||
     value === "languages"
   );
 }
@@ -49,6 +46,15 @@ function ToolsPageInner() {
     const fromUrl = search.get("tab");
     if (isValidTab(fromUrl) && fromUrl !== tab) setTab(fromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  // Старые ссылки вида ?tab=periodic больше не открывают таблицу здесь:
+  // её место — вкладка «Химия» предмета.
+  useEffect(() => {
+    const section = CHEM_SECTIONS[search.get("tab") || ""];
+    if (section) {
+      window.location.replace(`/subjects/chemistry_organic_physical?tab=chem&section=${section}`);
+    }
   }, [search]);
 
   function switchTab(next: Tab) {
@@ -83,8 +89,6 @@ function ToolsPageInner() {
         ))}
       </div>
 
-      {tab === "periodic" ? <PeriodicTable /> : null}
-      {tab === "solubility" ? <SolubilityTableView /> : null}
       {tab === "atlas" ? <AtlasView /> : null}
       {tab === "calculators" ? <CalculatorsView /> : null}
       {tab === "languages" ? (

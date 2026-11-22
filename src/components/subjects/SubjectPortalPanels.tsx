@@ -10,7 +10,7 @@ import MatchingTrainer from "@/components/portals/MatchingTrainer";
 import Colloquium from "@/components/physiology/Colloquium";
 import PhysiologyPractice from "@/components/physiology/PhysiologyPractice";
 import ExternalPlatformLinks from "@/components/university/ExternalPlatformLinks";
-import { ChemistryWorkbench } from "@/modules/subjects/submodules/chemistry";
+import { ChemistryArea } from "@/components/subjects/ChemistryArea";
 import type { SubjectController } from "@/components/subjects/useSubjectPage";
 
 export function SubjectPortalPanels({ page }: { page: SubjectController }) {
@@ -20,7 +20,9 @@ export function SubjectPortalPanels({ page }: { page: SubjectController }) {
     <>
       {tab === "colloquium" && slug === "physiology" && <Colloquium embedded />}
 
-      {tab === "chem" && chemistry && <ChemistryWorkbench embedded />}
+      {/* Химия живёт целиком внутри предмета: ядро, элементы, реакции,
+          растворы, практика, лаборатория и растворимость — без переходов наружу. */}
+      {tab === "chem" && chemistry && <ChemistryArea />}
 
       {tab === "latin" && latin && (
         <section className="card p-4 sm:p-5">
