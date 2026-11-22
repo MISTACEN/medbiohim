@@ -948,8 +948,24 @@ export async function getSupabasePreparation(request, env, sessionId, fetcher = 
     const ids = parsePreparationIds(session.question_ids);
     const snapshot = parsePreparationJson(session.question_snapshot, []);
     const byId = new Map((Array.isArray(snapshot) ? snapshot : []).filter((q) => q && q.id).map((q) => [String(q.id), q]));
-    const answers = await c.rows("test_preparation_results", { select: "question_id,answer_text,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at,is_correct,score,answered_at",
+    const answerRows = await c.rows("test_preparation_results", { select: "question_id,answer_text,grading_status,grading_source,grading_confidence,grading_feedback,grading_model,graded_at,is_correct,score,answered_at,answer_snapshot",
       session_id: "eq." + String(session.id), user_id: "eq." + c.identity.id, limit: "1000" });
+    // Вердикт восстанавливается вместе с ответом: без эталона клиент считал,
+    // что ключа нет, и писал «ответ не считается ошибкой» вопросу, который
+    // уже был проверен и неверен. answer_snapshot хранит ключ на момент ответа.
+    const answers = answerRows.map((row) => {
+      const snap = row.answer_snapshot && typeof row.answer_snapshot === "object" ? row.answer_snapshot : null;
+      let answerDisplay = String(snap?.answer_display || "");
+      let correctKeys = [];
+      if (snap) {
+        try {
+          const normalized = normalizeQuestion(snap);
+          answerDisplay = answerDisplay || String(normalized.answer_display || "");
+          correctKeys = Array.isArray(normalized.correct_keys) ? normalized.correct_keys : [];
+        } catch {}
+      }
+      return { ...row, answer_display: answerDisplay, correct_keys: correctKeys };
+    });
     const completed = String(session.status) === "completed";
     // Устный экзаменатор (страница /oral) сверяет ответ студента с эталоном
     // банка ДО ответа: по ?oral=1 отдаём answer_display своей сессии и в

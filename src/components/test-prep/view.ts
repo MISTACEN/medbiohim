@@ -104,7 +104,11 @@ export function questionView(args: {
       selectedOptionKeys.every((key) => correctOptionKeys.has(key)));
   // В банке бывает не задан ни один верный вариант (импортированный вопрос без
   // эталона): такой вопрос нельзя показывать как ошибку студента.
-  const noKey = q.is_closed !== false && correctKeysList.length === 0;
+  // Но если сервер уже вынес вердикт, ключ был — он просто не отдаётся в
+  // публичном ответе. Иначе после перезагрузки проверенный неверный ответ
+  // выглядел как «эталон не заполнен, ошибкой не считается».
+  const hasServerVerdict = serverGrading != null && serverGrading.is_correct != null;
+  const noKey = q.is_closed !== false && correctKeysList.length === 0 && !hasServerVerdict;
   // Ответ из старой версии вопроса: его вариант больше не существует в банке
   // (мы чинили склеенные варианты), поэтому показывать вердикт нельзя.
   const staleAnswer = Boolean(checked[q.id]) && q.is_closed !== false && selectedOptionKeys.length === 0;

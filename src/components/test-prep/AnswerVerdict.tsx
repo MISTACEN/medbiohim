@@ -22,6 +22,7 @@ export function AnswerVerdict({ page, view }: { page: PreparationController; vie
   } = view;
   const reveal = checked[q.id] && experience === "prepare";
 
+
   return (
     <>
       {isChecking && (
