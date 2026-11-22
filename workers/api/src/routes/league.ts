@@ -57,12 +57,14 @@ export function tierFor(points: number): { name: string; min: number } | null {
 }
 
 function nextTierFor(points: number): { name: string; min: number } | null {
-  // TIERS идут от старшей к младшей; следующая лига — ближайшая сверху.
-  for (let i = TIERS.length - 1; i >= 0; i -= 1) {
-    if (points < TIERS[i].min) return { name: TIERS[i].name, min: TIERS[i].min };
-    if (points >= TIERS[i].min) return TIERS[i - 1] || null;
+  // TIERS идут от старшей к младшей: ближайшая сверху — последняя, чей порог
+  // больше набранных очков. Раньше функция возвращала «Серебро» любому, у кого
+  // есть хотя бы одно очко, и подсказка в интерфейсе врала.
+  let next: { name: string; min: number } | null = null;
+  for (const tier of TIERS) {
+    if (tier.min > points) next = tier;
   }
-  return null;
+  return next;
 }
 
 type LeaderRow = { user_id: string; name: string; points: number };

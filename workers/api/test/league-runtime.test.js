@@ -132,6 +132,28 @@ test("лига: SQL-агрегация — приоритетный путь, т
   assert.deepEqual(state.queries, [], "при работающем RPC события в память не тянутся");
 });
 
+test("лига: подсказка следующей лиги — ближайший порог сверху", async () => {
+  const state = fakeService({
+    rpc: () => ({ data: [{ user_id: USER.id, name: "Аня", points: 300 }], error: null }),
+  });
+  const app = await composeApp(state);
+  const body = await (await app.request("/api/v1/league", {}, {})).json();
+
+  assert.equal(body.data.my.league, "Платина");
+  assert.deepEqual(body.data.my.next_league, { name: "Алмаз", remaining: 120 });
+});
+
+test("лига: на верхней лиге следующей нет", async () => {
+  const state = fakeService({
+    rpc: () => ({ data: [{ user_id: USER.id, name: "Аня", points: 900 }], error: null }),
+  });
+  const app = await composeApp(state);
+  const body = await (await app.request("/api/v1/league", {}, {})).json();
+
+  assert.equal(body.data.my.league, "Алмаз");
+  assert.equal(body.data.my.next_league, null);
+});
+
 test("лига: без миграции — fallback в воркере, очки и имена те же", async () => {
   const state = fakeService({
     rpc: () => ({ data: null, error: { code: "42883", message: "function does not exist" } }),
