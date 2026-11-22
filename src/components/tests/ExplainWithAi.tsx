@@ -22,6 +22,7 @@ import { getAccountSettings } from "@/lib/settings-api";
 import { AnswerSources } from "@/components/ai/AnswerSources";
 import { mdToHtml } from "@/lib/lectures/markdown";
 import { stripInlineSourceList } from "@/components/tutor/model";
+import { arbiterLine } from "@/components/tests/arbiter-line";
 
 /** Провайдер из настроек аккаунта; один запрос на страницу. */
 let explainProviderPromise: Promise<AiProvider> | null = null;
@@ -104,32 +105,13 @@ type Turn = { role: "user" | "assistant"; content: string };
  * можно сравнивать с вердиктом разбора механически: если они расходятся,
  * студент видит предупреждение, а не уверенное «ваш ответ вернее».
  */
-/** Арбитр отвечает буквой варианта — превращаем её в текст, если он есть. */
-function correctLabel(correct: string | undefined, options?: string[]): string {
-  const raw = String(correct || "").trim();
-  if (!raw || !options?.length) return raw;
-  const letter = raw.toUpperCase().replace(/[).].*$/, "");
-  const index = "ABCDEFGH".indexOf(letter) >= 0
-    ? "ABCDEFGH".indexOf(letter)
-    : "АБВГДЕЖЗ".indexOf(letter);
-  const text = index >= 0 ? String(options[index] || "").trim() : "";
-  return text ? `${["А", "Б", "В", "Г", "Д", "Е", "Ж", "З"][index]}) ${text}` : raw;
-}
-
 function ArbiterNote({
   arbiter, firstAnswer, options,
 }: { arbiter: AiAnswerCheck | null; firstAnswer: string; options?: string[] }) {
-  if (!arbiter) return null;
-  const stated = /Оба ответа неверны/.test(firstAnswer) ? "both"
-    : /ваш ответ вернее/i.test(firstAnswer) ? "user"
-      : /Ключ верен/.test(firstAnswer) ? "key"
-        : null;
-  const disagree = Boolean(stated && stated !== arbiter.verdict);
-  const text = arbiter.verdict === "both"
-    ? `Перепроверка: оба ответа неверны — правильный ${correctLabel(arbiter.correct, options) || "указан в разборе"}`
-    : arbiter.verdict === "user"
-      ? "Перепроверка: правы вы, в ключе ошибка"
-      : "Перепроверка: ключ верен";
+  const line = arbiterLine(arbiter, firstAnswer, options);
+  if (!line) return null;
+  const { text, disagree } = line;
+
   return (
     <div
       className={
