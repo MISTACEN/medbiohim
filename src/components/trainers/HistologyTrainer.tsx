@@ -306,12 +306,12 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
             <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4" />К предметам</Link>
             <h1 className="page-title mt-3">Микропрепараты</h1>
             <p className="page-subtitle">
-              Атлас, тренажёр и диагностикум живут на одном экране: схемы, методички, тесты и
+              Атлас и тренажёр живут на одном экране: схемы, методички, тесты и
               учебники остаются в материалах предмета.
             </p>
           </header>
         )}
-        {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас, тренажёр и диагностикум — по одному банку препаратов.</p></div>)}
+        {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас и тренажёр — по одному банку препаратов.</p></div>)}
 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас</button>

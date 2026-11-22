@@ -142,7 +142,7 @@ test("ответ разбирает ключ той же формы, что ст
   );
 });
 
-test("реестр эндпоинтов и страница диагностикума на месте", async () => {
+test("реестр эндпоинтов и разбор препарата внутри тренажёра", async () => {
   const endpoints = await read("src/lib/endpoints.ts");
   for (const route of [
     'root: (): string => "/diagnosticum"',
@@ -155,7 +155,17 @@ test("реестр эндпоинтов и страница диагностик
     assert.ok(endpoints.includes(route), `нет пути: ${route}`);
   }
 
+  // Отдельной страницы больше нет: диагностикум — формат задания тренажёра,
+  // а старый адрес только уводит туда.
   await access(path.join(ROOT, "src/app/trainers/diagnosticum/page.tsx"));
   const page = await read("src/app/trainers/diagnosticum/page.tsx");
-  assert.ok(page.includes("DiagnosticumRunner"));
+  assert.ok(page.includes("redirect("), "старый адрес должен редиректить в тренажёр");
+  assert.ok(!page.includes("DiagnosticumRunner"), "свой рендер диагностикума на редиректе не нужен");
+
+  const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
+  assert.ok(trainer.includes("<DiagnosticumRunner"), "разбор препарата рендерится в тренажёре");
+  assert.ok(
+    trainer.includes('{ id: "complex", label: "Разбор препарата" }'),
+    "в форматах есть объединённый разбор препарата",
+  );
 });

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Статистика диагностикума: общий результат, разбивка по режимам и разделам,
+ * Статистика разбора препаратов: общий результат, разбивка по разделам,
  * слабые разделы и очередь повторения.
  *
  * Ошибки не превращаются в отдельный «второй тренажёр»: это deep-link `?cards=`
@@ -56,7 +56,7 @@ export function DiagnosticumStats({ refreshKey = 0 }: { refreshKey?: number }) {
         style={{ borderColor: "var(--border)" }}
       >
         <BarChart3 className="mx-auto mb-2 h-6 w-6 text-slate-300" />
-        Статистика появится после первых ответов в диагностикуме.
+        Статистика появится после первых ответов в разборе препаратов.
       </div>
     );
   }
@@ -69,7 +69,7 @@ export function DiagnosticumStats({ refreshKey = 0 }: { refreshKey?: number }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
           <BarChart3 className="h-5 w-5 text-indigo-600" />
-          Мой диагностикум
+          Мой разбор препаратов
         </h2>
         <div className="flex flex-wrap gap-2 text-xs font-semibold">
           <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">ответов: {stats.answered}</span>

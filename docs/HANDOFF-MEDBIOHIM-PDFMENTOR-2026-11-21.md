@@ -100,7 +100,8 @@ CLI локально); `wrangler deploy --dry-run` собирает бандл 6
 - API: `GET /diagnosticum`, `POST /start`, `POST /hint`, `POST /answer`, `GET /stats`,
   `GET /mistakes`.
 - UI: **формат заданий** в настройках тренажёра
-  (`/trainers/feed/histology?format=identify|structures|differential|complex|schema`),
+  (`/trainers/feed/histology?format=complex` — «Разбор препарата»; старые
+  `?format=identify|structures|differential|schema` ведут в него же),
   `DiagnosticumRunner`, `DiagnosticumStats`; `src/app/trainers/diagnosticum/page.tsx`
   — редирект на тренажёр. Отдельной вкладки, страницы и карточки на `/trainers` нет.
 - Тесты: `workers/api/test/diagnosticum.test.js`, `src/lib/__tests__/diagnosticum-model.test.ts`.
