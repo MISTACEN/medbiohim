@@ -1,10 +1,11 @@
 /**
- * Повторы вопросов внутри одного банка.
+ * Ключ повторяющихся формулировок — инструмент аудита, а не фильтр попытки.
  *
- * Импорт методичек приносит один вопрос дважды: разные id, одинаковый текст,
- * отличаются только числом подчёркиваний в пропуске, регистром или точкой в
- * конце. Студент видит такой вопрос дважды и получает двойной вес в результате,
- * поэтому при сборке прохождения строки склеиваются по ключу формулировки.
+ * Здесь зафиксированы оба урока: повторы в банках бывают (разные id, одинаковый
+ * текст с «_____»/«______», точкой или регистром), но склейка по одному тексту
+ * в прохождении недопустима: в гистологии 178 вопросов «Какой препарат изображён
+ * на фотографии?» совпадают и текстом, и ответом, и вариантами, а различает их
+ * только картинка. Поэтому планировщик обязан их не трогать.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -35,16 +36,19 @@ test("ключ не зависит от лишних пробелов и пер�
   assert.equal(questionTextKey("  Кровь\n и  лимфа "), questionTextKey("кровь и лимфа"));
 });
 
-test("сборка прохождения склеивает повторы до снимка попытки", async () => {
+test("одинаковые фото-вопросы гистологии неразличимы по тексту", () => {
+  // Это не баг ключа, а причина, по которой его нельзя применять как фильтр.
+  const a = "Какой препарат изображён на фотографии?";
+  const b = "Какой препарат изображён на фотографии?";
+  assert.equal(questionTextKey(a), questionTextKey(b));
+});
+
+test("сборка прохождения не фильтрует вопросы по тексту", async () => {
   const source = await fs.readFile(
     new URL("../integrations/cloudflare-api/src/planner.js", import.meta.url),
     "utf8",
   );
-  assert.match(source, /import \{ questionTextKey \} from "\.\/question-text-key\.js"/);
-  assert.ok(source.includes("const seenQuestionText = new Set()"), "нужен набор уже взятых формулировок");
-  assert.ok(source.includes("if (seenQuestionText.has(key)) return false"), "повтор должен отбрасываться");
-  // Снимок попытки строится по отфильтрованным id, иначе повтор всё равно попадёт на экран.
-  const dedupeAt = source.indexOf("seenQuestionText.has(key)");
-  const snapshotAt = source.indexOf("const snapshot = ids.map((id) => {");
-  assert.ok(dedupeAt > 0 && snapshotAt > dedupeAt, "склейка должна идти до сборки снимка");
+  assert.ok(!source.includes("questionTextKey"), "планировщик не должен использовать ключ аудита");
+  assert.ok(!source.includes("seenQuestionText"), "склейка по тексту выбрасывает фото-вопросы гистологии");
+  assert.match(source, /const records = ids\.map\(\(id\) => questionById\.get\(id\)\)/);
 });

@@ -1,7 +1,6 @@
 import { authenticateSupabaseRequest } from "./supabase-auth.js";
 import { createB2DownloadUrls } from "./b2-download.js";
 import { normalizeQuestion, publicOptions, gradeClosedAnswer, gradeOpenAnswer, shuffleQuestionOptions } from "./question-format.js";
-import { questionTextKey } from "./question-text-key.js";
 
 const fail = (status, code, message, extra = {}) => ({ ok: false, status, code, message, ...extra });
 const uuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || ""));
@@ -815,21 +814,6 @@ export async function startSupabasePreparation(request, env, testId, input = {},
     ids = ids.filter((id) => questionById.has(id));
     if (!ids.length) return fail(422, "NO_QUESTIONS", "В тесте нет доступных опубликованных вопросов");
     const records = ids.map((id) => questionById.get(id));
-    // Один и тот же вопрос иногда импортирован дважды: разные id, одинаковый
-    // текст (отличаются только числом подчёркиваний или точкой в конце).
-    // В одном прохождении такой вопрос должен встречаться один раз — иначе
-    // студент отвечает на него дважды и получает двойной вес в результате.
-    const seenQuestionText = new Set();
-    const uniqueRecords = records.filter((q) => {
-      const key = questionTextKey(q.text);
-      if (!key) return true;
-      if (seenQuestionText.has(key)) return false;
-      seenQuestionText.add(key);
-      return true;
-    });
-    records.length = 0;
-    records.push(...uniqueRecords);
-    ids = records.map((q) => String(q.id));
     const moduleIds = [...new Set(records.map((q) => String(q.module_id || "")).filter(uuid))];
     const topicIds = [...new Set(records.map((q) => String(q.topic_id || "")).filter(uuid))];
     const [modules, topics] = await Promise.all([
