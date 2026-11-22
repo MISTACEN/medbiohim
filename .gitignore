@@ -47,3 +47,12 @@ tmp/
 bank-feedback.png
 tests-mobile-*.png
 tutor-*.png
+
+# Черновые скрипты и экстракты вне репозитория (артефакты разбора учебников)
+/*.py
+/extracted_*.txt
+/metodichka_db*.xml
+/site_bank.txt
+/screenshots/
+# Бандл wrangler dry-run: собирается при `npm run check`, в git не нужен
+workers/api/.wrangler-bundle/
