@@ -8,19 +8,25 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Bot, Calculator, Languages, Microscope } from "lucide-react";
+import { Bot, Calculator, Languages } from "lucide-react";
 import clsx from "clsx";
-import { AtlasView } from "@/components/tools/AtlasView";
+
 import { CalculatorsView } from "@/components/tools/CalculatorsView";
 import { StudyAssistant } from "@/components/study/StudyAssistant";
 
-type Tab = "atlas" | "calculators" | "tutor" | "languages";
+type Tab = "calculators" | "tutor" | "languages";
 
-/** Периодическая таблица и растворимость принадлежат химии и живут в предмете. */
-const CHEM_SECTIONS: Record<string, string> = { periodic: "elements", solubility: "solubility" };
+/**
+ * Старые адреса инструментов больше не открываются здесь: атлас — часть
+ * гистологии, периодическая таблица и растворимость — часть химии.
+ */
+const LEGACY_TABS: Record<string, string> = {
+  atlas: "/subjects/histology?tab=trainer",
+  periodic: "/subjects/chemistry_organic_physical?tab=chem&section=elements",
+  solubility: "/subjects/chemistry_organic_physical?tab=chem&section=solubility",
+};
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; hint: string }> = [
-  { id: "atlas", label: "Атлас", icon: Microscope, hint: "препараты и электронограммы" },
   { id: "calculators", label: "Калькуляторы", icon: Calculator, hint: "клиника, лаборатория, дозы" },
   { id: "tutor", label: "ИИ-тьютор", icon: Bot, hint: "чат с контекстом предметов" },
   { id: "languages", label: "Языки", icon: Languages, hint: "латынь: рецепты и термины, английский: топики" },
@@ -28,7 +34,6 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; hint: string }> = 
 
 function isValidTab(value: string | null): value is Tab {
   return (
-    value === "atlas" ||
     value === "calculators" ||
     value === "tutor" ||
     value === "languages"
@@ -39,7 +44,7 @@ function ToolsPageInner() {
   const search = useSearchParams();
   const [tab, setTab] = useState<Tab>(() => {
     const fromUrl = search.get("tab");
-    return isValidTab(fromUrl) ? fromUrl : "atlas";
+    return isValidTab(fromUrl) ? fromUrl : "calculators";
   });
 
   useEffect(() => {
@@ -48,13 +53,11 @@ function ToolsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
-  // Старые ссылки вида ?tab=periodic больше не открывают таблицу здесь:
-  // её место — вкладка «Химия» предмета.
+  // Старые ссылки (?tab=atlas, ?tab=periodic, ?tab=solubility) уводят в предмет,
+  // которому инструмент принадлежит.
   useEffect(() => {
-    const section = CHEM_SECTIONS[search.get("tab") || ""];
-    if (section) {
-      window.location.replace(`/subjects/chemistry_organic_physical?tab=chem&section=${section}`);
-    }
+    const target = LEGACY_TABS[search.get("tab") || ""];
+    if (target) window.location.replace(target);
   }, [search]);
 
   function switchTab(next: Tab) {
@@ -89,7 +92,6 @@ function ToolsPageInner() {
         ))}
       </div>
 
-      {tab === "atlas" ? <AtlasView /> : null}
       {tab === "calculators" ? <CalculatorsView /> : null}
       {tab === "languages" ? (
         <div className="grid gap-3 sm:grid-cols-2">

@@ -1,38 +1,21 @@
-"use client";
-
-import { Suspense, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { redirect } from "next/navigation";
 
 /**
- * /atlas переехал в хаб /tools (вкладка «Атлас»): сохраняем deep-links
- * (?card=…, ?lesson=…) при редиректе. Сам вид — src/components/tools/AtlasView.tsx.
+ * Атлас — часть предмета, а не отдельный раздел и не вкладка «Инструментов»:
+ * он открывается вкладкой «Микропрепараты» гистологии (атлас · тренажёр ·
+ * диагностикум на одном экране). Адрес оставлен редиректом, deep-links
+ * `?card=` и `?lesson=` передаются дальше.
  */
-function AtlasRedirectInner() {
-  const router = useRouter();
-  const params = useSearchParams();
-
-  useEffect(() => {
-    const search = new URLSearchParams();
-    search.set("tab", "atlas");
-    for (const key of ["card", "lesson"]) {
-      const value = params.get(key);
-      if (value) search.set(key, value);
-    }
-    router.replace("/tools?" + search.toString());
-  }, [router, params]);
-
-  return (
-    <div className="flex items-center gap-2 p-8 text-sm text-[var(--muted)]">
-      <Loader2 className="h-5 w-5 animate-spin" /> Атлас переехал в «Инструменты» — открываем…
-    </div>
-  );
-}
-
-export default function AtlasPage() {
-  return (
-    <Suspense fallback={<div className="p-8 text-sm text-[var(--muted)]">Загружаем атлас…</div>}>
-      <AtlasRedirectInner />
-    </Suspense>
-  );
+export default async function AtlasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const query = new URLSearchParams({ tab: "trainer" });
+  for (const key of ["card", "lesson"]) {
+    const value = params[key];
+    if (typeof value === "string" && value) query.set(key, value);
+  }
+  redirect(`/subjects/histology?${query.toString()}`);
 }
