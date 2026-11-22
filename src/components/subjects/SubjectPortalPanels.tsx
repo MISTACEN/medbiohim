@@ -4,7 +4,8 @@
 import ArchiveLectures from "@/components/portals/ArchiveLectures";
 import ChemSdf from "@/components/portals/ChemSdf";
 import HobaPortal from "@/components/portals/HobaPortal";
-import LatinRecipes from "@/components/portals/LatinRecipes";
+import { LatinArea } from "@/components/subjects/LatinArea";
+import { EnglishArea } from "@/components/subjects/EnglishArea";
 import LegacyMCTests from "@/components/portals/LegacyMCTests";
 import MatchingTrainer from "@/components/portals/MatchingTrainer";
 import Colloquium from "@/components/physiology/Colloquium";
@@ -14,7 +15,7 @@ import { ChemistryArea } from "@/components/subjects/ChemistryArea";
 import type { SubjectController } from "@/components/subjects/useSubjectPage";
 
 export function SubjectPortalPanels({ page }: { page: SubjectController }) {
-  const { tab, slug, subjectId, chemistry, latin, portal, externalPlatforms } = page;
+  const { tab, slug, subjectId, chemistry, latin, english, portal, externalPlatforms } = page;
 
   return (
     <>
@@ -26,15 +27,11 @@ export function SubjectPortalPanels({ page }: { page: SubjectController }) {
 
       {tab === "latin" && latin && (
         <section className="card p-4 sm:p-5">
-          <h2 className="text-lg font-bold">Латинский язык · рецепты</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Формы рецептов по Чернявскому: разделы, поиск и карточки Rp./Da./Signa — без ухода с предмета.
-          </p>
-          <div className="mt-4">
-            <LatinRecipes />
-          </div>
+          <LatinArea />
         </section>
       )}
+
+      {tab === "english" && english && <EnglishArea />}
 
       {tab === "portal" && (portal || externalPlatforms.length > 0) && (
         <div className="space-y-6">

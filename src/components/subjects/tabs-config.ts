@@ -2,10 +2,10 @@
  * Конфигурация вкладок страницы предмета (ЗАДАЧА A5, шаг 1): id, группы,
  * алиасы старых адресов, подписи. Чистые данные без React.
  */
-export type TabId = "plan" | "lessons" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "exam" | "progress" | "colloquium" | "portal" | "chem" | "latin";
+export type TabId = "plan" | "lessons" | "tests" | "practice" | "lectures" | "materials" | "trainer" | "trainers" | "labs" | "attestations" | "exam" | "progress" | "colloquium" | "portal" | "chem" | "latin" | "english";
 export type GroupId = "plan" | "lessons" | "tests" | "materials" | "practice" | "attestations" | "progress" | "portal";
 
-export const TAB_IDS: TabId[] = ["plan", "lessons", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "exam", "progress", "colloquium", "portal", "chem", "latin"];
+export const TAB_IDS: TabId[] = ["plan", "lessons", "tests", "practice", "lectures", "materials", "trainer", "trainers", "labs", "attestations", "exam", "progress", "colloquium", "portal", "chem", "latin", "english"];
 
 // Вкладки сгруппированы: верхний ряд — крупные разделы, внутри — точные режимы.
 // «Билеты» и «Вопросы к экзамену» объединены во вкладку exam («Экзамен / Билеты»):
@@ -29,6 +29,7 @@ export const GROUP_OF: Record<TabId, GroupId> = {
   progress: "progress",
   chem: "practice",
   latin: "practice",
+  english: "materials",
 };
 
 export const GROUP_DEFAULT: Record<GroupId, TabId> = {

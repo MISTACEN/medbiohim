@@ -255,6 +255,8 @@ export function useSubjectPage({ params }: { params: Promise<{ id: string }> }) 
     subjectSubmodule?.slug === "chemistry" ||
     (!subjectSubmodule && /chem|хим/i.test(`${slug || ""} ${subject?.name || ""}`));
   const latin = /lat|латин/i.test(`${slug || ""} ${subject?.name || ""}`) && !chemistry;
+  const english =
+    /engl|иностран/i.test(`${slug || ""} ${subject?.name || ""}`) && !chemistry && !latin;
   const portal = legacyPortalConfig(slug);
   // NeoFamily и Школа Сеченова — не отдельная страница хаба, а часть предмета:
   // показываем только категории, размеченные под этот slug.
@@ -336,6 +338,7 @@ export function useSubjectPage({ params }: { params: Promise<{ id: string }> }) 
               // растворы, практика, лаборатория, растворимость.
               ...(chemistry ? [{ id: "chem" as TabId, label: "Химия" }] : []),
               ...(latin ? [{ id: "latin" as TabId, label: "Рецепты" }] : []),
+              ...(english ? [{ id: "english" as TabId, label: "Топики" }] : []),
             ]
           : group === "attestations"
             ? [
@@ -392,6 +395,7 @@ export function useSubjectPage({ params }: { params: Promise<{ id: string }> }) 
     histology,
     chemistry,
     latin,
+    english,
     portal,
     externalPlatforms,
     subjectSubmodule,
