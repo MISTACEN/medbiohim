@@ -1,11 +1,22 @@
 "use client";
 
+/**
+ * Практика предмета — одна страница вместо «хаба тренажёров».
+ *
+ * Раньше здесь был список карточек-упражнений: чтобы что-то сделать, нужно было
+ * сначала выбрать пункт меню, а потом ещё раз «назад ко всем темам». Теперь все
+ * тренажёры предмета открыты сразу и идут подряд: микропрепараты с атласом и
+ * диагностикумом, лейкоцитарная формула, нормы, ответ по смыслу, препараты
+ * крови и карточки SRS. Навигация — якорные чипы сверху, без перезагрузки
+ * экрана и без промежуточного меню.
+ */
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, BookOpen, Brain, Check, ChevronRight, Droplets, Flame, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import { BookOpen, Brain, Check, Droplets, Flame, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
 import BloodPreparationTrainer from "@/components/trainers/BloodPreparationTrainer";
+import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import {
@@ -13,7 +24,6 @@ import {
   type SrsCard, type SrsSummary,
 } from "@/lib/features-api";
 
-type HubMode = "leukocytes" | "norms" | "meaning" | "preparations" | "srs";
 type Rating = 1 | 2 | 3 | 4;
 
 const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string }> = [
@@ -22,6 +32,41 @@ const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string
   { r: 3, label: "Хорошо", hint: "SM-2", className: "bg-[var(--status-ok-fg)] hover:bg-[var(--status-ok-fg)] text-white" },
   { r: 4, label: "Легко", hint: "длиннее", className: "bg-sky-500 hover:bg-sky-600 text-white" },
 ];
+
+/** Разделы страницы: id — якорь, по нему прыгают чипы навигации. */
+const SECTIONS: Array<{ id: string; label: string; Icon: typeof Droplets }> = [
+  { id: "histology-atlas", label: "Препараты и диагностикум", Icon: Microscope },
+  { id: "leukocytes", label: "Лейкоцитарная формула", Icon: Droplets },
+  { id: "norms", label: "Возрастные нормы", Icon: Table2 },
+  { id: "meaning", label: "Ответ по смыслу", Icon: Sparkles },
+  { id: "blood-preparations", label: "Микропрепараты крови", Icon: Microscope },
+  { id: "srs", label: "Карточки SRS", Icon: Brain },
+];
+
+function SectionHeader({
+  id, step, title, hint, Icon,
+}: {
+  id: string;
+  step: string;
+  title: string;
+  hint: string;
+  Icon: typeof Droplets;
+}) {
+  return (
+    <div id={id} className="scroll-mt-24 sm:scroll-mt-28">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">{step}</p>
+          <h2 className="mt-0.5 text-lg font-extrabold text-slate-950 sm:text-xl">{title}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--muted)]">{hint}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SrsPanel() {
   const [scope, setScope] = useState<"shared" | "personal">("shared");
@@ -117,21 +162,17 @@ function SrsPanel() {
   }
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="flex items-center gap-2 text-xl font-extrabold">
-            <Brain className="h-5 w-5 text-[var(--primary)]" /> Карточки SRS
-          </h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Интервальное повторение для гистологии. Здесь же можно повторять общую колоду и личные карточки.</p>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {summary ? (
+            <>
+              <span className="rounded-full bg-[var(--primary-soft)] px-3 py-1 font-semibold text-[var(--primary)]">К повторению: {summary.due}</span>
+              <span className="rounded-full border border-[var(--border)] px-3 py-1">В колоде: {summary.total}</span>
+              {doneToday > 0 ? <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-orange-800"><Flame className="h-3.5 w-3.5" /> сегодня {doneToday}</span> : null}
+            </>
+          ) : null}
         </div>
-        {summary ? (
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-[var(--primary-soft)] px-3 py-1 font-semibold text-[var(--primary)]">К повторению: {summary.due}</span>
-            <span className="rounded-full border border-[var(--border)] px-3 py-1">В колоде: {summary.total}</span>
-            {doneToday > 0 ? <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-orange-800"><Flame className="h-3.5 w-3.5" /> сегодня {doneToday}</span> : null}
-          </div>
-        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -192,123 +233,108 @@ function SrsPanel() {
   );
 }
 
-type TrainerMode = Exclude<HubMode, "srs">;
-
-const BLOOD_MODES: Array<{
-  id: TrainerMode;
-  label: string;
-  description: string;
-  Icon: typeof Droplets;
-}> = [
-  { id: "leukocytes", label: "Лейкоцитарная формула", description: "Опознать клетку, оценить процент и объяснить отклонение", Icon: Droplets },
-  { id: "norms", label: "Возрастные нормы", description: "Заполнить таблицу норм по возрастам и проверить себя", Icon: Table2 },
-  { id: "meaning", label: "Ответ по смыслу", description: "Вспомнить содержание лекции и сформулировать ответ", Icon: Sparkles },
-  { id: "preparations", label: "Микропрепараты крови", description: "Узнать клетку по реальному препарату и объяснить признаки", Icon: Microscope },
-];
-
 export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureHref?: string }) {
-  const [mode, setMode] = useState<HubMode | null>(null);
-
-  const selectedMode = BLOOD_MODES.find((item) => item.id === mode);
-
   return (
-    <section className="space-y-5">
+    <div className="space-y-6">
       <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
             <BookOpen className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Учебный план → лекция → практика</p>
-            <h2 className="mt-1 text-xl font-extrabold text-slate-950">Тренажёры по темам гистологии</h2>
+            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Лекция → практика</p>
+            <h2 className="mt-1 text-xl font-extrabold text-slate-950">Все тренажёры гистологии на одной странице</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              Отработайте лейкоцитарную формулу, возрастные нормы, микропрепараты и ответы по смыслу. Все упражнения собраны по теме занятия.
+              Никаких переходов между пунктами меню: атлас, тренажёр и диагностикум работают по одному банку препаратов,
+              а ниже идут формула крови, нормы, ответы по смыслу и карточки повторения.
             </p>
           </div>
+          <a href={lectureHref} className="hidden shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 sm:inline-flex">
+            <BookOpen className="h-4 w-4" /> Лекции
+          </a>
         </div>
-        <a href={lectureHref} className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50">
-          <BookOpen className="h-4 w-4" /> Открыть лекции
-        </a>
       </header>
 
-      {mode === null ? (
-        <div className="space-y-4">
-          <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-            <div className="border-b border-[var(--border)] p-4 sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-wide text-indigo-600">Тема занятия · доступные тренажёры</div>
-                  <h3 className="mt-1 text-lg font-extrabold text-slate-950">Кровь и лимфа</h3>
-                  <p className="mt-1 text-sm leading-5 text-[var(--muted)]">Лекция 5 · ткани внутренней среды · практические занятия № 12–13</p>
-                </div>
-                <span className="rounded-full bg-[var(--status-ok-bg)] px-3 py-1 text-xs font-bold text-[var(--status-ok-fg)]">4 упражнения</span>
-              </div>
-            </div>
-            <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4">
-              {BLOOD_MODES.map(({ id, label, description, Icon }, index) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setMode(id)}
-                  className="group flex min-h-[124px] w-full items-start gap-3 rounded-xl border border-[var(--border)] bg-white p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 group-hover:bg-indigo-100">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-bold text-slate-400">Упражнение {index + 1}</span>
-                    <span className="mt-1 block font-bold leading-5 text-slate-900">{label}</span>
-                    <span className="mt-1 block text-sm leading-5 text-slate-600">{description}</span>
-                  </span>
-                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500" />
-                </button>
-              ))}
-            </div>
-          </section>
+      <nav aria-label="Разделы практики" className="sticky top-2 z-10 -mx-1 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-2 py-2 backdrop-blur">
+        <div className="flex flex-nowrap items-center gap-1.5">
+          {SECTIONS.map(({ id, label, Icon }) => (
+            <a
+              key={id}
+              href={"#" + id}
+              className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
+            >
+              <Icon className="h-3.5 w-3.5" /> {label}
+            </a>
+          ))}
+        </div>
+      </nav>
 
-          <button
-            type="button"
-            onClick={() => setMode("srs")}
-            className="flex min-h-[88px] w-full items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><Brain className="h-5 w-5" /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-extrabold text-slate-900">Карточки SRS · интервальное повторение</span>
-              <span className="mt-1 block text-sm leading-5 text-[var(--muted)]">Общая и личная колоды для повторения терминов и фактов по гистологии. Это отдельный инструмент повторения, а не ещё одна лекционная тема.</span>
-            </span>
-            <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300" />
-          </button>
-          <p className="px-1 text-xs leading-5 text-[var(--muted)]">
-            Сейчас доступны упражнения по теме «Кровь и лимфа». Новые темы появятся здесь по мере публикации проверенных материалов.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <button
-            type="button"
-            onClick={() => setMode(null)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-4 w-4" /> Все темы и тренажёры
-          </button>
-          {mode === "srs" ? (
-            <SrsPanel />
-          ) : (
-            <>
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 sm:p-4">
-                <div className="text-xs font-bold uppercase tracking-wide text-indigo-600">Кровь и лимфа · лекция 5</div>
-                <h3 className="mt-1 font-extrabold text-slate-950">{selectedMode?.label}</h3>
-                <p className="mt-1 text-sm leading-5 text-slate-600">{selectedMode?.description}</p>
-              </div>
-              {mode === "leukocytes" ? <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} /> : null}
-              {mode === "norms" ? <BloodNormTableTrainer /> : null}
-              {mode === "meaning" ? <BloodMeaningTrainer /> : null}
-              {mode === "preparations" ? <BloodPreparationTrainer /> : null}
-            </>
-          )}
-        </div>
-      )}
-    </section>
+      <section className="space-y-4">
+        <SectionHeader
+          id="histology-atlas"
+          step="Раздел 1"
+          title="Микропрепараты, тренажёр и диагностикум"
+          hint="Один банк препаратов: посмотреть атлас, пройти карточки и определить препарат в диагностикуме — без перехода на другую страницу."
+          Icon={Microscope}
+        />
+        <HistologyTrainer embedded />
+      </section>
+
+      <section className="space-y-4 border-t border-[var(--border)] pt-6">
+        <SectionHeader
+          id="leukocytes"
+          step="Раздел 2"
+          title="Лейкоцитарная формула"
+          hint="Опознать клетку, оценить её долю в формуле и объяснить отклонение от нормы."
+          Icon={Droplets}
+        />
+        <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} />
+      </section>
+
+      <section className="space-y-4 border-t border-[var(--border)] pt-6">
+        <SectionHeader
+          id="norms"
+          step="Раздел 3"
+          title="Возрастные нормы крови"
+          hint="Заполнить таблицу показателей по возрастам и сразу увидеть, где ошиблись."
+          Icon={Table2}
+        />
+        <BloodNormTableTrainer />
+      </section>
+
+      <section className="space-y-4 border-t border-[var(--border)] pt-6">
+        <SectionHeader
+          id="meaning"
+          step="Раздел 4"
+          title="Ответ по смыслу"
+          hint="Сформулировать содержание лекции своими словами — тренажёр сверит смысл, а не дословный текст."
+          Icon={Sparkles}
+        />
+        <BloodMeaningTrainer />
+      </section>
+
+      <section className="space-y-4 border-t border-[var(--border)] pt-6">
+        <SectionHeader
+          id="blood-preparations"
+          step="Раздел 5"
+          title="Микропрепараты крови"
+          hint="Узнать клетку по реальному препарату и объяснить её признаки."
+          Icon={Microscope}
+        />
+        <BloodPreparationTrainer />
+      </section>
+
+      <section className="space-y-4 border-t border-[var(--border)] pt-6">
+        <SectionHeader
+          id="srs"
+          step="Раздел 6"
+          title="Карточки SRS"
+          hint="Интервальное повторение терминов и фактов: общая колода и свои карточки."
+          Icon={Brain}
+        />
+        <SrsPanel />
+      </section>
+    </div>
   );
 }
 
