@@ -56,6 +56,19 @@ test("реестр: слаги уникальны и нормализованы"
   assert.equal(registry.version, 1);
 });
 
+test("реестр: оба предмета химии ведут в один раздел «Химия»", () => {
+  const chemistry = submodules.find((item) => item.slug === "chemistry");
+  assert.ok(chemistry, "в реестре нет подмодуля chemistry");
+  // Неорганическая химия — отдельная строка с отдельным слагом: без неё
+  // предмет оставался без раздела и химия снова раздваивалась.
+  for (const slug of ["inorganic_chemistry", "chemistry_organic_physical"]) {
+    assert.ok(
+      chemistry.subjectSlugs.includes(slug),
+      `предмет «${slug}» без подмодуля «Химия» — химия раздвоится`,
+    );
+  }
+});
+
 test("реестр: у подмодуля есть вкладки с уникальными ключами и текстами", () => {
   for (const item of submodules) {
     assert.ok(item.tabs.length > 0, `${item.slug}: нет вкладок`);

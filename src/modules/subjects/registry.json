@@ -6,7 +6,12 @@
       "slug": "chemistry",
       "title": "Химия",
       "summary": "Структуры, реакции, растворы, лаборатория, практика и таблица элементов — в одном модуле предмета.",
-      "subjectSlugs": ["chemistry", "chemistry_organic_physical", "organic_chemistry"],
+      "subjectSlugs": [
+        "chemistry",
+        "chemistry_organic_physical",
+        "organic_chemistry",
+        "inorganic_chemistry"
+      ],
       "tabs": [
         {
           "key": "structures",
