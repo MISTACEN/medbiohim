@@ -189,6 +189,7 @@ describe("методические карточки препаратов", () =>
       { key: "ct-blood-smear", name: "Мазок крови", structures: [] },
       { key: "epithelium-nonkeratinized-cornea", name: "Неороговевающий эпителий роговицы", structures: [] },
       { key: "ct-elastic-cartilage", name: "Эластический хрящ", structures: [] },
+      { key: "muscle-striated", name: "Поперечнополосатая мускулатура", structures: [] },
     ]);
     expect(guideForCard(card({ preparation: { name: "Кровь мазок" } }), aliased)?.key).toBe("ct-blood-smear");
     expect(
@@ -197,6 +198,9 @@ describe("методические карточки препаратов", () =>
     expect(guideForCard(card({ preparation: { name: "Хрящ.тк. Эласт. хрящ" } }), aliased)?.key).toBe(
       "ct-elastic-cartilage",
     );
+    expect(
+      guideForCard(card({ preparation: { name: "Мышечная тк.Скел. мыш. ткань.б.ув" } }), aliased)?.key,
+    ).toBe("muscle-striated");
     expect(guideForCard(card({ preparation: { name: "Печень" } }), aliased)).toBeNull();
   });
 
