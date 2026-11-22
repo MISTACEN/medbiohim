@@ -366,7 +366,11 @@ export default function SubjectQuestionBank({
           </p>
         </div>
         <span className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-extrabold text-indigo-700">
-          {source === "archive" && archive ? archive.count : total} найдено
+          {source === "archive" && archive
+            ? `${archive.count} найдено`
+            : loading && total === 0
+              ? "…"
+              : `${total} найдено`}
         </span>
       </div>
 
