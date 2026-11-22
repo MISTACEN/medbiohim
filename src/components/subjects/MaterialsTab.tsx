@@ -6,6 +6,7 @@
  */
 import { FolderOpen, ExternalLink } from "lucide-react";
 import HistologyMaterials from "@/components/trainers/HistologyMaterials";
+import { EmbryologyTimeline } from "@/components/embryology/EmbryologyTimeline";
 import { materialTypeLabel, stripHtml } from "./tabs-config";
 
 type Props = {
@@ -17,7 +18,28 @@ type Props = {
 };
 
 export function MaterialsTab({ histology, materialsRich, subjectLibrary, onRead, onSelectTab }: Props) {
-  if (histology) return <HistologyMaterials />;
+  if (histology) {
+    return (
+      <div className="space-y-4">
+        {/* Эмбриология — раздел гистологии, а не отдельная страница /embryology.
+            Держим свёрнутым, чтобы не отодвигать материалы; режим определения
+            стадии живёт здесь же. */}
+        <details className="card p-5">
+          <summary className="cursor-pointer text-lg font-bold">
+            Эмбриология: этапы развития
+          </summary>
+          <p className="mt-1 text-sm text-slate-500">
+            Десять стадий от гаметогенеза до плацентации: срок, механизм и термины, плюс режим
+            определения стадии по описанию.
+          </p>
+          <div className="mt-4">
+            <EmbryologyTimeline />
+          </div>
+        </details>
+        <HistologyMaterials />
+      </div>
+    );
+  }
   return (
     <section className="card p-5">
       <h2 className="text-lg font-bold">Материалы</h2>
