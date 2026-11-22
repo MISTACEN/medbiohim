@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { cleanCitationNoise, ensureCitationFootnotes, formatAnswer } from "../src/lib/ai-citations.ts";
+import { cleanCitationNoise, ensureCitationFootnotes, formatAnswer, stripMaterialDisclaimers } from "../src/lib/ai-citations.ts";
 import { readAiDomain } from "./ai-source.js";
 
 const citations = [
@@ -62,6 +62,38 @@ test("formatAnswer чистит мусор и гарантирует сноск�
   );
   // Если модель оставила настоящие сноски — Добавка не нужна.
   assert.equal(formatAnswer("Кровь — ткань [2].", citations), "Кровь — ткань [2].");
+});
+
+test("оправдания о нехватке материалов вырезаются", () => {
+  const text = [
+    "**Ответ: больше.**",
+    "При щелочной нагрузке буферная ёмкость растёт.",
+    "*Примечание:* в предоставленных фрагментах курса нет информации о щелочном резерве крови,"
+      + " поэтому ссылки-сноски к материалам добавить невозможно. Для полного ответа потребовался бы"
+      + " материал, где описываются буферные системы крови.",
+  ].join("\n\n");
+  assert.equal(
+    stripMaterialDisclaimers(text),
+    "**Ответ: больше.**\n\nПри щелочной нагрузке буферная ёмкость растёт.",
+  );
+  // Предложение про нехватку внутри абзаца убирается, остальное остаётся.
+  assert.equal(
+    stripMaterialDisclaimers("Гемолиз — разрушение эритроцитов [1]. В материалах курса не описан осмотический гемолиз."),
+    "Гемолиз — разрушение эритроцитов [1].",
+  );
+  // Нормальное упоминание материалов не режется.
+  const fine = "Кровь — соединительная ткань. В лекции описан гемолиз [1].";
+  assert.equal(stripMaterialDisclaimers(fine), fine);
+  // Если от ответа остались только оправдания — текст не пропадает.
+  assert.match(stripMaterialDisclaimers("В предоставленных фрагментах нет информации."), /фрагментах/);
+});
+
+test("formatAnswer убирает оправдания и всё равно гарантирует сноски", () => {
+  const out = formatAnswer("Кровь — ткань. В предоставленных фрагментах информации нет.", citations);
+  assert.equal(
+    out,
+    "Кровь — ткань.\n\nИсточники: [1] Физиология форменных элементов крови; [2] Гемостаз",
+  );
 });
 
 test("маршрут применяет сноски и на чате, и в истории сообщений", async () => {

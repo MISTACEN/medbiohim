@@ -72,6 +72,29 @@ test("provider caller accepts temperature but keeps 0.25 by default", async () =
   assert.match(provider, /function callAiCompletion\(cfg, messages, fetcher, temperature = 0\.25, report = \(\) => \{\}, options = \{\}\)/);
 });
 
+test("tutor prompt forbids material excuses and key worship", async () => {
+  const route = await readAiDomain();
+  // Модель не оправдывается отсутствием материалов и не защищает ключ теста.
+  assert.match(route, /Запрещены служебные жалобы на нехватку материалов/);
+  assert.match(route, /В ключе ошибка: ваш ответ вернее/);
+  assert.match(route, /не сообщай о нехватке материалов и не отказывайся от ответа/);
+  // Проверка себя и markdown-оформление — часть системного промпта.
+  assert.match(route, /Перед ответом проверь себя/);
+  assert.match(route, /Оформляй ответ markdown-ом/);
+});
+
+test("explain renders markdown, course photos and follow-up questions", async () => {
+  const explain = await source("../../../src/components/tests/ExplainWithAi.tsx");
+  // Markdown-рендер вместо стены текста с сырыми ** … **.
+  assert.match(explain, /mdToHtml/);
+  assert.match(explain, /getTrainerImageUrl/);
+  assert.match(explain, /Спросить по разбору/);
+  assert.match(explain, /askFollowUp/);
+  // Ключ больше не объявлен заранее верным («мой ответ (неверный)»).
+  assert.doesNotMatch(explain, /Мой ответ \(неверный\)/);
+  assert.match(explain, /Не защищай ключ/);
+});
+
 test("frontend renders sources and the explain-after-error button", async () => {
   const sources = await source("../../../src/components/ai/AnswerSources.tsx");
   assert.match(sources, /\/lectures\/\$\{encodeURIComponent\(source\.lecture_id\)\}/);

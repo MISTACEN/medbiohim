@@ -196,6 +196,8 @@ export type AiProviderMeta = { configured:boolean;available:boolean;model?:strin
 export type AiConversation = { id:string; title:string; provider:AiProvider; model?:string|null; subject_slug?:string|null; created_at:string; updated_at:string };
 /** Сноска-источник под ответом тьютора: номер [N] и лекция. */
 export type AiSource = { n: number; title: string; lecture_id: string | null; subject_slug?: string | null };
+/** Фото курса, приложенное к ответу тьютора: карточка тренажёра + название препарата. */
+export type AiAnswerImage = { card_id: string; title: string; kind?: "preparation" | "electronogram" | string };
 export type AiMessage = { id:string; role:"system"|"user"|"assistant"; content:string; provider?:string|null; model?:string|null; created_at:string; metadata?:{sources?:AiSource[]|string[]|null; answer_mode?:string|null; mode?:string|null}|null };
 export async function aiProviders(){ return api<{region:string;providers:Record<Exclude<AiProvider,"auto">,AiProviderMeta>;default:AiProvider} >("/ai/providers"); }
 export async function aiConversations(){ return api<{items:AiConversation[]}>("/ai/conversations"); }
@@ -206,7 +208,7 @@ export async function aiSendMessage(id:string,content:string,provider?:AiProvide
 /** One-shot completion without chat history/RAG — для генерации плана подготовки. */
 /** Режим ответа: «точный» — с RAG и сносками, «быстрый» — без контекста. */
 export type AiChatMode = "precise" | "fast";
-export async function aiChat(messages:Array<{role:"system"|"user"|"assistant";content:string}>,provider?:AiProvider,options?:{contextScope?:string;mode?:AiChatMode;subjectSlug?:string}){ return api<{message:{role:string;content:string};provider:string;model:string;mode?:string;sources?:AiSource[]}>("/ai/chat",{method:"POST",body:JSON.stringify({messages,provider,context_scope:options?.contextScope,mode:options?.mode,subject_slug:options?.subjectSlug}),timeoutMs:60000}); }
+export async function aiChat(messages:Array<{role:"system"|"user"|"assistant";content:string}>,provider?:AiProvider,options?:{contextScope?:string;mode?:AiChatMode;subjectSlug?:string}){ return api<{message:{role:string;content:string};provider:string;model:string;mode?:string;sources?:AiSource[];images?:AiAnswerImage[]}>("/ai/chat",{method:"POST",body:JSON.stringify({messages,provider,context_scope:options?.contextScope,mode:options?.mode,subject_slug:options?.subjectSlug}),timeoutMs:60000}); }
 
 /* —— Устный экзамен: оценка расшифрованного ответа экзаменатором-ИИ (roadmap 2.8) —— */
 export type OralVerdict = { score: number; verdict: string; missed: string[]; mistakes: string[]; follow_up: string; provider: string; model: string };

@@ -4,15 +4,24 @@
  * «Объяснить · ИИ» — разбор ошибки в один клик (Фаза 3 дорожной карты).
  *
  * Шлёт в /ai/chat текст вопроса, выбранный и правильный ответ, режим «точный»
- * (RAG по лекциям предмета) и показывает короткий разбор со сносками [N],
- * ведущими в лекции. Ничего не сохраняет: это разовая подсказка.
+ * (RAG по лекциям предмета) и показывает разбор со сносками [N], ведущими в
+ * лекции. Ничего не сохраняет: это разовая подсказка.
+ *
+ * Разбор — не приговор: ключ теста тоже может ошибаться, поэтому промпт требует
+ * сначала проверить и ответ студента, и ключ, а не защищать ключ. Ответ
+ * рендерится markdown-ом (таблицы, списки), к нему прикладываются реальные
+ * фото препаратов курса и можно задать уточняющий вопрос — одним компонентом,
+ * без перехода в чат.
  */
-import { useEffect, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
-import { aiChat, type AiProvider } from "@/lib/features-api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Send, Sparkles } from "lucide-react";
+import { aiChat, type AiAnswerImage, type AiProvider } from "@/lib/features-api";
+import { getTrainerImageUrl } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { getAccountSettings } from "@/lib/settings-api";
 import { AnswerSources } from "@/components/ai/AnswerSources";
+import { mdToHtml } from "@/lib/lectures/markdown";
+import { stripInlineSourceList } from "@/components/tutor/model";
 
 /** Провайдер из настроек аккаунта; один запрос на страницу. */
 let explainProviderPromise: Promise<AiProvider> | null = null;
@@ -28,6 +37,61 @@ function savedExplainProvider(): Promise<AiProvider> {
       .catch(() => "auto" as AiProvider);
   }
   return explainProviderPromise;
+}
+
+/** Сообщение для модели: вопрос, оба ответа и требование проверить ключ. */
+function initialPrompt({
+  question, chosen, correct, subjectName, review,
+}: {
+  question: string;
+  chosen?: string;
+  correct?: string;
+  subjectName?: string | null;
+  review: boolean;
+}) {
+  const context = subjectName ? ` по предмету «${subjectName}»` : "";
+  const common = [
+    "Проверь себя перед ответом: факты верны по сути, противоречий внутри разбора нет.",
+    "Оформи markdown-ом: прямая мысль, затем пункты механизма, в конце одна мнемоника.",
+    "Ставь сноску [N] после утверждений из фрагментов.",
+  ];
+  if (review) {
+    return [
+      `Разбери тестовый вопрос${context}: к нему нет ключа в источнике.`,
+      `Вопрос: ${question}`,
+      chosen ? `Мой выбор: ${chosen}` : "",
+      "Скажи, какой вариант верен и почему, и что именно проверяет вопрос.",
+      "Если мой выбор защитим по существу — скажи это прямо, а не подгоняй разбор под воображаемый ключ.",
+      ...common,
+    ].filter(Boolean).join("\n");
+  }
+  return [
+    `Разбери мою ошибку в тесте${context}.`,
+    `Вопрос: ${question}`,
+    chosen ? `Мой ответ: ${chosen}` : "",
+    correct ? `Ответ в ключе: ${correct}` : "",
+    "Сначала сам проверь, действительно ли мой ответ неверен, а ключевой — верен.",
+    "Не защищай ключ: если мой ответ по существу вернее, начни с «В ключе ошибка: ваш ответ вернее» и объясни почему.",
+    "Если ключ прав — покажи, где именно ошибка в моём ответе.",
+    ...common,
+  ].filter(Boolean).join("\n");
+}
+
+type Turn = { role: "user" | "assistant"; content: string };
+
+/**
+ * Ответ модели в markdown. Берём чистый mdToHtml, а не TutorMarkdown: тот тянет
+ * KaTeX/Mermaid и весь рендерер лекций, а здесь нужны абзацы, списки, таблицы
+ * и жирный текст — ответ короткий.
+ */
+function AnswerMarkdown({ content }: { content: string }) {
+  const html = useMemo(() => mdToHtml(content), [content]);
+  return (
+    <div
+      className="prose prose-sm min-w-0 max-w-none break-words dark:prose-invert [&_.lec-table-wrap]:my-2 [&_.lec-table-wrap]:w-full [&_.lec-table-wrap]:max-w-full [&_.lec-table-wrap]:overflow-x-auto [&_table]:my-2 [&_table]:w-max [&_table]:min-w-full [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 export function ExplainWithAi({
@@ -52,10 +116,16 @@ export function ExplainWithAi({
   review?: boolean;
   className?: string;
 }) {
-  const [answer, setAnswer] = useState("");
+  /** Что видит студент: ответы ИИ и его уточняющие вопросы. */
+  const [shown, setShown] = useState<Turn[]>([]);
+  /** История для модели: включает исходный промпт с вопросом и ответами. */
+  const historyRef = useRef<Turn[]>([]);
+  const [images, setImages] = useState<AiAnswerImage[]>([]);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [sources, setSources] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const [provider, setProvider] = useState<AiProvider>("auto");
 
   useEffect(() => {
@@ -64,58 +134,134 @@ export function ExplainWithAi({
     return () => { alive = false; };
   }, []);
 
-  async function explain() {
+  // Ссылка на картинку живёт в защищённом эндпоинте тренажёра: получаем её как
+  // и весь остальной тренажёр, а не храним в ответе ИИ.
+  useEffect(() => {
+    if (!images.length) return;
+    let alive = true;
+    void Promise.all(images.map(async (image) => [image.card_id, await getTrainerImageUrl(image.card_id)] as const))
+      .then((pairs) => {
+        if (!alive) return;
+        const next: Record<string, string> = {};
+        for (const [cardId, url] of pairs) if (url) next[cardId] = url;
+        setImageUrls(next);
+      })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, [images]);
+
+  async function send(history: Turn[], visible: Turn[]) {
     if (busy) return;
     setBusy(true);
     setError(null);
-    setAnswer("");
-    const response = await aiChat(
-      [
-        {
-          role: "user",
-          content: review
-            ? `Разбери тестовый вопрос${subjectName ? ` по предмету «${subjectName}»` : ""}: к нему нет ключа в источнике.\n`
-              + `Вопрос: ${question}\n`
-              + (chosen ? `Мой выбор: ${chosen}\n` : "")
-              + "Объясни коротко (3–6 предложений), что проверяет вопрос и какой вариант следует выбрать — со ссылкой на материалы курса. "
-              + "Если материалы не дают однозначного ответа, скажи об этом прямо. Дай одну мнемонику. "
-              + "Ставь сноску [N] после утверждений из фрагментов."
-            : `Разбери мою ошибку в тесте${subjectName ? ` по предмету «${subjectName}»` : ""}.\n`
-              + `Вопрос: ${question}\n`
-              + (chosen ? `Мой ответ (неверный): ${chosen}\n` : "")
-              + (correct ? `Правильный ответ: ${correct}\n` : "")
-              + "Объясни коротко (3–6 предложений): почему мой ответ неверен и почему верен правильный. "
-              + "Дай одну мнемонику. Опирайся на материалы курса и ставь сноску [N] после утверждений из фрагментов.",
-        },
-      ],
-      provider,
-      { mode: "precise", subjectSlug: subjectSlug || undefined },
-    );
+    const response = await aiChat(history, provider, { mode: "precise", subjectSlug: subjectSlug || undefined });
     setBusy(false);
     if (!response.ok) {
       setError(describeApiError(response.error));
       return;
     }
-    setAnswer(response.data.message.content);
+    historyRef.current = [...history, { role: "assistant", content: response.data.message.content }];
+    setShown([...visible, { role: "assistant", content: response.data.message.content }]);
     setSources(response.data.sources ?? null);
+    if (response.data.images?.length) setImages(response.data.images);
   }
+
+  function explain() {
+    const prompt = initialPrompt({ question, chosen, correct, subjectName, review });
+    const history: Turn[] = [{ role: "user", content: prompt }];
+    historyRef.current = history;
+    setImages([]);
+    setSources(null);
+    void send(history, []);
+  }
+
+  function askFollowUp() {
+    const text = draft.trim();
+    if (!text || busy) return;
+    setDraft("");
+    const history: Turn[] = [...historyRef.current, { role: "user", content: text }];
+    historyRef.current = history;
+    void send(history, [...shown, { role: "user", content: text }]);
+  }
+
+  const answered = shown.length > 0;
 
   return (
     <div className={className}>
       <button
         type="button"
-        onClick={() => void explain()}
+        onClick={explain}
         disabled={busy}
         className="inline-flex items-center gap-1.5 rounded-full border border-[var(--primary)]/40 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] disabled:opacity-50"
       >
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+        {busy && !answered ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
         {review ? "Разобрать · ИИ" : "Объяснить · ИИ"}
       </button>
+
       {error ? <p className="mt-2 text-xs text-[var(--status-critical-fg)]">{error}</p> : null}
-      {answer ? (
+
+      {answered ? (
         <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm leading-relaxed">
-          <div className="whitespace-pre-wrap">{answer}</div>
+          {shown.map((turn, index) => (
+            turn.role === "user" ? (
+              <p key={`u-${index}`} className="mt-3 border-t border-dashed border-[var(--border)] pt-2 text-xs font-semibold text-[var(--muted)]">
+                Ваш вопрос: {turn.content}
+              </p>
+            ) : (
+              <AnswerMarkdown
+                key={`a-${index}`}
+                content={index === 0 ? stripInlineSourceList(turn.content) : turn.content}
+              />
+            )
+          ))}
+
+          {images.length ? (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {images.map((image) => {
+                const url = imageUrls[image.card_id];
+                return (
+                  <figure key={image.card_id} className="overflow-hidden rounded-xl border border-[var(--border)]">
+                    {url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={url} alt={image.title} loading="lazy" decoding="async" className="max-h-56 w-full bg-slate-50 object-contain" />
+                    ) : null}
+                    <figcaption className="px-2 py-1 text-[11px] text-[var(--muted)]">
+                      {image.kind === "electronogram" ? "Электронограмма" : "Микропрепарат"} · {image.title}
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
+          ) : null}
+
           <AnswerSources sources={sources} />
+
+          {busy ? (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--muted)]">
+              <Loader2 className="h-3 w-3 animate-spin" /> ИИ отвечает…
+            </p>
+          ) : null}
+
+          <form
+            onSubmit={(event) => { event.preventDefault(); askFollowUp(); }}
+            className="mt-2 flex items-center gap-1.5"
+          >
+            <input
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Спросить по разбору…"
+              aria-label="Уточняющий вопрос по разбору"
+              className="min-w-0 flex-1 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs outline-none focus:border-[var(--primary)]"
+            />
+            <button
+              type="submit"
+              disabled={busy || !draft.trim()}
+              aria-label="Спросить"
+              className="rounded-full border border-[var(--primary)]/40 p-1.5 text-[var(--primary)] transition hover:bg-[var(--primary-soft)] disabled:opacity-40"
+            >
+              <Send className="h-3.5 w-3.5" />
+            </button>
+          </form>
         </div>
       ) : null}
     </div>

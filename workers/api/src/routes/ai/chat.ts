@@ -18,7 +18,7 @@ import { generateAiCompletion } from "../../../../../integrations/cloudflare-api
 // Корпус «Подготовка к ЦНС» для RAG тьютора (только physiology, вне лекций).
 
 const ai = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
-import { MODE_TEMPERATURE, normalizeChatMode, parseOralVerdict, trackedGeneration, systemPrompt, buildLectureContext } from "./helpers";
+import { MODE_TEMPERATURE, normalizeChatMode, parseOralVerdict, trackedGeneration, systemPrompt, buildLectureContext, selectAnswerImages } from "./helpers";
 import type { ChatMessage, LectureCitation } from "./helpers";
 import { buildStudyContext } from "./study-context";
 
@@ -83,11 +83,25 @@ ai.post("/chat", requireAuth, async (c) => {
   // RAG только для предметного вопроса в точном режиме: без subject_slug
   // материалы не подмешиваются, а служебный срез /study идёт без них всегда.
   let citations: LectureCitation[] = [];
+  const lastQuestion = [...chatMessages].reverse().find((message) => message.role === "user")?.content || "";
   if (shouldUseLectureRag({ mode, subjectSlug, contextScope: payload.context_scope })) {
-    const lastQuestion = [...chatMessages].reverse().find((message) => message.role === "user")?.content || "";
     const rag = await buildLectureContext(c.get("supabase"), subjectSlug, lastQuestion);
     if (rag.block) systemSections.push(rag.block);
     citations = rag.citations;
+  }
+  // Фото к ответу: реальные микропрепараты и электронограммы курса. Модель их
+  // не рисует — она получает список названий и ссылается на настоящие снимки.
+  // Подбор строгий: без совпадения названия препарата картинок нет.
+  const answerImages = payload.context_scope === "study"
+    ? []
+    : await selectAnswerImages(c.get("supabase"), subjectSlug, lastQuestion);
+  if (answerImages.length) {
+    systemSections.push(
+      "К ответу будут приложены изображения курса: "
+        + answerImages.map((image, index) => `(${index + 1}) «${image.title}»`).join(", ")
+        + ". Если они относятся к вопросу, сошлись на них по названию и объясни, что смотреть;"
+        + " не описывай того, чего на снимке нет.",
+    );
   }
   const messages: ChatMessage[] = [
     { role: "system", content: systemSections.join("\n\n") },
@@ -117,6 +131,7 @@ ai.post("/chat", requireAuth, async (c) => {
       ...(fellBackFrom ? { fallback_from: fellBackFrom } : {}),
       mode,
       sources: citations,
+      ...(answerImages.length ? { images: answerImages } : {}),
     }, rid));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown";
