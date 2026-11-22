@@ -41,13 +41,15 @@ function savedExplainProvider(): Promise<AiProvider> {
 
 /** Сообщение для модели: вопрос, оба ответа и требование проверить ключ. */
 function initialPrompt({
-  question, chosen, correct, subjectName, review,
+  question, chosen, correct, subjectName, review, clarify, options,
 }: {
   question: string;
   chosen?: string;
   correct?: string;
   subjectName?: string | null;
   review: boolean;
+  clarify?: boolean;
+  options?: string[];
 }) {
   const context = subjectName ? ` по предмету «${subjectName}»` : "";
   const common = [
@@ -55,6 +57,18 @@ function initialPrompt({
     "Оформи markdown-ом: прямая мысль, затем пункты механизма, в конце одна мнемоника.",
     "Ставь сноску [N] после утверждений из фрагментов.",
   ];
+  // «Не понял вопрос» прямо во время теста: объясняем смысл и термины, но не
+  // отдаём готовый вариант — иначе прохождение теста теряет смысл.
+  if (clarify) {
+    return [
+      `Помоги разобраться с тестовым вопросом${context}: я ещё не отвечал и не хочу видеть готовый ответ.`,
+      `Вопрос: ${question}`,
+      options?.length ? `Варианты:\n${options.map((option, index) => `${index + 1}. ${option}`).join("\n")}` : "",
+      "Объясни простыми словами, что именно спрашивают, и что значит каждый термин и каждый вариант.",
+      "Не называй правильный вариант и не подсказывай, какой выбрать — я решу сам.",
+      ...common,
+    ].filter(Boolean).join("\n");
+  }
   if (review) {
     return [
       `Разбери тестовый вопрос${context}: к нему нет ключа в источнике.`,
@@ -112,6 +126,8 @@ export function ExplainWithAi({
   subjectSlug,
   subjectName,
   review = false,
+  clarify = false,
+  options,
   className = "",
 }: {
   /** Текст вопроса теста. */
@@ -125,6 +141,10 @@ export function ExplainWithAi({
   subjectName?: string | null;
   /** В источнике нет ключа: разбираем вопрос по материалам курса, а не ошибку. */
   review?: boolean;
+  /** Разрешить спросить ИИ до ответа: объяснит вопрос, не выдавая правильный вариант. */
+  clarify?: boolean;
+  /** Варианты ответа — чтобы ИИ объяснил, что значит каждый. */
+  options?: string[];
   className?: string;
 }) {
   /** Что видит студент: ответы ИИ и его уточняющие вопросы. */
@@ -178,7 +198,7 @@ export function ExplainWithAi({
   }
 
   function explain() {
-    const prompt = initialPrompt({ question, chosen, correct, subjectName, review });
+    const prompt = initialPrompt({ question, chosen, correct, subjectName, review, clarify, options });
     const history: Turn[] = [{ role: "user", content: prompt }];
     historyRef.current = history;
     setImages([]);
@@ -206,7 +226,7 @@ export function ExplainWithAi({
         className="inline-flex items-center gap-1.5 rounded-full border border-[var(--primary)]/40 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] disabled:opacity-50"
       >
         {busy && !answered ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-        {review ? "Разобрать · ИИ" : "Объяснить · ИИ"}
+        {clarify ? "Не понял вопрос — спросить ИИ" : review ? "Разобрать · ИИ" : "Объяснить · ИИ"}
       </button>
 
       {error ? <p className="mt-2 text-xs text-[var(--status-critical-fg)]">{error}</p> : null}

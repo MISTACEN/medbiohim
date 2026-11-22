@@ -53,6 +53,17 @@ test("Telegram webhook secrets are read only from Worker environment and are not
   assert.doesNotMatch(routes, /return c\.json\(ok\(\{[^}]*token/i);
 });
 
+test("quick question fix writes through the service client when RLS blocks the user token", async () => {
+  const routes = await adminRoutesSource();
+  // У таблицы questions есть только SELECT-политика: UPDATE токеном админа падал в 503
+  // «Не удалось сохранить вопрос». Роль уже проверена gate(), пишем служебным клиентом.
+  assert.match(routes, /const service = createServiceClient\(c\.env\)/);
+  assert.match(routes, /if \(\(writeResult\.error \|\| !writeResult\.data\) && service\) writeResult = await update\(service\)/);
+  // Отказ записи версии не должен превращать успешное сохранение в ошибку.
+  assert.match(routes, /versionNo = null/);
+  assert.match(routes, /version_no: versionNo/);
+});
+
 test("admin schedule routes mount under /admin so their /schedule paths resolve once", async () => {
   const index = await source("../src/index.ts");
   assert.match(index, /v1\.route\("\/admin", adminSchedule\)/);

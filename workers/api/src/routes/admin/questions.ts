@@ -1,5 +1,6 @@
 import { requireAuth } from "../../middleware/auth";
 import { ok, requestId } from "../../lib/response";
+import { createServiceClient } from "../../lib/supabase";
 import { CONTENT_MODERATORS, QUESTION_FIELDS, UUID, bodyJson, error, gate, pick, validText, type AdminApp } from "./shared";
 
 /**
@@ -106,18 +107,57 @@ export function registerQuestions(admin: AdminApp) {
       patch[key] = String(value);
     }
     try {
-      const { data: current, error: readError } = await db.from("questions").select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").eq("id", id).maybeSingle();
-      if (readError) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить вопрос");
+      const scoped = c.get("supabase");
+      const service = createServiceClient(c.env);
+      /** У `questions` есть только SELECT-политика: общий банк читают студенты,
+       *  а UPDATE/INSERT/DELETE токеном пользователя RLS блокирует — именно из-за
+       *  этого «Быстрое исправление» отвечало «Не удалось сохранить вопрос».
+       *  Роль уже проверена gate(CONTENT_MODERATORS), поэтому повторяем операцию
+       *  служебным клиентом (та же схема, что у анонсов в admin/shared.ts). */
+      const readCurrent = (client: any) => client.from("questions")
+        .select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at")
+        .eq("id", id).maybeSingle();
+      let currentResult = await readCurrent(scoped);
+      if ((currentResult.error || !currentResult.data) && service) currentResult = await readCurrent(service);
+      if (currentResult.error) return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось загрузить вопрос");
+      const current = currentResult.data;
       if (!current) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
-      const { data: versions, error: versionReadError } = await db.from("content_versions").select("version_no").eq("table_name", "questions").eq("row_key", JSON.stringify({ id })).order("version_no", { ascending: false }).limit(1);
-      if (!versionReadError) {
-        const versionNo = Number(versions?.[0]?.version_no || 0) + 1;
-        const { error: versionError } = await db.from("content_versions").insert({ table_name: "questions", row_key: { id }, version_no: versionNo, data: current, source: "admin_ui", actor_user_id: c.get("user").id });
-        if (versionError) console.warn("[admin:question-version]", versionError.message);
+
+      // Версия — аудит: без неё правка всё равно сохраняется, поэтому ошибка
+      // журнала только логируется и не превращает успешную запись в 503.
+      let versionNo: number | null = null;
+      try {
+        const readVersion = (client: any) => client.from("content_versions").select("version_no")
+          .eq("table_name", "questions").eq("row_key", JSON.stringify({ id }))
+          .order("version_no", { ascending: false }).limit(1);
+        let versions = await readVersion(scoped);
+        if (versions.error && service) versions = await readVersion(service);
+        versionNo = Number(versions?.data?.[0]?.version_no || 0) + 1;
+        const insertVersion = (client: any) => client.from("content_versions").insert({
+          table_name: "questions", row_key: { id }, version_no: versionNo,
+          data: current, source: "admin_ui", actor_user_id: c.get("user").id,
+        });
+        let versionWrite = await insertVersion(scoped);
+        if (versionWrite.error && service) versionWrite = await insertVersion(service);
+        if (versionWrite.error) {
+          console.warn("[admin:question-version]", versionWrite.error.message);
+          versionNo = null;
+        }
+      } catch (versionError) {
+        console.warn("[admin:question-version]", versionError instanceof Error ? versionError.message : String(versionError));
+        versionNo = null;
       }
-      const { data, error: writeError } = await db.from("questions").update(patch).eq("id", id).select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").maybeSingle();
-      if (writeError) return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
-      return c.json(ok({ question: data }, rid));
+
+      const update = (client: any) => client.from("questions").update(patch).eq("id", id)
+        .select("id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,source_key,archived_at").maybeSingle();
+      let writeResult = await update(scoped);
+      if ((writeResult.error || !writeResult.data) && service) writeResult = await update(service);
+      if (writeResult.error) {
+        console.error("[admin:question-bank]", writeResult.error.code || "", writeResult.error.message || "");
+        return error(c, rid, 503, "DB_ERROR", "Не удалось сохранить вопрос");
+      }
+      if (!writeResult.data) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
+      return c.json(ok({ question: writeResult.data, version_no: versionNo }, rid));
     } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось выполнить операцию с вопросом"); }
   });
 }

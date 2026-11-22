@@ -79,6 +79,16 @@ export function AttemptRunner({ page }: { page: AttemptRunnerController }) {
           )}
           <button type="button" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="rounded-xl border px-4 py-2 text-sm disabled:opacity-50">Назад</button>
         </div>
+        {/* Пока не проверил ответ — можно спросить ИИ, что вообще спрашивают:
+            он объясняет термины и варианты, но не выдаёт правильный. */}
+        {!checked[q.id] && (
+          <ExplainWithAi
+            clarify
+            question={q.text}
+            options={isClosed ? entries.map(({ option }) => optionLabel(option)) : undefined}
+            subjectSlug={subjectSlug || undefined}
+          />
+        )}
         {checked[q.id] && gradingRow?.is_correct === false && (
           <ExplainWithAi
             question={q.text}

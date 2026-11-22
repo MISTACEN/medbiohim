@@ -97,6 +97,20 @@ test("explain renders markdown, course photos and follow-up questions", async ()
   assert.match(explain, /Не защищай ключ/);
 });
 
+test("во время теста можно спросить ИИ, не получая готовый ответ", async () => {
+  const explain = await source("../../../src/components/tests/ExplainWithAi.tsx");
+  assert.match(explain, /clarify/);
+  assert.match(explain, /Не называй правильный вариант и не подсказывай/);
+  assert.match(explain, /Не понял вопрос — спросить ИИ/);
+  for (const runner of [
+    "../../../src/components/physiology/TestRunner.tsx",
+    "../../../src/components/test-prep/AttemptRunner.tsx",
+  ]) {
+    const code = await source(runner);
+    assert.match(code, /<ExplainWithAi\s+clarify|clarify\s+question=/, "нет кнопки «спросить ИИ» в " + runner);
+  }
+});
+
 test("frontend renders sources and the explain-after-error button", async () => {
   const sources = await source("../../../src/components/ai/AnswerSources.tsx");
   assert.match(sources, /\/lectures\/\$\{encodeURIComponent\(source\.lecture_id\)\}/);

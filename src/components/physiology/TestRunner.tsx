@@ -166,6 +166,19 @@ export default function TestRunner({
         </div>
       )}
 
+      {/* Непонятный вопрос — спросить ИИ сразу, до ответа: он объяснит смысл и
+          термины, но не назовёт правильный вариант. */}
+      {questionGraded && !checked && (
+        <ExplainWithAi
+          className="mt-3"
+          clarify
+          question={question.text}
+          options={question.options}
+          subjectSlug={subjectSlug}
+          subjectName={subjectName}
+        />
+      )}
+
       {!questionGraded && (
         <ExplainWithAi
           className="mt-3"
