@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, ListChecks, RotateCcw, XCircle } from "lucide-react";
 import { answersAsSet, isCorrect, type PhysiologyTestGroup } from "@/lib/physiologyContent";
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import { ExplainWithAi } from "@/components/tests/ExplainWithAi";
@@ -127,9 +127,18 @@ export default function TestRunner({
           </span>
         )}
       </p>
-      <p className="mt-1 text-xs text-slate-400">
-        {questionGraded ? "Выберите один или несколько вариантов" : "Ключа в источнике нет — режим разбора без оценки"}
-      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-slate-400">
+          {questionGraded
+            ? multiple ? "Отметьте все верные варианты — их несколько" : "Выберите один вариант"
+            : "Ключа в источнике нет — режим разбора без оценки"}
+        </span>
+        {questionGraded && multiple && !checked && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+            <ListChecks className="h-3.5 w-3.5" /> несколько ответов
+          </span>
+        )}
+      </div>
 
       <div className="mt-3 grid gap-2">
         {question.options.map((option, optionIndex) => {

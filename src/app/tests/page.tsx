@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { AttemptsHistory } from "@/components/tests-hub/catalog/AttemptsHistory";
 import { ChemistryBank } from "@/components/tests-hub/catalog/ChemistryBank";
+import { TestsPageHero } from "@/components/tests-hub/catalog/TestsPageHero";
 import { TestsViewNav } from "@/components/tests-hub/catalog/TestsViewNav";
 import { useTestsCatalog } from "@/components/tests-hub/catalog/useTestsCatalog";
 import TestsHub from "@/components/tests/TestsHub";
@@ -38,15 +39,18 @@ function TestsPageInner() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-6xl space-y-5">
+      <TestsPageHero page={page} />
       <TestsViewNav page={page} />
 
-      {page.view === "tests" && <RecommendedTests />}
-      {page.view === "tests" && <TestsHub highlightTestId={page.openTestId} />}
+      <div className="space-y-5">
+        {page.view === "tests" && <RecommendedTests />}
+        {page.view === "tests" && <TestsHub highlightTestId={page.openTestId} hideHeader />}
 
-      {page.view === "chemistry" && <ChemistryBank page={page} />}
+        {page.view === "chemistry" && <ChemistryBank page={page} />}
 
-      {page.view === "history" && <AttemptsHistory page={page} />}
+        {page.view === "history" && <AttemptsHistory page={page} />}
+      </div>
     </div>
   );
 }

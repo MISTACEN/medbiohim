@@ -1002,4 +1002,40 @@ table {
   font-variant-numeric: tabular-nums;
 }
 
+/* Таблицы из markdown (лекции, ответы ИИ-тьютора, разборы тестов): раньше
+   классы .lec-table-wrap/.lec-table нигде не были описаны, и таблица
+   выводилась голыми строками без рамок и заголовка. */
+.lec-table-wrap {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--card);
+}
+.lec-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.lec-table th,
+.lec-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.lec-table th {
+  background: var(--primary-soft, #eef2ff);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.lec-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.lec-table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.03);
+}
+
 /* F11: до гидрации ThemeProvider применит сохранённую тему из inline-скрипта. */

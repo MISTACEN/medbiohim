@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { ListChecks, Loader2 } from "lucide-react";
 
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
@@ -38,6 +38,14 @@ export function AttemptRunner({ page }: { page: AttemptRunnerController }) {
       </header>
       <div className="card space-y-4 p-5">
         <ChemRichText text={q.text} className="text-lg font-semibold" />
+        {/* Пометка о нескольких верных: без неё студент выбирает наугад и
+            теряет балл на втором правильном варианте. */}
+        {isClosed && isMulti && !checked[q.id] ? (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+            <ListChecks className="mt-0.5 h-4 w-4 shrink-0" />
+            В этом вопросе несколько верных ответов — отметьте все подходящие.
+          </div>
+        ) : null}
         {isClosed ? (
           <div className="space-y-2">
             {entries.map(({ option, key, index }) => {

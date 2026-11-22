@@ -1,8 +1,12 @@
 "use client";
 
 /** Карточка текущего вопроса: текст, ввод по типу, вердикт и переходы. */
+import { ListChecks } from "lucide-react";
+
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { QuestionReport } from "@/components/QuestionReport";
+import { ExplainWithAi } from "@/components/tests/ExplainWithAi";
+import { optionLabel } from "@/components/test-prep/useAttemptRunner";
 import { AnswerVerdict } from "@/components/test-prep/AnswerVerdict";
 import { ChoiceAnswer } from "@/components/test-prep/ChoiceAnswer";
 import { ClozeAnswer, MatchAnswer, OpenAnswer } from "@/components/test-prep/OtherAnswers";
@@ -27,6 +31,15 @@ export function QuestionCard({ page, view }: { page: PreparationController; view
       </div>
       <ChemRichText text={String(q.text || q.body || "")} className="text-lg font-semibold" />
 
+      {/* Пометка о нескольких верных: иначе выбор идёт наугад и теряется
+          второй правильный вариант. */}
+      {view.isMulti && !view.isOpen && !page.checked[q.id] ? (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+          <ListChecks className="mt-0.5 h-4 w-4 shrink-0" />
+          В этом вопросе несколько верных ответов — отметьте все подходящие.
+        </div>
+      ) : null}
+
       {view.isCloze ? (
         <ClozeAnswer page={page} view={view} />
       ) : view.isMatch ? (
@@ -36,6 +49,18 @@ export function QuestionCard({ page, view }: { page: PreparationController; view
       ) : (
         <ChoiceAnswer page={page} view={view} />
       )}
+
+      {/* Непонятный вопрос — сразу спросить ИИ на странице, до ответа: он
+          объясняет смысл и термины, но не называет правильный вариант. */}
+      {!view.isOpen && !page.checked[q.id] ? (
+        <ExplainWithAi
+          clarify
+          question={String(q.text || q.body || "")}
+          options={view.displayEntries.map(({ option }) => optionLabel(option as Parameters<typeof optionLabel>[0]))}
+          subjectSlug={page.subjectSlugForAi}
+          subjectName={page.meta?.subject}
+        />
+      ) : null}
 
       <QuestionReport questionId={q.id} />
 

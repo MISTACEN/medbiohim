@@ -65,6 +65,7 @@ export function TestsHub({
   initialTopicId = "",
   autoStart = false,
   highlightTestId = "",
+  hideHeader = false,
 }: {
   subjectId?: string;
   subjectSlug?: string;
@@ -78,6 +79,8 @@ export function TestsHub({
   autoStart?: boolean;
   /** Тест из deep-ссылки (?open=): карточка подсвечивается и скроллится в вид. */
   highlightTestId?: string;
+  /** Страница сама рисует шапку (новая страница тестов) — не дублируем h1. */
+  hideHeader?: boolean;
 }) {
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<TestItem[]>([]);
@@ -341,7 +344,7 @@ export function TestsHub({
   return (
     <section className="space-y-4">
       {!embedded && <AssignedTests />}
-      {!embedded && (
+      {!embedded && !hideHeader && (
         <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
@@ -434,7 +437,16 @@ export function TestsHub({
         </div>
       ) : null}
 
-      <div className="card space-y-4 p-4 sm:p-5">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+            <SlidersHorizontal className="h-4 w-4 text-indigo-600" /> Подбор банка и режима
+          </h2>
+          <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-bold text-indigo-700">
+            {selectedMode.label} · {mode === "sequential" ? "весь банк" : count + " вопросов"}
+          </span>
+        </div>
+        <div className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -447,7 +459,7 @@ export function TestsHub({
           </div>
           {/* На телефоне режимы и уровни — две прокручиваемые строки: раньше они
               переносились в 4 ряда и отодвигали сам список банков. */}
-          <div className="mobile-scroll-x flex items-center gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
+          <div className="mobile-scroll-x flex items-center gap-1 overflow-x-auto rounded-xl bg-slate-50 p-1 lg:flex-wrap lg:overflow-visible">
             <SlidersHorizontal className="hidden h-4 w-4 shrink-0 text-[var(--muted)] sm:block" />
             <span className="hidden shrink-0 text-sm font-semibold text-slate-700 lg:inline">Свободная подготовка · режим:</span>
             {MODES.map((item) => (
@@ -457,10 +469,10 @@ export function TestsHub({
                 title={item.hint}
                 onClick={() => setMode(item.id)}
                 className={
-                  "shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-bold transition sm:text-sm " +
+                  "shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition sm:text-sm " +
                   (mode === item.id
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-800"
-                    : "border-[var(--border)] bg-[var(--card)] text-slate-600 hover:border-indigo-300")
+                    ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                    : "border-transparent bg-transparent text-slate-600 hover:bg-white")
                 }
               >
                 {item.label}
@@ -533,6 +545,7 @@ export function TestsHub({
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -701,10 +714,10 @@ export function TestsHub({
                     key={test.id}
                     data-test-card={test.id}
                     className={
-                      "flex flex-col gap-3 rounded-xl border bg-white p-3 transition sm:flex-row sm:items-center sm:justify-between sm:p-4 " +
+                      "flex flex-col gap-3 rounded-xl border border-l-4 bg-white p-3 shadow-sm transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:p-4 " +
                       (highlight === test.id
-                        ? "border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-300"
-                        : "border-[var(--border)] hover:border-indigo-200")
+                        ? "border-indigo-500 border-l-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-300"
+                        : "border-[var(--border)] border-l-indigo-300 hover:border-indigo-200")
                     }
                   >
                     <div className="min-w-0">
