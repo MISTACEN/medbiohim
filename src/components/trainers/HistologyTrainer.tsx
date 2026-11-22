@@ -23,26 +23,31 @@ import type { DiagnosticumMode } from "@/lib/diagnosticum-api";
 
 /**
  * Формат задания — это то, что раньше было отдельной вкладкой «Диагностикум».
- * «Карточки препаратов» — прежний тренажёр, остальные значения — режимы
- * диагностикума, которые запускаются прямо здесь.
+ * Форматов два: карточки препаратов (прежний тренажёр) и разбор препарата —
+ * одно задание, где сразу есть препарат, его структуры и утверждения.
  */
-type TrainingFormat = "cards" | DiagnosticumMode;
+type TrainingFormat = "cards" | "complex";
 
 const TRAINING_FORMATS: Array<{ id: TrainingFormat; label: string }> = [
   { id: "cards", label: "Карточки препаратов" },
-  { id: "identify", label: "Определить препарат" },
-  { id: "structures", label: "Найти структуры" },
-  { id: "differential", label: "Отличить похожие" },
-  { id: "complex", label: "Комплексно" },
-  { id: "schema", label: "Схема препарата" },
+  { id: "complex", label: "Разбор препарата" },
 ];
+
+/** Старые ссылки на отдельные режимы диагностикума ведут в объединённый разбор. */
+const LEGACY_FORMATS = new Set<DiagnosticumMode>([
+  "identify",
+  "structures",
+  "differential",
+  "schema",
+]);
 
 function formatFromParams(params: { get(key: string): string | null }): TrainingFormat {
   const raw = params.get("format");
   const found = TRAINING_FORMATS.find((item) => item.id === raw);
   if (found) return found.id;
+  if (raw && LEGACY_FORMATS.has(raw as DiagnosticumMode)) return "complex";
   // Старые ссылки на отдельный диагностикум.
-  return params.get("section") === "diagnosticum" ? "identify" : "cards";
+  return params.get("section") === "diagnosticum" ? "complex" : "cards";
 }
 
 type AnswerRow = {
@@ -338,8 +343,8 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                       type="button"
                       onClick={() => {
                         setFormat(item.id);
-                        // Формат живёт в адресе: ссылку «определить препарат»
-                        // можно дать группе, и она откроется тем же заданием.
+                        // Формат живёт в адресе: ссылку «разбор препарата» можно
+                        // дать группе, и она откроется тем же заданием.
                         try {
                           const url = new URL(window.location.href);
                           if (item.id === "cards") url.searchParams.delete("format");

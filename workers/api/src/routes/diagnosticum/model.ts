@@ -23,9 +23,20 @@ import {
  * «соответствие источникам»), затем по этим признакам выбирает сам препарат
  * (ось «понимание»). Это не второй движок заданий, а ещё один режим того же.
  */
-export type DiagnosticumMode = "identify" | "structures" | "differential" | "complex" | "schema";
+export type DiagnosticumMode =
+  | "identify"
+  | "structures"
+  | "differential"
+  | "complex"
+  | "schema";
 
+/**
+ * `complex` — единый разбор препарата: в одном задании препарат, его структуры
+ * и утверждения о нём. Остальные режимы остались ради совместимости API и
+ * старых попыток; интерфейс тренажёра запускает только `complex`.
+ */
 export const DIAGNOSTICUM_MODES: DiagnosticumMode[] = [
+  "complex",
   "identify",
   "structures",
   "differential",
@@ -231,6 +242,58 @@ export function buildQuestion(input: {
     image_card_id: String(card.id),
   };
 
+  if (mode === "complex") {
+    // Все оси, которые есть у препарата, — в одном задании. Части добавляются
+    // только если для них есть данные, чтобы не показывать пустые блоки.
+    const parts: QuestionPart[] = [namePart(3)];
+    const answers: AnswerKey["parts"] = {
+      preparation: { correct: [guide.key], explanation: exploration(guide) },
+    };
+
+    const structuresOnly = structuresPart();
+    if (structuresOnly) {
+      parts.push(structuresOnly);
+      answers.structures = {
+        correct: [...structures],
+        explanation: stringList(guide.features).join("; ") || exploration(guide),
+      };
+    }
+
+    const facts = stringList(guide.features).slice(0, 3);
+    if (facts.length >= 2) {
+      const strangers = new Set<string>();
+      for (const item of others) {
+        for (const fact of stringList(item.features)) if (!facts.includes(fact)) strangers.add(fact);
+      }
+      const fakes = sample(Array.from(strangers), 2, random).map((fact, index) => ({
+        id: `x${index}`,
+        label: fact,
+      }));
+      parts.push({
+        id: "statements",
+        kind: "multi",
+        title: "Отметь утверждения, которые относятся к этому препарату",
+        options: shuffle(
+          [...facts.map((fact, index) => ({ id: `f${index}`, label: fact })), ...fakes],
+          random,
+        ),
+      });
+      answers.statements = {
+        correct: facts.map((_, index) => `f${index}`),
+        explanation: stringList(guide.mistakes).slice(0, 2).join("; ") || exploration(guide),
+      };
+    }
+
+    return {
+      question: {
+        ...base,
+        prompt: "Разбор препарата: определи его, отметь структуры и сверь утверждения.",
+        parts,
+      },
+      answers: { parts: answers },
+    };
+  }
+
   if (mode === "identify") {
     return {
       question: {
@@ -347,24 +410,6 @@ export function buildQuestion(input: {
     };
   }
 
-  // complex: определить препарат и отметить структуры — двумя частями.
-  const part = structuresPart();
-  if (!part) return null;
-  return {
-    question: {
-      ...base,
-      prompt: "Комплексная диагностика: определи препарат и отметь его диагностические структуры.",
-      parts: [namePart(3), part],
-    },
-    answers: {
-      parts: {
-        preparation: { correct: [guide.key], explanation: exploration(guide) },
-        structures: {
-          correct: [...structures],
-          explanation: stringList(guide.features).join("; ") || exploration(guide),
-        },
-      },
-    },
-  };
+  return null;
 }
 

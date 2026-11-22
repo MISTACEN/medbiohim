@@ -11,7 +11,7 @@ export const MODE_LABELS: Record<DiagnosticumMode, string> = {
   identify: "Определи препарат",
   structures: "Найди структуры",
   differential: "Отличи похожие",
-  complex: "Комплексный",
+  complex: "Разбор препарата",
   schema: "Схема препарата",
 };
 

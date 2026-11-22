@@ -38,7 +38,7 @@ type DiagnosticumRunnerProps = {
 
 export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true }: DiagnosticumRunnerProps = {}) {
   const [overview, setOverview] = useState<DiagnosticumOverview | null>(null);
-  const [localMode, setLocalMode] = useState<DiagnosticumMode>("identify");
+  const [localMode, setLocalMode] = useState<DiagnosticumMode>("complex");
   const mode = controlledMode ?? localMode;
   const [section, setSection] = useState("");
   const [attempt, setAttempt] = useState<DiagnosticumAttempt | null>(null);

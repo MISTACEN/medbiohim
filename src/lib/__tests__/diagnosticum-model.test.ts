@@ -71,6 +71,56 @@ describe("подбор изображения", () => {
   });
 });
 
+describe("разбор препарата", () => {
+  it("препарат, структуры и утверждения — одно задание и один ответ", () => {
+    const built = build("complex")!;
+    expect(built.question.parts.map((part) => part.id)).toEqual([
+      "preparation",
+      "structures",
+      "statements",
+    ]);
+    expect(built.question.parts[0].kind).toBe("single");
+    expect(built.question.parts[1].kind).toBe("multi");
+    expect(built.question.parts[2].kind).toBe("multi");
+    expect(Object.keys(built.answers.parts).sort()).toEqual([
+      "preparation",
+      "statements",
+      "structures",
+    ]);
+
+    const perfect = gradeAnswer(built.answers, {
+      preparation: built.answers.parts.preparation.correct,
+      structures: built.answers.parts.structures.correct,
+      statements: built.answers.parts.statements.correct,
+    });
+    expect(perfect.correct).toBe(true);
+    expect(perfect.score).toBe(100);
+
+    // Один неверный блок ломает разбор: частичный диагноз не засчитывается.
+    const partial = gradeAnswer(built.answers, {
+      preparation: built.answers.parts.preparation.correct,
+      structures: built.answers.parts.structures.correct,
+      statements: [],
+    });
+    expect(partial.correct).toBe(false);
+    expect(partial.score).toBeLessThan(100);
+  });
+
+  it("части, для которых у препарата нет данных, не появляются", () => {
+    const thin = guide({ features: ["хромосомы"], structures: [] });
+    const built = buildQuestion({
+      guide: thin,
+      guides: [thin, ...guides.slice(1)],
+      cards,
+      mode: "complex",
+      structureTitles,
+      random: () => 0.42,
+    })!;
+    expect(built.question.parts.map((part) => part.id)).toEqual(["preparation"]);
+    expect(Object.keys(built.answers.parts)).toEqual(["preparation"]);
+  });
+});
+
 describe("buildQuestion", () => {
   it("«определи препарат»: вариант с ответом и отвлекающие, ключ только на сервере", () => {
     const built = build("identify")!;
@@ -133,10 +183,13 @@ describe("buildQuestion", () => {
     expect(built).toBeNull();
   });
 
-  it("«комплексный»: две части — препарат и структуры", () => {
+  it("«комплексный» — препарат, структуры и утверждения одним заданием", () => {
     const built = build("complex")!;
-    expect(built.question.parts.map((part) => part.id)).toEqual(["preparation", "structures"]);
-    expect(Object.keys(built.answers.parts).sort()).toEqual(["preparation", "structures"]);
+    expect(built.question.parts.map((part) => part.id)).toEqual([
+      "preparation",
+      "structures",
+      "statements",
+    ]);
   });
 
   it("без карточки с изображением задание не строится", () => {
