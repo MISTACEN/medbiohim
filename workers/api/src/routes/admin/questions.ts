@@ -80,7 +80,11 @@ export function registerQuestions(admin: AdminApp) {
     const answer = input?.answer == null ? "" : String(input.answer);
     let options = input?.options;
     if (!validText(text, 30000)) return error(c, rid, 422, "VALIDATION_ERROR", "Текст вопроса обязателен");
-    if (!["mcq","multiple","open","short","number","ordering"].includes(type)) return error(c, rid, 422, "VALIDATION_ERROR", "Недопустимый тип вопроса");
+    // Тип — enum question_type в таблице questions: значений "multiple"/"short"
+    // там нет, и апдейт падал бы на касте. Проверяем ровно то, что принимает БД.
+    if (!["mcq","open","problem","theory","practical"].includes(type)) {
+      return error(c, rid, 422, "VALIDATION_ERROR", "Недопустимый тип вопроса для банка: " + type);
+    }
     if (type === "mcq" || type === "multiple") {
       if (!Array.isArray(options) || options.length < 2 || options.length > 30) return error(c, rid, 422, "VALIDATION_ERROR", "Нужно от 2 до 30 вариантов ответа");
       options = options.map((option: any) => typeof option === "string" ? { label: option.trim(), correct: false } : { label: String(option?.label || "").trim(), correct: option?.correct === true });
@@ -89,7 +93,9 @@ export function registerQuestions(admin: AdminApp) {
       if (type === "mcq" && options.filter((option: any) => option.correct).length !== 1) return error(c, rid, 422, "VALIDATION_ERROR", "Для одиночного выбора должен быть один правильный вариант");
     } else if (options != null && !Array.isArray(options)) return error(c, rid, 422, "VALIDATION_ERROR", "options должен быть массивом");
     if (answer.length > 10000) return error(c, rid, 422, "VALIDATION_ERROR", "Ответ/объяснение не должен превышать 10000 символов");
-    const patch: Record<string, unknown> = { type, text, answer, options: options || [], updated_at: new Date().toISOString() };
+    // updated_at в questions нет (аудит ведётся через content_versions): раньше
+    // апдейт с этим полем падал с 42703 и редактор отвечал «Не удалось сохранить вопрос».
+    const patch: Record<string, unknown> = { type, text, answer, options: options || [] };
     if (input?.is_published !== undefined) {
       if (typeof input.is_published !== "boolean") return error(c, rid, 422, "VALIDATION_ERROR", "is_published должен быть булевым значением");
       patch.is_published = input.is_published;

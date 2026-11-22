@@ -62,6 +62,10 @@ test("quick question fix writes through the service client when RLS blocks the u
   // Отказ записи версии не должен превращать успешное сохранение в ошибку.
   assert.match(routes, /versionNo = null/);
   assert.match(routes, /version_no: versionNo/);
+  // В questions нет updated_at, а тип — enum question_type: поле и валидация
+  // должны совпадать со схемой, иначе снова 503 на каждом сохранении.
+  assert.match(routes, /const patch: Record<string, unknown> = \{ type, text, answer, options: options \|\| \[\] \}/);
+  assert.match(routes, /\["mcq","open","problem","theory","practical"\]\.includes\(type\)/);
 });
 
 test("admin schedule routes mount under /admin so their /schedule paths resolve once", async () => {
