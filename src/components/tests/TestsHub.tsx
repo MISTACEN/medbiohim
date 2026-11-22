@@ -32,6 +32,7 @@ import { describeApiError } from "@/lib/errors";
 import {
   MODES,
   UUID,
+  aliasMap,
   buildBankHref,
   buildHref,
   buildRangeHref,
@@ -84,6 +85,8 @@ export function TestsHub({
 }) {
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<TestItem[]>([]);
+  const [aliases, setAliases] = useState<Map<string, string[]>>(new Map());
+  const [hiddenCopies, setHiddenCopies] = useState(0);
   const [curriculum, setCurriculum] = useState<CurriculumSubject[]>([]);
   const [mode, setMode] = useState<Mode>("prepare");
   const [count, setCount] = useState(10);
@@ -93,6 +96,12 @@ export function TestsHub({
   const [levelFilter, setLevelFilter] = useState<number | null>(null);
   const [focusTopic, setFocusTopic] = useState(initialTopicId.trim());
   const [highlight, setHighlight] = useState("");
+  // Длинные группы: на телефоне 138 банков давали 38 000 px прокрутки.
+  // Показываем первые 5 и разворачиваем по кнопке.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [showFullBanks, setShowFullBanks] = useState(false);
+  // Разделов может быть больше сотни: показываем первые 8, остальные — по кнопке.
+  const [groupLimit, setGroupLimit] = useState(8);
   const router = useRouter();
   const startedRef = useRef(false);
 
@@ -138,7 +147,11 @@ export function TestsHub({
       return;
     }
     if (!testsLoad?.ready) return;
-    setTests(testsLoad.tests);
+    // Копии полных банков в меню не показываем, но помним их названия.
+    const canonical = testsLoad.tests.filter((test) => !test.duplicateOf);
+    setTests(canonical);
+    setAliases(aliasMap(testsLoad.tests));
+    setHiddenCopies(testsLoad.tests.length - canonical.length);
     setCurriculum(testsLoad.curriculum);
   }, [testsLoad, testsError]);
 
@@ -370,6 +383,14 @@ export function TestsHub({
               <span className="rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
                 {totalQuestions} {plural(totalQuestions, "вопрос", "вопроса", "вопросов")}
               </span>
+              {hiddenCopies > 0 && (
+                <span
+                  className="rounded-full bg-white px-3 py-1.5 font-semibold text-slate-500 shadow-sm"
+                  title="Тесты с тем же составом вопросов под другими названиями скрыты из меню"
+                >
+                  дублей скрыто: {hiddenCopies}
+                </span>
+              )}
             </div>
           </div>
         </header>
@@ -442,8 +463,18 @@ export function TestsHub({
           <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
             <SlidersHorizontal className="h-4 w-4 text-indigo-600" /> Подбор банка и режима
           </h2>
-          <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-bold text-indigo-700">
-            {selectedMode.label} · {mode === "sequential" ? "весь банк" : count + " вопросов"}
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-bold text-indigo-700">
+              {selectedMode.label} · {mode === "sequential" ? "весь банк" : count + " вопросов"}
+            </span>
+            {hiddenCopies > 0 && (
+              <span
+                className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600"
+                title="Банки с тем же составом вопросов под другими названиями скрыты — их названия видны в карточке"
+              >
+                скрыто копий: {hiddenCopies}
+              </span>
+            )}
           </span>
         </div>
         <div className="space-y-3">
@@ -459,7 +490,7 @@ export function TestsHub({
           </div>
           {/* На телефоне режимы и уровни — две прокручиваемые строки: раньше они
               переносились в 4 ряда и отодвигали сам список банков. */}
-          <div className="mobile-scroll-x flex items-center gap-1 overflow-x-auto rounded-xl bg-slate-50 p-1 lg:flex-wrap lg:overflow-visible">
+          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-slate-50 p-1">
             <SlidersHorizontal className="hidden h-4 w-4 shrink-0 text-[var(--muted)] sm:block" />
             <span className="hidden shrink-0 text-sm font-semibold text-slate-700 lg:inline">Свободная подготовка · режим:</span>
             {MODES.map((item) => (
@@ -480,7 +511,7 @@ export function TestsHub({
               </button>
             ))}
           </div>
-          <div className="mobile-scroll-x flex items-center gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Пирамида:</span>
             {[null, 1, 2, 3].map((lv) => (
               <button key={String(lv)} type="button" onClick={() => setLevelFilter(lv)}
@@ -514,7 +545,7 @@ export function TestsHub({
         )}
 
         {showModuleFilter && (
-          <div className="mobile-scroll-x flex flex-nowrap items-center gap-2 overflow-x-auto border-t border-[var(--border)] pt-3 lg:flex-wrap lg:overflow-visible" aria-label="Раздел">
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border)] pt-3" aria-label="Раздел">
             <button
               type="button"
               onClick={() => setModuleFilter("all")}
@@ -596,9 +627,17 @@ export function TestsHub({
                     </div>
                   </article>
                 )}
-                {fullManuals.length > 0 && (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {fullManuals.map((test) => {
+                                {fullManuals.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFullBanks((v) => !v)}
+                    className="w-full rounded-xl border border-dashed border-indigo-300 py-2 text-xs font-bold text-indigo-700 transition hover:bg-white"
+                  >
+                    {showFullBanks ? "Свернуть полные банки" : `Показать полные банки методичек (${fullManuals.length})`}
+                  </button>
+                )}
+                {fullManuals.length > 0 && showFullBanks && (
+                  <div className="grid gap-2 sm:grid-cols-2">{fullManuals.map((test) => {
                       const slug = (test.source || "").replace(/^phys_full:/, "");
                       const sections = manualSections[slug] || [];
                       const hrefFor = (from: number, to: number) => {
@@ -687,7 +726,7 @@ export function TestsHub({
               </div>
             </section>
           )}
-          {groups.map((group) => (
+          {groups.slice(0, groupLimit).map((group) => (
             <section key={group.key} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
               <header className="border-b border-[var(--border)] bg-slate-50/60 px-4 py-3 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -703,13 +742,24 @@ export function TestsHub({
                       {group.isExtra && <span className="font-semibold text-[var(--status-warn-fg)]">Вне текущего плана</span>}
                     </div>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
-                    {selectedMode.label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                      {selectedMode.label}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenGroups((prev) => ({ ...prev, [group.key]: !(prev[group.key] ?? groups[0]?.key === group.key) }))}
+                      className="rounded-lg border border-[var(--border)] bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
+                      aria-expanded={openGroups[group.key] === true}
+                    >
+                      {openGroups[group.key] === true ? "Свернуть" : "Открыть"}
+                    </button>
+                  </div>
                 </div>
               </header>
+              {(openGroups[group.key] === true) && (
               <div className="space-y-2 p-3 sm:p-4">
-                {group.tests.map((test) => (
+                {(openGroups[group.key] ? group.tests : group.tests.slice(0, 5)).map((test) => (
                   <article
                     key={test.id}
                     data-test-card={test.id}
@@ -726,6 +776,11 @@ export function TestsHub({
                           ? "Тест по теме занятия"
                           : test.title}
                       </h3>
+                      {(aliases.get(test.id) || []).length > 0 && (
+                        <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">
+                          Тот же банк: {(aliases.get(test.id) || []).join(" · ")}
+                        </p>
+                      )}
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
                         <span>{test.questionCount} {plural(test.questionCount, "вопрос", "вопроса", "вопросов")}</span>
                         {test.timeLimitSec != null && (
@@ -743,17 +798,17 @@ export function TestsHub({
                         {!scoped && <span>{subjectLabel(test.subjectSlug, test.subjectName)}</span>}
                       </div>
                     </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
                       <Link
                         href={buildHref(test, mode, count)}
-                        className="btn-primary inline-flex min-h-10 items-center gap-2 text-sm"
+                        className="btn-primary inline-flex min-h-10 flex-1 items-center justify-center gap-2 text-sm sm:flex-none"
                       >
                         <Play className="h-4 w-4" />
-                        {mode === "sequential" ? "Пройти весь банк" : selectedMode.label}
+                        {mode === "sequential" ? "Весь банк" : selectedMode.label}
                       </Link>
                       <Link
                         href={buildBankHref(test, mode, count)}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-3 py-2 text-sm font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]"
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-3 py-2 text-sm font-bold text-[var(--status-ok-fg)] transition hover:bg-[var(--status-ok-bg)]"
                       >
                         <BookOpenCheck className="h-4 w-4" />
                         Банк
@@ -761,9 +816,30 @@ export function TestsHub({
                     </div>
                   </article>
                 ))}
+                {group.tests.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroups((prev) => ({ ...prev, [group.key]: !prev[group.key] }))}
+                    className="w-full rounded-xl border border-dashed border-[var(--border)] py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
+                  >
+                    {openGroups[group.key]
+                      ? "Свернуть"
+                      : `Показать ещё ${group.tests.length - 5} ${plural(group.tests.length - 5, "банк", "банка", "банков")}`}
+                  </button>
+                )}
               </div>
+              )}
             </section>
           ))}
+          {groups.length > groupLimit && (
+            <button
+              type="button"
+              onClick={() => setGroupLimit((value) => value + 20)}
+              className="w-full rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] py-3 text-sm font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
+            >
+              Показать ещё {Math.min(20, groups.length - groupLimit)} из {groups.length - groupLimit} разделов
+            </button>
+          )}
         </div>
       )}
 

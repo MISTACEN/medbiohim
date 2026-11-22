@@ -232,7 +232,22 @@ export function mapApiTests(rows: Array<Record<string, unknown>>): TestItem[] {
         duplicateOf: raw?.duplicate_of ? String(raw.duplicate_of) : null,
       };
     })
-    .filter((item) => item.id && !item.duplicateOf);
+    // Копии не выбрасываем сразу: из них собирается строка «тот же банк
+    // называется иначе» — иначе знакомый тест исчезал из меню бесследно.
+    .filter((item) => item.id);
+}
+
+/** Канонический банк → другие названия того же набора вопросов. */
+export function aliasMap(tests: TestItem[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const test of tests) {
+    if (!test.duplicateOf) continue;
+    const list = map.get(test.duplicateOf) || [];
+    const title = test.title.trim();
+    if (title && !list.includes(title)) list.push(title);
+    map.set(test.duplicateOf, list);
+  }
+  return map;
 }
 
 /** Индекс «тема → метаданные плана» из карты учебного плана. */

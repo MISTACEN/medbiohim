@@ -14,6 +14,9 @@ export function AssignedTests() {
   const [items, setItems] = useState<AssignedTest[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
+  // Блок стоит первым на странице тестов: если назначений десятки, он занимал
+  // почти весь экран и до банков было не добраться.
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,12 +39,13 @@ export function AssignedTests() {
     <section className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)]/60 p-4 shadow-sm sm:p-5" aria-label="Назначенные тесты">
       <h2 className="flex items-center gap-2 text-base font-extrabold text-[var(--status-warn-fg)]">
         <CalendarClock className="h-5 w-5" /> Назначено преподавателем
+        <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-[var(--status-warn-fg)]">{items.length}</span>
       </h2>
       <p className="mt-1 text-xs text-[var(--status-warn-fg)]">
         Это контролируемое тестирование: результат автоматически попадёт в ведомость преподавателя.
       </p>
       <div className="mt-3 space-y-2">
-        {items.map((item) => {
+        {(expanded ? items : items.slice(0, 3)).map((item) => {
           const overdue = item.due_at ? Date.parse(item.due_at) < Date.now() : false;
           return (
             <div
@@ -73,6 +77,15 @@ export function AssignedTests() {
             </div>
           );
         })}
+        {items.length > 3 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="w-full rounded-xl border border-dashed border-[var(--status-warn-border)] py-2 text-xs font-bold text-[var(--status-warn-fg)] transition hover:bg-white"
+          >
+            {expanded ? "Свернуть" : `Показать ещё ${items.length - 3}`}
+          </button>
+        )}
       </div>
     </section>
   );

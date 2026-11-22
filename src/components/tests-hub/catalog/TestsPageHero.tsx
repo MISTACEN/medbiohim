@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Шапка раздела «Тесты»: вместо прежнего дублирующего заголовка в TestsHub —
- * один экран с понятной иерархией. Слева — зачем этот раздел и что нового,
- * справа — быстрые переходы в соседние инструменты (база вопросов, атлас,
- * тренажёры), чтобы не искать их в меню.
+ * Шапка раздела «Тесты». На телефоне она занимала весь первый экран: длинный
+ * текст, столбик карточек-ссылок и ряд кнопок. Теперь компактно: заголовок,
+ * одна строка пояснения, чипы статистики и три иконки-перехода; на широком
+ * экране — то же плюс описания ссылок справа.
  */
 import Link from "next/link";
 import { ClipboardCheck, FlaskConical, History, Microscope, Sparkles } from "lucide-react";
@@ -12,9 +12,9 @@ import { ClipboardCheck, FlaskConical, History, Microscope, Sparkles } from "luc
 import type { TestsCatalogController } from "./useTestsCatalog";
 
 const QUICK_LINKS = [
-  { href: "/practice", label: "База вопросов", hint: "вопросы и эталоны без таймера", Icon: Sparkles },
-  { href: "/atlas", label: "Атлас препаратов", hint: "фото и электронограммы", Icon: Microscope },
-  { href: "/subjects/histology?tab=trainers", label: "Тренажёры", hint: "практика по предмету", Icon: ClipboardCheck },
+  { href: "/practice", label: "База вопросов", hint: "вопросы и эталоны", Icon: Sparkles },
+  { href: "/atlas", label: "Атлас", hint: "фото препаратов", Icon: Microscope },
+  { href: "/subjects/histology?tab=trainers", label: "Тренажёры", hint: "практика", Icon: ClipboardCheck },
 ];
 
 export function TestsPageHero({ page }: { page: TestsCatalogController }) {
@@ -24,70 +24,70 @@ export function TestsPageHero({ page }: { page: TestsCatalogController }) {
   ).length;
 
   return (
-    <header className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 shadow-sm">
-      <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+    <header className="overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 shadow-sm sm:rounded-3xl">
+      <div className="grid gap-3 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_250px] lg:gap-5">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-600">Раздел тестов</p>
-          <h1 className="mt-1.5 text-2xl font-extrabold leading-tight text-slate-950 sm:text-3xl">
-            Тесты, банки вопросов и разбор
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600 sm:text-[11px]">Раздел тестов</p>
+          <h1 className="mt-1 text-xl font-extrabold leading-tight text-slate-950 sm:text-3xl">
+            Тесты и банки вопросов
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Предмет → раздел → тема → банк. Режим выбирается один раз для всех банков, а во время прохождения
-            можно спросить ИИ, что спрашивают в вопросе, — он объяснит термины и не выдаст правильный вариант.
+          <p className="mt-1.5 text-[13px] leading-5 text-slate-600 sm:mt-2 sm:text-sm sm:leading-6">
+            Предмет → раздел → тема → банк. Во время теста можно спросить ИИ, что спрашивают
+            в вопросе — он объяснит термины и не выдаст ответ.
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] sm:mt-4 sm:gap-2 sm:text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 font-semibold text-slate-700 shadow-sm sm:px-3 sm:py-1.5">
               <ClipboardCheck className="h-3.5 w-3.5 text-indigo-600" />
               Попыток: {attempts.length}
             </span>
             {finished > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 font-semibold text-slate-700 shadow-sm sm:px-3 sm:py-1.5">
                 <History className="h-3.5 w-3.5 text-emerald-600" />
                 Завершено: {finished}
               </span>
             )}
             {chemistryTotal > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 shadow-sm">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 font-semibold text-slate-700 shadow-sm sm:px-3 sm:py-1.5">
                 <FlaskConical className="h-3.5 w-3.5 text-sky-600" />
-                Заданий по химии: {chemistryTotal}
+                Химия: {chemistryTotal}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 font-semibold text-amber-900">
-              Вопросы с несколькими ответами помечены
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-900 sm:px-3 sm:py-1.5">
+              несколько ответов помечены
             </span>
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+        <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
           {QUICK_LINKS.map(({ href, label, hint, Icon }) => (
             <Link
               key={href}
               href={href}
-              className="group flex items-center gap-2.5 rounded-2xl border border-white bg-white/80 px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-white"
+              className="group flex flex-col items-start gap-1 rounded-xl border border-white bg-white/80 p-2.5 transition hover:border-indigo-200 hover:bg-white lg:flex-row lg:items-center lg:gap-2.5 lg:p-3"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 lg:h-8 lg:w-8">
                 <Icon className="h-4 w-4" />
               </span>
               <span className="min-w-0">
-                <span className="block text-[13px] font-bold leading-tight text-slate-900">{label}</span>
-                <span className="block truncate text-[11px] text-[var(--muted)]">{hint}</span>
+                <span className="block truncate text-[11px] font-bold leading-tight text-slate-900 lg:text-[13px]">{label}</span>
+                <span className="hidden truncate text-[11px] text-[var(--muted)] lg:block">{hint}</span>
               </span>
             </Link>
           ))}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-indigo-100 bg-white/60 px-5 py-3 text-xs text-slate-600 sm:px-6">
-        <span className="font-semibold text-slate-800">Начать быстро:</span>
-        <button type="button" onClick={() => selectView("tests")} className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 font-semibold text-indigo-700 transition hover:bg-indigo-50">
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-indigo-100 bg-white/60 px-4 py-2 text-[11px] text-slate-600 sm:gap-2 sm:px-6 sm:py-3 sm:text-xs">
+        <span className="hidden font-semibold text-slate-800 sm:inline">Начать быстро:</span>
+        <button type="button" onClick={() => selectView("tests")} className="rounded-full border border-indigo-200 bg-white px-2.5 py-1 font-semibold text-indigo-700 transition hover:bg-indigo-50 sm:px-3 sm:py-1.5">
           Все банки
         </button>
-        <button type="button" onClick={() => selectView("chemistry")} className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 font-semibold text-slate-700 transition hover:border-indigo-300">
+        <button type="button" onClick={() => selectView("chemistry")} className="rounded-full border border-[var(--border)] bg-white px-2.5 py-1 font-semibold text-slate-700 transition hover:border-indigo-300 sm:px-3 sm:py-1.5">
           Химия
         </button>
-        <button type="button" onClick={() => selectView("history")} className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 font-semibold text-slate-700 transition hover:border-indigo-300">
-          История попыток
+        <button type="button" onClick={() => selectView("history")} className="rounded-full border border-[var(--border)] bg-white px-2.5 py-1 font-semibold text-slate-700 transition hover:border-indigo-300 sm:px-3 sm:py-1.5">
+          История
         </button>
       </div>
     </header>

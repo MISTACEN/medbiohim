@@ -20,7 +20,7 @@ export function TestsViewNav({ page }: { page: TestsCatalogController }) {
   return (
     <nav
       aria-label="Разделы тестов"
-      className="mobile-scroll-x flex flex-nowrap items-center gap-1 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-sm"
+      className="flex flex-wrap items-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-sm"
     >
       {VIEWS.map(({ id, label, Icon }) => {
         const active = view === id;
@@ -32,14 +32,15 @@ export function TestsViewNav({ page }: { page: TestsCatalogController }) {
             onClick={() => selectView(id)}
             aria-current={active ? "page" : undefined}
             className={
-              "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-bold transition " +
+              "inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[13px] font-bold transition sm:min-h-10 sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm " +
               (active
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")
             }
           >
-            <Icon className="h-4 w-4" />
-            {label}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="sm:hidden">{id === "tests" ? "Банки" : id === "chemistry" ? "Химия" : "История"}</span>
+            <span className="hidden sm:inline">{label}</span>
             {count !== null && (
               <span
                 className={
