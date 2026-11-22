@@ -441,6 +441,36 @@ PdfMentor подтвердит контракт §8, иначе страница
 | `/answer` оборачивал `answers` в `{parts}` второй раз | `key.correct` undefined → INTERNAL | ключ читается как готовый `AnswerKey`; `AttemptRow.answers` типизирован | `d2f8fd74` |
 | probe IndexedDB создавал базу без object store | NotFoundError на любой странице → 15 падений playwright-смока | probe с апгрейдом, версия БД 1→2, `flushOutbox` деградирует без unhandled rejection | `e0f7f656` |
 
+### Продолжение (этап Э3, 2026-11-22)
+
+- **Ветка `wip/physiology-colloquium-2026-10-21`** (появилась на GitHub) — не
+  feature-ветка, а `git stash`-стек от 2026-10-21: tip `2543f7d9` с тремя
+  родителями (`stash` + `index` + `untracked`), база `7d937c12`, main ушел вперёд
+  на 601 коммит. Дерево **не собирается**: `workers/api/src/index.ts` импортирует
+  `./routes/colloquium`, которого в ветке нет. Merge откатил бы рефакторинг
+  (`src/lib/api.ts` 827 строк вместо модульных 42) и вернул удалённые доки.
+  Решение: тег `archive/wip-physiology-colloquium-2026-10-21` (работа остаётся
+  достижимой, включая UI админки в untracked-родителе `da93d3f9`), remote- и
+  локальная ветки удалены; локальный хвост `feat/university-hub` (полностью в
+  main, `160 0`) тоже удалён.
+- **CI подтверждён по API** для `f5c58187`, `0766eaa2`, `699641b6`, `c0fca053`:
+  все рабочие чеки `completed/success`. Хронически красные и не наши
+  (`Supabase Preview`, `Workers Builds: medbiohim-telegram`) видны на всех
+  коммитах — отдельная инфра-задача, не код.
+- **`_probe_fn` удалена**: миграция `20261117_drop_probe_fn.sql` применена
+  (DDL прошёл с `lock_timeout='5s'`), `to_regclass('public._probe_fn')` → NULL.
+  Функция `medbiohim_finish_test_attempt` на месте.
+- **Приёмка M5 пройдена**: qa-teacher импортировал 2 вопроса в личный банк →
+  создал тест (published, `created_by` = qa-teacher) → назначил персонально
+  qa-студенту (`test_assignments.group_id is null`, `test_assignment_students`) →
+  студент увидел назначение в `/tests/assignments`, начал и завершил попытку
+  (submitted, 0/2). Кабинет преподавателя показывает «1 назначено, сдали 1 из 1».
+- **Перф Э3**: RPC `medbiohim_week_leaderboard` (SQL-агрегация лиги, `service_role`
+  only, fallback до миграции); кэш методичек через канонический `cached()` с
+  версией контента (правка админа видна сразу); меню тестов читает состав
+  параллельными страницами по подсчёту вместо 12 последовательных запросов
+  (было 17.6 с на проде при 10 213 связях).
+
 ### Что осталось
 
 1. **Чек-лист включения Document Bridge (решение владельца по 152-ФЗ)**:
@@ -454,4 +484,4 @@ PdfMentor подтвердит контракт §8, иначе страница
 3. P4 (results/sync) — на стороне MEDBIOHIM после подтверждения контракта.
 4. Сопоставление 18 гидов с реальными `trainer_feed_cards.id` — read-only запрос
    к Supabase (нормализация названий работает до этого).
-5. Назначение теста преподавателем qa-студенту — оставшийся сценарий приёмки.
+5. ~~Назначение теста преподавателем qa-студенту~~ — выполнено 2026-11-22, см. ниже.

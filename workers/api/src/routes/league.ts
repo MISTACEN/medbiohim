@@ -67,8 +67,47 @@ function nextTierFor(points: number): { name: string; min: number } | null {
 
 type LeaderRow = { user_id: string; name: string; points: number };
 
+/** Один раз на изолят сообщаем, что RPC ещё не применён — не спамим логами. */
+let rpcFallbackLogged = false;
+
+/**
+ * Агрегация в SQL: один GROUP BY вместо выборки до 20 000 событий в память.
+ * Возвращает `null`, если функция миграции `20261122_league_leaderboard_rpc`
+ * ещё не применена — тогда считаем прежним путём.
+ */
+async function computeWeekRpc(service: any, weekStart: string): Promise<LeaderRow[] | null> {
+  const { data, error } = await service.rpc("medbiohim_week_leaderboard", {
+    p_week_start: weekStart,
+    p_limit: TOP_LIMIT,
+  });
+  if (error) {
+    if (!rpcFallbackLogged) {
+      rpcFallbackLogged = true;
+      console.warn("[league] rpc medbiohim_week_leaderboard недоступен, считаем в воркере:", error.message);
+    }
+    return null;
+  }
+  return ((data || []) as Array<{ user_id?: string; name?: string; points?: number }>)
+    .map((row) => ({
+      user_id: String(row.user_id || ""),
+      name: String(row.name || "Студент"),
+      points: Number(row.points || 0),
+    }))
+    .filter((row) => row.user_id)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, TOP_LIMIT);
+}
+
 async function computeWeek(service: any): Promise<{ weekStart: string; leaders: LeaderRow[] }> {
   const weekStart = weekStartUtc();
+  const viaRpc = await computeWeekRpc(service, weekStart);
+  // Пустой массив — валидный ответ «событий нет»: в БД за ним не ходим.
+  if (viaRpc) return { weekStart, leaders: viaRpc };
+  return { weekStart, leaders: await computeWeekInWorker(service, weekStart) };
+}
+
+/** Прежний путь (fallback): очки складываются в памяти воркера. */
+async function computeWeekInWorker(service: any, weekStart: string): Promise<LeaderRow[]> {
   const { data, error } = await service
     .from("activity_events")
     .select("user_id,kind")
@@ -96,11 +135,10 @@ async function computeWeek(service: any): Promise<{ weekStart: string; leaders: 
       }
     }
   }
-  const leaders: LeaderRow[] = [...pointsByUser.entries()]
+  return [...pointsByUser.entries()]
     .map(([userId, points]) => ({ user_id: userId, name: nameById.get(userId) || "Студент", points }))
     .sort((a, b) => b.points - a.points)
     .slice(0, TOP_LIMIT);
-  return { weekStart, leaders };
 }
 
 league.get("/", requireAuth, async (c) => {

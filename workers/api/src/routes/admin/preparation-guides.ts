@@ -14,6 +14,8 @@ import { ok, requestId } from "../../lib/response";
 import { requireAuth } from "../../middleware/auth";
 import { createServiceClient } from "../../lib/supabase";
 import { MANAGERS, STRICT_ADMINS, bodyJson, error, gate, type AdminApp } from "./shared";
+import { bumpPrepContentVersion } from "../../lib/cache";
+import { getRedis } from "../../lib/redis";
 
 const KEY_PATTERN = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
@@ -149,6 +151,10 @@ export function registerPreparationGuides(admin: AdminApp) {
         missing ? "Сначала примените миграцию методических карточек" : "Не удалось сохранить карточку",
       );
     }
+
+    // Содержимое изменилось: сдвигаем версию, чтобы кэш атласа не отдавал
+    // старую методичку до истечения TTL (lib/cache.ts).
+    await bumpPrepContentVersion(getRedis(c.env));
 
     return c.json(ok({ item: data }, rid));
   });

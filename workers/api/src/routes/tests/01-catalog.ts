@@ -55,21 +55,20 @@ tests.get("/", requireAuth, async (c) => {
     if (ids.length) {
       // PostgREST отдаёт не больше max-rows (обычно 1000) строк за запрос, а связей
       // у предмета тысячи: без постраничного чтения последние банки выглядели как
-      // «0 вопросов». Читаем страницами, пока страница не станет неполной.
+      // «0 вопросов». Раньше страницы читались последовательно — на 10 000 связей
+      // это давало 12 круговых запросов и ~17 с ответа меню тестов. Теперь общее
+      // число строк считается одним head-запросом, а страницы читаются
+      // параллельно; если подсчёт не удался — прежний последовательный путь.
       const PAGE = 900;
-      for (let from = 0; ; from += PAGE) {
-        const { data: links, error: linkError } = await db.from("test_questions")
-          .select("test_id,question_id,questions!inner(id,text,answer,options,is_published,archived_at)")
-          .in("test_id", ids)
-          .eq("questions.is_published", true)
-          .is("questions.archived_at", null)
-          .order("test_id", { ascending: true })
-          .order("question_id", { ascending: true })
-          .range(from, from + PAGE - 1);
-        if (linkError) {
-          const { body, status } = fail("DB_UNAVAILABLE", "Состав тестов недоступен", 503, rid);
-          return c.json(body, status as 503);
-        }
+      const pageQuery = (from: number) => db.from("test_questions")
+        .select("test_id,question_id,questions!inner(id,text,answer,options,is_published,archived_at)")
+        .in("test_id", ids)
+        .eq("questions.is_published", true)
+        .is("questions.archived_at", null)
+        .order("test_id", { ascending: true })
+        .order("question_id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      const consume = (links: any[] | null) => {
         for (const link of links || []) {
           const tid = String(link.test_id);
           counts.set(tid, (counts.get(tid) || 0) + 1);
@@ -78,7 +77,32 @@ tests.get("/", requireAuth, async (c) => {
           const question = Array.isArray((link as any).questions) ? (link as any).questions[0] : (link as any).questions;
           set.add(testQuestionFingerprint(question, String((link as any).question_id)));
         }
-        if (!links || links.length < PAGE) break;
+      };
+      const unavailable = () => {
+        const { body, status } = fail("DB_UNAVAILABLE", "Состав тестов недоступен", 503, rid);
+        return c.json(body, status as 503);
+      };
+
+      const { count: totalLinks, error: countError } = await db.from("test_questions")
+        .select("test_id,questions!inner(id)", { count: "exact", head: true })
+        .in("test_id", ids)
+        .eq("questions.is_published", true)
+        .is("questions.archived_at", null);
+
+      if (!countError && typeof totalLinks === "number") {
+        const pageCount = Math.ceil(totalLinks / PAGE);
+        const pages = await Promise.all(
+          Array.from({ length: pageCount }, (_, index) => pageQuery(index * PAGE)),
+        );
+        if (pages.some((page) => page.error)) return unavailable();
+        for (const page of pages) consume(page.data as any[] | null);
+      } else {
+        for (let from = 0; ; from += PAGE) {
+          const { data: links, error: linkError } = await pageQuery(from);
+          if (linkError) return unavailable();
+          consume(links as any[] | null);
+          if (!links || links.length < PAGE) break;
+        }
       }
     }
     // Банки из методичек созданы без test_questions, но у них есть тема/раздел.

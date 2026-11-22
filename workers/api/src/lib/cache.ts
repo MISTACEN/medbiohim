@@ -36,6 +36,12 @@ export const CACHE_POLICIES = {
   "lectures:catalog": { ttlSeconds: 300, staleSeconds: 3600 },
   // Список материалов: файлы и ссылки меняются не чаще раза в день.
   "materials:list": { ttlSeconds: 300, staleSeconds: 3600 },
+  // Методические карточки препаратов: контент правит админ точечно, атлас
+  // читает их постоянно. Версия контента в ключе (`prepContentVersion`)
+  // сбрасывает кэш сразу после сохранения, поэтому stale не мешает правкам.
+  "preparations:guides": { ttlSeconds: 120, staleSeconds: 600 },
+  "preparations:guide": { ttlSeconds: 120, staleSeconds: 600 },
+  "preparations:structures": { ttlSeconds: 120, staleSeconds: 600 },
 } as const satisfies Record<string, CachePolicy>;
 
 export type CachePolicyName = keyof typeof CACHE_POLICIES;
@@ -47,6 +53,34 @@ export type CacheStore = {
 };
 
 type CacheEnvelope<T> = { at: number; value: T };
+
+/**
+ * Версия контента методичек: попадает в ключ кэша, поэтому сохранение карточки
+ * админом делает старые ключи недостижимыми (и они сами истекают по TTL).
+ * Redis недоступен — версия «0», но кэш в этом случае и так выключен.
+ */
+export const PREP_CONTENT_VERSION_KEY = "cache:prep:v";
+
+export async function prepContentVersion(store: CacheStore | null): Promise<string> {
+  if (!store) return "0";
+  try {
+    const value = await store.get(PREP_CONTENT_VERSION_KEY);
+    return String(value ?? "0");
+  } catch {
+    return "0";
+  }
+}
+
+export async function bumpPrepContentVersion(store: CacheStore | null): Promise<void> {
+  if (!store) return;
+  try {
+    const current = Number(await store.get(PREP_CONTENT_VERSION_KEY)) || 0;
+    await store.set(PREP_CONTENT_VERSION_KEY, String(current + 1));
+  } catch {
+    // Кэш не может ронять сохранение контента: худший случай — правка станет
+    // видна через TTL политики.
+  }
+}
 
 export type CacheEntry<T> = { at: number; value: T };
 
