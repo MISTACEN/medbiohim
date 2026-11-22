@@ -104,7 +104,21 @@ type Turn = { role: "user" | "assistant"; content: string };
  * можно сравнивать с вердиктом разбора механически: если они расходятся,
  * студент видит предупреждение, а не уверенное «ваш ответ вернее».
  */
-function ArbiterNote({ arbiter, firstAnswer }: { arbiter: AiAnswerCheck | null; firstAnswer: string }) {
+/** Арбитр отвечает буквой варианта — превращаем её в текст, если он есть. */
+function correctLabel(correct: string | undefined, options?: string[]): string {
+  const raw = String(correct || "").trim();
+  if (!raw || !options?.length) return raw;
+  const letter = raw.toUpperCase().replace(/[).].*$/, "");
+  const index = "ABCDEFGH".indexOf(letter) >= 0
+    ? "ABCDEFGH".indexOf(letter)
+    : "АБВГДЕЖЗ".indexOf(letter);
+  const text = index >= 0 ? String(options[index] || "").trim() : "";
+  return text ? `${["А", "Б", "В", "Г", "Д", "Е", "Ж", "З"][index]}) ${text}` : raw;
+}
+
+function ArbiterNote({
+  arbiter, firstAnswer, options,
+}: { arbiter: AiAnswerCheck | null; firstAnswer: string; options?: string[] }) {
   if (!arbiter) return null;
   const stated = /Оба ответа неверны/.test(firstAnswer) ? "both"
     : /ваш ответ вернее/i.test(firstAnswer) ? "user"
@@ -112,7 +126,7 @@ function ArbiterNote({ arbiter, firstAnswer }: { arbiter: AiAnswerCheck | null; 
         : null;
   const disagree = Boolean(stated && stated !== arbiter.verdict);
   const text = arbiter.verdict === "both"
-    ? `Перепроверка: оба ответа неверны — правильный ${arbiter.correct || "указан в разборе"}`
+    ? `Перепроверка: оба ответа неверны — правильный ${correctLabel(arbiter.correct, options) || "указан в разборе"}`
     : arbiter.verdict === "user"
       ? "Перепроверка: правы вы, в ключе ошибка"
       : "Перепроверка: ключ верен";
@@ -280,7 +294,11 @@ export function ExplainWithAi({
 
       {answered ? (
         <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm leading-relaxed">
-          <ArbiterNote arbiter={arbiter} firstAnswer={shown.find((turn) => turn.role === "assistant")?.content || ""} />
+          <ArbiterNote
+            arbiter={arbiter}
+            firstAnswer={shown.find((turn) => turn.role === "assistant")?.content || ""}
+            options={options}
+          />
 
           {shown.map((turn, index) => (
             turn.role === "user" ? (
