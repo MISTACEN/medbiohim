@@ -24,8 +24,10 @@ export function chemicalFormulaHtml(input: string): string {
  */
 export function chemicalFormulaInHtml(html: string): string {
   const guarded: string[] = [];
+  // Теги защищаем тоже: без этого «<h3>» превращался в «<h<sub>3</sub>>»,
+  // и в ответе тьютора вместо заголовка было видно «3>Заголовок3>».
   const protectedHtml = String(html || "").replace(
-    /<span class="lec-math">[\s\S]*?<\/span>|<code>[\s\S]*?<\/code>|<pre[\s\S]*?<\/pre>|<a\b[^>]*>[\s\S]*?<\/a>/gi,
+    /<span class="lec-math">[\s\S]*?<\/span>|<code>[\s\S]*?<\/code>|<pre[\s\S]*?<\/pre>|<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>/gi,
     (chunk) => {
       guarded.push(chunk);
       return `\u0000${guarded.length - 1}\u0000`;

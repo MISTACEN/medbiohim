@@ -77,7 +77,8 @@ test("tutor prompt forbids material excuses and key worship", async () => {
   // Модель не оправдывается отсутствием материалов и не защищает ключ теста.
   assert.match(route, /Запрещены служебные жалобы на нехватку материалов/);
   // Вердикт по ключу обязателен — иначе модель молча защищает ошибочный ответ.
-  assert.match(route, /Разбор теста начинай с явного вердикта/);
+  assert.match(route, /Разбор начинай с одного из трёх вердиктов/);
+  assert.match(route, /Оба ответа неверны/);
   assert.match(route, /В ключе ошибка: ваш ответ вернее/);
   assert.match(route, /не сообщай о нехватке материалов и не отказывайся от ответа/);
   // Проверка себя и markdown-оформление — часть системного промпта.
@@ -94,7 +95,9 @@ test("explain renders markdown, course photos and follow-up questions", async ()
   assert.match(explain, /askFollowUp/);
   // Ключ больше не объявлен заранее верным («мой ответ (неверный)»).
   assert.doesNotMatch(explain, /Мой ответ \(неверный\)/);
-  assert.match(explain, /Не защищай ключ/);
+  // Вердикт тройной, и ответ студента тоже не защищается.
+  assert.match(explain, /Оба ответа неверны/);
+  assert.match(explain, /Не защищай мой ответ/);
 });
 
 test("во время теста можно спросить ИИ, не получая готовый ответ", async () => {

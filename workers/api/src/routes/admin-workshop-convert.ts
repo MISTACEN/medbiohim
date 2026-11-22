@@ -128,7 +128,8 @@ adminConvert.post("/workshop-questions/:itemId/convert", requireAuth, async (c) 
     // question_type enum: mcq (закрытый с вариантами) | open (эталон-ответ).
     type: question.options.length ? "mcq" : "open",
     is_published: true,
-    is_active: true,
+    // В таблице questions нет колонки is_active: старый код писал её и вставка
+    // падала с 42703 («Unused column»), публикация отвечала 503.
     source: "workshop",
     source_item_id: itemId,
   }));

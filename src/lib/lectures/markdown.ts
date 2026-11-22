@@ -8,6 +8,25 @@ import { chemicalFormulaInHtml } from "@/lib/chemistry/formula";
 import { escapeHtml } from "@/lib/html-escape";
 
 /** Рендер Markdown → HTML (общий с AI-тьютором: TutorMarkdown). */
+/** Схлопывает подряд идущие одинаковые предложения/строки (следствие генерации). */
+function collapseRepeats(block: string): string {
+  const lines = block.split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    if (out.length && line.trim() && line.trim() === out[out.length - 1].trim()) continue;
+    out.push(line);
+  }
+  const joined = out.join("\n");
+  // Одно и то же длинное предложение дважды в одном абзаце.
+  const sentences = joined.split(/(?<=[.!?])\s+(?=[А-ЯA-ZЁ])/);
+  const unique: string[] = [];
+  for (const sentence of sentences) {
+    if (sentence.trim().length > 40 && unique[unique.length - 1]?.trim() === sentence.trim()) continue;
+    unique.push(sentence);
+  }
+  return unique.join(" ");
+}
+
 export function mdToHtml(md: string): string {
   // Lecture bodies are stored as Markdown. Keep the renderer deterministic and
   // safe, while also tolerating older imports that contain literal HTML tags.
@@ -26,10 +45,18 @@ export function mdToHtml(md: string): string {
   );
 
   s = s.replace(/\$\$([\\s\\S]+?)\$\$/g, (_a, body) => `<div class="lec-math">\\\\[${body.trim()}\\\\]</div>`);
-  s = s.replace(/(?<!\$)\$(?!\$)([^$\n]+)\$(?!\$)/g, (_a, body) => `<span class="lec-math">\\\\(${body}\\\\)</span>`);
-  s = s.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-  s = s.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-  s = s.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+  // Только похожее на LaTeX: иначе цены и доллары («стоит $10 и $20»)
+  // превращались в математический блок с мусором.
+  s = s.replace(/(?<!\$)\$(?!\$)([^$\n]*[\\^_{][^$\n]*)\$(?!\$)/g, (_a, body) => `<span class="lec-math">\\\\(${body}\\\\)</span>`);
+  // Заголовок, который модель написала в строку с текстом (или сразу после
+  // абзаца), должен начинать свой блок: иначе получался <h3> внутри <p>.
+  s = s.replace(/([^\n#])(#{1,4})(?=[ \t]+\S)/g, (_m, before, hashes) => `${before}\n\n${hashes}`);
+  // Заголовок уже с новой строки: отделяем его пустой строкой от предыдущего
+  // абзаца, иначе блок разметки остаётся внутри <p>.
+  s = s.replace(/(^|\n)(#{1,4})(?=[ \t]+\S)/gm, (_m, before, hashes) => `${before}\n${hashes}`);
+  // Только горизонтальный пробел после маркера: с \s+ регэксп съедал перевод
+  // строки и заголовок склеивался с предыдущим абзацем («<h1>## …»).
+  s = s.replace(/^(#{1,4})[ \t]+(.+)$/gm, (_m, hashes, text) => `<h${hashes.length}>${text}</h${hashes.length}>`);
   s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   // Курсив одиночными звёздочками: модель пишет «*“ТАТ-Т”*», и без этого
   // правила в ответе оставались видимые звёздочки. Выполняется после жирного,
@@ -74,7 +101,9 @@ export function mdToHtml(md: string): string {
   // Разбиваем на блоки и заворачиваем обычный текст в <p>: без этого
   // Tailwind-prose не применяет абзацный отступ и межстрочные интервалы.
   // Заголовки, списки, таблицы, цитаты и линии уже блочные — их не трогаем.
-  const blocks = s.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+  const blocks = s.split(/\n{2,}/).map((block) => collapseRepeats(block.trim())).filter(Boolean)
+    // Модель иногда повторяет абзац дважды подряд — второй блок не нужен.
+    .filter((block, index, list) => block !== list[index - 1]);
   const html = blocks
     .map((block) => {
       if (/^<(?:h[1-6]|p|div|ul|ol|li|blockquote|table|hr|figure|pre)\b/i.test(block)) return block;
