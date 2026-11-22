@@ -133,8 +133,10 @@ export function registerQuestions(admin: AdminApp) {
       // журнала только логируется и не превращает успешную запись в 503.
       let versionNo: number | null = null;
       try {
+        // row_key — jsonb: сравниваем объектом, а не JSON-строкой, иначе условие
+        // не совпадает, версия считается первой и вставка падает на unique.
         const readVersion = (client: any) => client.from("content_versions").select("version_no")
-          .eq("table_name", "questions").eq("row_key", JSON.stringify({ id }))
+          .eq("table_name", "questions").eq("row_key", { id })
           .order("version_no", { ascending: false }).limit(1);
         let versions = await readVersion(scoped);
         if (versions.error && service) versions = await readVersion(service);
