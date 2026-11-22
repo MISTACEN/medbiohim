@@ -43,7 +43,7 @@ export function TestsPageHero({ page }: { page: TestsCatalogController }) {
             </span>
             {finished > 0 && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 font-semibold text-slate-700 shadow-sm sm:px-3 sm:py-1.5">
-                <History className="h-3.5 w-3.5 text-emerald-600" />
+                <History className="h-3.5 w-3.5 text-[var(--status-ok-fg)]" />
                 Завершено: {finished}
               </span>
             )}
@@ -53,7 +53,7 @@ export function TestsPageHero({ page }: { page: TestsCatalogController }) {
                 Химия: {chemistryTotal}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-900 sm:px-3 sm:py-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--status-warn-bg)] px-2.5 py-1 font-semibold text-[var(--status-warn-fg)] sm:px-3 sm:py-1.5">
               несколько ответов помечены
             </span>
           </div>

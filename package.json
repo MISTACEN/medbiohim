@@ -22,7 +22,8 @@
     "test:e2e:api": "node scripts/e2e-live-api.mjs",
     "test:e2e:study": "node scripts/e2e-live-study.mjs",
     "test:e2e:agent": "node scripts/e2e-live-agent.mjs",
-    "test:e2e:pages": "node scripts/e2e-live-pages.mjs"
+    "test:e2e:pages": "node scripts/e2e-live-pages.mjs",
+    "dev:clean": "node scripts/dev-clean.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -41,7 +41,7 @@ export function AttemptRunner({ page }: { page: AttemptRunnerController }) {
         {/* Пометка о нескольких верных: без неё студент выбирает наугад и
             теряет балл на втором правильном варианте. */}
         {isClosed && isMulti && !checked[q.id] ? (
-          <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+          <div className="flex items-start gap-2 rounded-xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-3 py-2 text-xs font-semibold text-[var(--status-warn-fg)]">
             <ListChecks className="mt-0.5 h-4 w-4 shrink-0" />
             В этом вопросе несколько верных ответов — отметьте все подходящие.
           </div>

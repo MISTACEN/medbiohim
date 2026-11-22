@@ -137,9 +137,12 @@ test("компонент таблицы строится из данных би�
   assert.doesNotMatch(tableSource, /atomic_mass:\s*\d/);
 });
 
-test("страница /chemistry/elements отдаёт таблицу, а /chemistry ссылается на неё", () => {
+test("таблица элементов — секция химии, старые адреса ведут туда", () => {
   assert.ok(existsSync(new URL("src/app/chemistry/elements/page.tsx", ROOT)), "маршрут таблицы существует");
-  assert.ok(pageSource.includes('from "@/modules/subjects/submodules/chemistry"'), "таблица берётся из модуля химии");
-  assert.match(pageSource, /<PeriodicTable/);
-  assert.match(chemistryIndexSource, /href="\/chemistry\/elements"/, "вход в таблицу есть со страницы химии");
+  // Таблица живёт в модуле химии и рендерится секцией «Элементы», а не своей
+  // страницей: /chemistry и /chemistry/elements — редиректы в предметный экран.
+  const moduleSource = read("src/modules/subjects/submodules/chemistry/ChemistryModule.tsx");
+  assert.match(moduleSource, /item\.id === "elements" && <PeriodicTable \/>/, "секция элементов рендерит таблицу");
+  assert.match(pageSource, /redirect\("\/subjects\/chemistry_organic_physical\?tab=chem&section=elements"\)/);
+  assert.match(chemistryIndexSource, /redirect\("\/subjects\/chemistry_organic_physical\?tab=chem"\)/);
 });

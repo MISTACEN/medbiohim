@@ -8,7 +8,7 @@ import { getAccountSettings } from "@/lib/settings-api";
 import {
   answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
   getTraining, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
-  type TrainingLabelMode, type TrainingLayout, type TrainingQuestion,
+  type TrainingLabelMode, type TrainingLayout,
 } from "@/lib/content-api";
 import { compareLessons, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
@@ -19,48 +19,8 @@ import { groupAtlasCards } from "@/lib/histologyAtlas";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { compareRu } from "@/lib/collation";
-import type { DiagnosticumMode } from "@/lib/diagnosticum-api";
+import { TRAINING_FORMATS, formatFromParams, type AnswerRow, type TrainingFormat } from "@/components/trainers/histologyFormat";
 
-/**
- * Формат задания — это то, что раньше было отдельной вкладкой «Диагностикум».
- * Форматов два: карточки препаратов (прежний тренажёр) и разбор препарата —
- * одно задание, где сразу есть препарат, его структуры и утверждения.
- */
-type TrainingFormat = "cards" | "complex";
-
-const TRAINING_FORMATS: Array<{ id: TrainingFormat; label: string }> = [
-  { id: "cards", label: "Карточки препаратов" },
-  { id: "complex", label: "Разбор препарата" },
-];
-
-/** Старые ссылки на отдельные режимы диагностикума ведут в объединённый разбор. */
-const LEGACY_FORMATS = new Set<DiagnosticumMode>([
-  "identify",
-  "structures",
-  "differential",
-  "schema",
-]);
-
-function formatFromParams(params: { get(key: string): string | null }): TrainingFormat {
-  const raw = params.get("format");
-  const found = TRAINING_FORMATS.find((item) => item.id === raw);
-  if (found) return found.id;
-  if (raw && LEGACY_FORMATS.has(raw as DiagnosticumMode)) return "complex";
-  // Старые ссылки на отдельный диагностикум.
-  return params.get("section") === "diagnosticum" ? "complex" : "cards";
-}
-
-type AnswerRow = {
-  id: string;
-  question_id: string;
-  order: number;
-  user_answer?: string | null;
-  is_correct?: boolean | null;
-  is_skipped?: boolean;
-  options: Array<{ id: string; label: string; correct?: boolean }>;
-  question_snapshot: TrainingQuestion;
-  review_snapshot?: any;
-};
 
 function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const searchParams = useSearchParams();

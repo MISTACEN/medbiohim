@@ -134,7 +134,7 @@ export default function TestRunner({
             : "Ключа в источнике нет — режим разбора без оценки"}
         </span>
         {questionGraded && multiple && !checked && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-warn-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--status-warn-fg)]">
             <ListChecks className="h-3.5 w-3.5" /> несколько ответов
           </span>
         )}

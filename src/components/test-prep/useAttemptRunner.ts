@@ -43,7 +43,9 @@ export function useAttemptRunner(testId: string) {
   const [subjectSlug, setSubjectSlug] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
+    // Отмена — через AbortController: ручной флаг «cancelled» в этом слое
+    // запрещён (D9), а после unmount сеть всё равно доводит ответ.
+    const controller = new AbortController();
     void (async () => {
       try {
         // 1) Запуск попытки (RPC создаёт snapshot и возвращает attempt)
@@ -59,16 +61,16 @@ export function useAttemptRunner(testId: string) {
         // 2) Вопросы теста через обычный GET (используется раннером подготовки)
         const t = await api<any>(endpoints.tests.detail(testId));
         if (!t.ok) { setError(describeApiError(t.error)); setLoading(false); return; }
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setAttemptId(attempt.id);
           setQuestions((t.data?.questions || []).filter((q: any) => q.is_published !== false));
           const slug = t.data?.subject_slug ?? t.data?.subject?.slug ?? t.data?.test?.subject_slug;
           if (typeof slug === "string") setSubjectSlug(slug);
           setLoading(false);
         }
-      } catch (e: unknown) { if (!cancelled) { setError(describeApiError(e as any)); setLoading(false); } }
+      } catch (e: unknown) { if (!controller.signal.aborted) { setError(describeApiError(e as any)); setLoading(false); } }
     })();
-    return () => { cancelled = true; };
+    return () => controller.abort();
   }, [testId, user?.groupId]);
 
   const q = questions[idx];

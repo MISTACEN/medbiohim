@@ -7,7 +7,7 @@ import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
 const health = new Hono<{ Bindings: Env }>();
 
 /** Маркер сборки: по нему видно, доехал ли конкретный коммит до прода. */
-export const API_REVISION = "2026-11-24-restore-verdict";
+export const API_REVISION = "2026-11-24-loc-split";
 
 function payload(env: Env) {
   const rid = requestId();

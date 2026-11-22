@@ -64,7 +64,8 @@ test("диагностикум: подсказки выдаются только
 });
 
 test("модель: четыре режима, штраф за подсказки и разбор ошибок", async () => {
-  const model = await read(MODEL);
+  // Типы вопроса и разбора вынесены в соседний types.ts: читаем оба файла.
+  const model = (await Promise.all([read(MODEL), read("workers/api/src/routes/diagnosticum/types.ts")])).join("\n");
   for (const mode of ["identify", "structures", "differential", "complex", "schema"]) {
     assert.ok(model.includes(`"${mode}"`), `нет режима ${mode}`);
   }
@@ -163,9 +164,11 @@ test("реестр эндпоинтов и разбор препарата вн�
   assert.ok(!page.includes("DiagnosticumRunner"), "свой рендер диагностикума на редиректе не нужен");
 
   const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
+  // Форматы задания вынесены из компонента в histologyFormat.ts.
+  const formats = await read("src/components/trainers/histologyFormat.ts");
   assert.ok(trainer.includes("<DiagnosticumRunner"), "разбор препарата рендерится в тренажёре");
   assert.ok(
-    trainer.includes('{ id: "complex", label: "Разбор препарата" }'),
+    formats.includes('{ id: "complex", label: "Разбор препарата" }'),
     "в форматах есть объединённый разбор препарата",
   );
 });
