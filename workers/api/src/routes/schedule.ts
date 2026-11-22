@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
+import { callerRoles } from "../lib/permissions";
 
 const schedule = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -86,13 +87,27 @@ schedule.get("/", requireAuth, async (c) => {
       })
       .filter(Boolean) as string[];
 
-    if (!groupIds.length) {
+    // Администратор ведёт группы, но сам в них не состоит: без членства он
+    // получал пустое расписание («0 занятий за семестр») даже когда группа
+    // выбрана в интерфейсе. Админу разрешаем явно запрошенную группу —
+    // ровно те строки, которые он и так видит в /admin/schedule; студенту
+    // по-прежнему отдаются только его группы.
+    let adminGroupAccess = false;
+    if (requestedGroup && !groupIds.includes(requestedGroup)) {
+      try {
+        adminGroupAccess = (await callerRoles(db, user.id)).includes("admin");
+      } catch {
+        adminGroupAccess = false;
+      }
+    }
+
+    if (!groupIds.length && !adminGroupAccess) {
       return c.json(ok({ items: [], source: "supabase", notice: "no_active_group" }, rid));
     }
 
     let targetGroups = groupIds;
     if (requestedGroup) {
-      if (!groupIds.includes(requestedGroup)) {
+      if (!groupIds.includes(requestedGroup) && !adminGroupAccess) {
         const { body, status } = fail("FORBIDDEN", "Вы не состоите в указанной учебной группе", 403, rid);
         return c.json(body, status as 403);
       }
