@@ -78,6 +78,13 @@ const nextConfig: NextConfig = {
       { source: "/me", destination: "/settings", permanent: false },
       // Help и changelog объединены: «Что нового» — вкладка страницы помощи.
       { source: "/changelog", destination: "/help?tab=news", permanent: false },
+      // Тьютор — вкладка хаба «Инструменты», а не отдельный экран: чат был
+      // продублирован на двух адресах.
+      { source: "/tutor", destination: "/tools?tab=tutor", permanent: false },
+      // /constructors — старая копия конструктора материалов (/builder).
+      { source: "/constructors", destination: "/builder", permanent: false },
+      // Учебный план — блок «План» страницы «Учёба».
+      { source: "/curriculum", destination: "/study#plan", permanent: false },
     ];
   },
 };

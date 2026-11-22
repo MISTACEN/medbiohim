@@ -12,7 +12,7 @@ import { Bot, Calculator, Languages } from "lucide-react";
 import clsx from "clsx";
 
 import { CalculatorsView } from "@/components/tools/CalculatorsView";
-import { StudyAssistant } from "@/components/study/StudyAssistant";
+import { TutorWorkspace } from "@/components/tutor/TutorWorkspace";
 
 type Tab = "calculators" | "tutor" | "languages";
 
@@ -120,14 +120,7 @@ function ToolsPageInner() {
           </Link>
         </div>
       ) : null}
-      {tab === "tutor" ? (
-        <div className="space-y-3">
-          <p className="text-sm text-[var(--muted)]">
-            Полный чат с историей и выбором предмета — <Link href="/tutor" className="font-semibold text-[var(--primary)]">на странице тьютора</Link>. Здесь — быстрый ассистент.
-          </p>
-          <StudyAssistant />
-        </div>
-      ) : null}
+      {tab === "tutor" ? <TutorWorkspace /> : null}
     </div>
   );
 }
