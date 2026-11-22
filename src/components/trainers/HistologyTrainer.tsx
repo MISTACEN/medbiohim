@@ -14,6 +14,7 @@ import { compareLessons, isElectronogramCard, lessonKeyOf } from "@/lib/histolog
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
 import { topicLabel, ImageBox, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
 import { HistologyAtlas } from "@/components/trainers/HistologyAtlas";
+import { DiagnosticumRunner } from "@/components/trainers/DiagnosticumRunner";
 import { groupAtlasCards } from "@/lib/histologyAtlas";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -55,7 +56,11 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const [labelMode, setLabelMode] = useState<TrainingLabelMode>("without");
   const [layout, setLayout] = useState<TrainingLayout>("top");
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [section, setSection] = useState<"atlas" | "trainer">("atlas");
+  // Атлас, тренажёр и диагностикум — три режима одного экрана: у них один и тот же
+  // банк препаратов, поэтому отдельной страницы диагностикума больше нет.
+  const [section, setSection] = useState<"atlas" | "trainer" | "diagnosticum">(
+    searchParams.get("section") === "diagnosticum" ? "diagnosticum" : "atlas",
+  );
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -267,16 +272,20 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
             <Link href="/subjects" className="inline-flex items-center gap-2 text-sm text-indigo-600"><ArrowLeft className="h-4 w-4" />К предметам</Link>
             <h1 className="page-title mt-3">Микропрепараты</h1>
             <p className="page-subtitle">
-              Атлас — только препараты; схемы, методички, тесты и учебники остаются в материалах предмета.
+              Атлас, тренажёр и диагностикум живут на одном экране: схемы, методички, тесты и
+              учебники остаются в материалах предмета.
             </p>
           </header>
         )}
-        {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас с подписями или тренажёр.</p></div>)}
+        {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас, тренажёр и диагностикум — по одному банку препаратов.</p></div>)}
 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас</button>
           <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Тренажёр</button>
+          <button type="button" onClick={() => setSection("diagnosticum")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "diagnosticum" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Диагностикум</button>
         </div>
+
+        {section === "diagnosticum" && <DiagnosticumRunner />}
 
         {section === "atlas" && (
           <HistologyAtlas

@@ -1,24 +1,11 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { DiagnosticumRunner } from "@/components/trainers/DiagnosticumRunner";
+import { redirect } from "next/navigation";
 
+/**
+ * Диагностикум больше не отдельная страница: это третий режим тренажёра
+ * (`/trainers/feed/histology?section=diagnosticum`), потому что атлас, тренажёр
+ * и диагностикум работают по одному банку препаратов. Старые ссылки и закладки
+ * продолжают работать через редирект.
+ */
 export default function DiagnosticumPage() {
-  return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <Link
-        href="/trainers"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-indigo-700"
-      >
-        <ArrowLeft className="h-4 w-4" /> Тренажёры
-      </Link>
-      <div>
-        <h1 className="page-title">Диагностикум</h1>
-        <p className="page-subtitle">
-          Четыре режима тренировки: определить препарат, найти диагностические структуры, отличить
-          похожие препараты и комплексные задания. Подсказки открываются по одной и снижают балл.
-        </p>
-      </div>
-      <DiagnosticumRunner />
-    </div>
-  );
+  redirect("/trainers/feed/histology?section=diagnosticum");
 }
