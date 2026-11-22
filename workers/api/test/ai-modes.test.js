@@ -114,6 +114,20 @@ test("во время теста можно спросить ИИ, не полу
   }
 });
 
+test("разбор ответа перепроверяет независимый арбитр", async () => {
+  const chat = await source("../src/routes/ai/chat.ts");
+  const text = await source("../src/routes/ai/helpers/text.ts");
+  assert.match(chat, /ai\.post\("\/check-answer"/);
+  // Арбитр не подстраивается ни под ключ, ни под студента.
+  assert.match(chat, /не подстраивайся под ключ и не защищай студента/);
+  assert.match(chat, /"verdict":"key\|user\|both"/);
+  assert.match(text, /export function parseAnswerCheck/);
+  // Фронт спрашивает арбитра параллельно с разбором и показывает расхождение.
+  const ui = await source("../../../src/components/tests/ExplainWithAi.tsx");
+  assert.match(ui, /aiCheckAnswer\(\{ question, key: correct, chosen/);
+  assert.match(ui, /доверяйте перепроверке/);
+});
+
 test("frontend renders sources and the explain-after-error button", async () => {
   const sources = await source("../../../src/components/ai/AnswerSources.tsx");
   assert.match(sources, /\/lectures\/\$\{encodeURIComponent\(source\.lecture_id\)\}/);

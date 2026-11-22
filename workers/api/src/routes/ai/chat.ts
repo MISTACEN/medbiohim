@@ -18,7 +18,7 @@ import { generateAiCompletion } from "../../../../../integrations/cloudflare-api
 // Корпус «Подготовка к ЦНС» для RAG тьютора (только physiology, вне лекций).
 
 const ai = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
-import { MODE_TEMPERATURE, normalizeChatMode, parseOralVerdict, trackedGeneration, systemPrompt, buildLectureContext, selectAnswerImages } from "./helpers";
+import { MODE_TEMPERATURE, normalizeChatMode, parseOralVerdict, parseAnswerCheck, trackedGeneration, systemPrompt, buildLectureContext, selectAnswerImages } from "./helpers";
 import type { ChatMessage, LectureCitation } from "./helpers";
 import { buildStudyContext } from "./study-context";
 
@@ -206,6 +206,83 @@ ai.post("/oral-evaluate", requireAuth, async (c) => {
     const status = reportedStatus === 429 || reportedStatus === 503 ? reportedStatus
       : reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
     const { body, status: responseStatus } = fail(String((error as any)?.code || (status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM")), error instanceof Error ? error.message : "ИИ-провайдеры временно недоступны", status, rid);
+    return c.json(body, responseStatus as 502 | 503);
+  }
+});
+
+/**
+ * Второе мнение по тестовому вопросу (арбитр). Маленькая модель получает
+ * только вопрос, ключ и выбор студента и отвечает строгим JSON. Смысл — не
+ * переписать разбор, а дать независимый вердикт: если он расходится с
+ * разбором, студент видит предупреждение, а не уверенное «ваш ответ вернее».
+ *
+ * Учёт — в общей фиче tutor_chat: отдельной строки в журнале ИИ нет, зато
+ * суточная квота и статистика остаются в одной колонке без миграции.
+ */
+ai.post("/check-answer", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const rl = await rateLimit(c.env, `ai:check:${user.id}`, 40, 300);
+  if (!rl.allowed) {
+    const { body, status } = fail("RATE_LIMIT", "Слишком много проверок подряд. Подождите пару минут.", 429, rid);
+    return c.json(body, status as 429);
+  }
+  let payload: { question?: string; key?: string; chosen?: string; options?: unknown } = {};
+  try { payload = await c.req.json(); } catch {
+    const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const question = String(payload.question || "").slice(0, 2000).trim();
+  const key = String(payload.key || "").slice(0, 500).trim();
+  const chosen = String(payload.chosen || "").slice(0, 500).trim();
+  if (!question || !key || !chosen) {
+    const { body, status } = fail("VALIDATION", "Нужны question, key и chosen", 400, rid);
+    return c.json(body, status as 400);
+  }
+  const options = (Array.isArray(payload.options) ? payload.options : [])
+    .map((option) => String(option || "").slice(0, 300)).filter(Boolean).slice(0, 8);
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: [
+        "Ты — независимый арбитр тестового вопроса по медицине.",
+        "Тебе дают вопрос, ответ из ключа и ответ студента. Определи, какой вариант фактически верен",
+        "по медицинским знаниям: не подстраивайся под ключ и не защищай студента.",
+        "Если верного варианта нет ни в ключе, ни у студента — это вердикт both.",
+        "Ответь СТРОГО в формате JSON без markdown-обёртки:",
+        '{"correct":"вариант, который верен по механизму","verdict":"key|user|both","why":"одна фраза обоснования"}',
+        "verdict: key — верен ключ; user — прав студент, а ключ ошибается; both — оба неверны.",
+      ].join("\n"),
+    },
+    {
+      role: "user",
+      content: [
+        "Вопрос: " + question,
+        options.length ? "Варианты:\n" + options.map((option, index) => `${String.fromCharCode(65 + index)}) ${option}`).join("\n") : "",
+        "Ответ в ключе: " + key,
+        "Ответ студента: " + chosen,
+      ].filter(Boolean).join("\n\n"),
+    },
+  ];
+  try {
+    const result = await trackedGeneration(c.env, messages, "auto", 0.1, {
+      route: "POST /ai/check-answer",
+      feature: "tutor_chat",
+      userId: user.id,
+      requestId: rid,
+    });
+    const parsed = parseAnswerCheck(result.text);
+    if (!parsed) {
+      const { body, status } = fail("AI_MALFORMED", "Арбитр вернул ответ не в том формате", 502, rid);
+      return c.json(body, status as 502);
+    }
+    return c.json(ok({ ...parsed, provider: result.provider, model: result.model }, rid));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown";
+    const reportedStatus = Number((error as any)?.status);
+    const status = reportedStatus === 429 || reportedStatus === 503 ? reportedStatus
+      : reason === "no_provider_configured" || reason === "requested_provider_not_configured" ? 503 : 502;
+    const { body, status: responseStatus } = fail(String((error as any)?.code || (status === 503 ? "AI_NOT_CONFIGURED" : "AI_UPSTREAM")), error instanceof Error ? error.message : status === 503 ? "Не настроен доступный AI-провайдер" : "AI-провайдеры временно недоступны", status, rid);
     return c.json(body, responseStatus as 502 | 503);
   }
 });

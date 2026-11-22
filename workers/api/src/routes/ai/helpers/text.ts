@@ -69,6 +69,37 @@ export function parseOralVerdict(raw: string): OralVerdict | null {
   }
 }
 
+/** Второе мнение по тестовому вопросу: вердикт независимого арбитра. */
+export type AnswerCheck = { verdict: "key" | "user" | "both"; correct: string; why: string };
+
+/**
+ * Разбор ответа арбитра. Модель просят отдать строгий JSON, но маленькие
+ * модели добавляют прозу и обёртку — берём первое валидное вхождение и
+ * нормализуем вердикт, чтобы фронт не сравнивал свободный текст.
+ */
+export function parseAnswerCheck(raw: string): AnswerCheck | null {
+  const text = String(raw || "");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(text.slice(start, end + 1)) as { correct?: unknown; verdict?: unknown; why?: unknown };
+    const verdict = String(parsed.verdict || "").trim().toLowerCase();
+    const normalized = /both|оба|неверн/.test(verdict) ? "both"
+      : /user|студент|your/.test(verdict) ? "user"
+        : /key|ключ/.test(verdict) ? "key"
+          : null;
+    if (!normalized) return null;
+    return {
+      verdict: normalized,
+      correct: String(parsed.correct || "").slice(0, 200).trim(),
+      why: String(parsed.why || "").slice(0, 600).trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Второй проход по уменьшенному запросу. Биндинг Workers AI отвечает ровно и
  * быстро на короткий промпт (3-7 с), но иногда зависает сверх 25 с — тогда

@@ -211,6 +211,10 @@ export type AiChatMode = "precise" | "fast";
 export async function aiChat(messages:Array<{role:"system"|"user"|"assistant";content:string}>,provider?:AiProvider,options?:{contextScope?:string;mode?:AiChatMode;subjectSlug?:string}){ return api<{message:{role:string;content:string};provider:string;model:string;mode?:string;sources?:AiSource[];images?:AiAnswerImage[]}>("/ai/chat",{method:"POST",body:JSON.stringify({messages,provider,context_scope:options?.contextScope,mode:options?.mode,subject_slug:options?.subjectSlug}),timeoutMs:60000}); }
 
 /* —— Устный экзамен: оценка расшифрованного ответа экзаменатором-ИИ (roadmap 2.8) —— */
+/* — Второе мнение по тестовому вопросу: арбитр «ключ / студент / оба неверны» — */
+export type AiAnswerCheck = { verdict: "key" | "user" | "both"; correct: string; why: string; provider: string; model: string };
+export async function aiCheckAnswer(payload:{question:string;key:string;chosen:string;options?:string[]}){ return api<AiAnswerCheck>("/ai/check-answer",{method:"POST",body:JSON.stringify(payload),timeoutMs:45000}); }
+
 export type OralVerdict = { score: number; verdict: string; missed: string[]; mistakes: string[]; follow_up: string; provider: string; model: string };
 export async function aiOralEvaluate(payload:{question:string;reference?:string;answer:string}){ return api<OralVerdict>("/ai/oral-evaluate",{method:"POST",body:JSON.stringify(payload),timeoutMs:60000}); }
 

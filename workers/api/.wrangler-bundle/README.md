@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "medbiohim-api" generated at 2026-11-22T15:18:56.230Z.

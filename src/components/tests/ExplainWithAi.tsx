@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Send, Sparkles } from "lucide-react";
-import { aiChat, type AiAnswerImage, type AiProvider } from "@/lib/features-api";
+import { aiChat, aiCheckAnswer, type AiAnswerCheck, type AiAnswerImage, type AiProvider } from "@/lib/features-api";
 import { getTrainerImageUrl } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import { getAccountSettings } from "@/lib/settings-api";
@@ -100,6 +100,38 @@ function initialPrompt({
 type Turn = { role: "user" | "assistant"; content: string };
 
 /**
+ * Строка второго мнения. Модель-арбитр отвечает только вердиктом, поэтому его
+ * можно сравнивать с вердиктом разбора механически: если они расходятся,
+ * студент видит предупреждение, а не уверенное «ваш ответ вернее».
+ */
+function ArbiterNote({ arbiter, firstAnswer }: { arbiter: AiAnswerCheck | null; firstAnswer: string }) {
+  if (!arbiter) return null;
+  const stated = /Оба ответа неверны/.test(firstAnswer) ? "both"
+    : /ваш ответ вернее/i.test(firstAnswer) ? "user"
+      : /Ключ верен/.test(firstAnswer) ? "key"
+        : null;
+  const disagree = Boolean(stated && stated !== arbiter.verdict);
+  const text = arbiter.verdict === "both"
+    ? `Перепроверка: оба ответа неверны — правильный ${arbiter.correct || "указан в разборе"}`
+    : arbiter.verdict === "user"
+      ? "Перепроверка: правы вы, в ключе ошибка"
+      : "Перепроверка: ключ верен";
+  return (
+    <div
+      className={
+        "mb-2 rounded-lg border px-2.5 py-1.5 text-[11px] leading-snug "
+        + (disagree
+          ? "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]"
+          : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)]")
+      }
+    >
+      {text}
+      {disagree ? " · разбор выше написан иначе — доверяйте перепроверке" : ""}
+    </div>
+  );
+}
+
+/**
  * Ответ модели в markdown. Берём чистый mdToHtml, а не TutorMarkdown: тот тянет
  * KaTeX/Mermaid и весь рендерер лекций, а здесь нужны абзацы, списки, таблицы
  * и жирный текст — ответ короткий.
@@ -163,6 +195,8 @@ export function ExplainWithAi({
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [provider, setProvider] = useState<AiProvider>("auto");
+  /** Второе мнение независимого арбитра: только вердикт, без разбора. */
+  const [arbiter, setArbiter] = useState<AiAnswerCheck | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -208,6 +242,14 @@ export function ExplainWithAi({
     historyRef.current = history;
     setImages([]);
     setSources(null);
+    setArbiter(null);
+    // Второе мнение — параллельно с разбором: слабая модель судит только
+    // вердикт, поэтому её ответ приходит раньше и не задерживает разбор.
+    if (!clarify && !review && correct && chosen) {
+      void aiCheckAnswer({ question, key: correct, chosen, options })
+        .then((response) => { if (response.ok) setArbiter(response.data); })
+        .catch(() => undefined);
+    }
     void send(history, []);
   }
 
@@ -238,6 +280,8 @@ export function ExplainWithAi({
 
       {answered ? (
         <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm leading-relaxed">
+          <ArbiterNote arbiter={arbiter} firstAnswer={shown.find((turn) => turn.role === "assistant")?.content || ""} />
+
           {shown.map((turn, index) => (
             turn.role === "user" ? (
               <p key={`u-${index}`} className="mt-3 border-t border-dashed border-[var(--border)] pt-2 text-xs font-semibold text-[var(--muted)]">

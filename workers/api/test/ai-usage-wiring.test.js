@@ -64,12 +64,14 @@ test("каждая точка вызова ИИ пишет строку в жу�
 
 test("ответ тьютора журналируется и в /ai/chat, и в истории чата", async () => {
   const ai = await readAiDomain();
-  // 4 точки: два маршрута тьютора + оценка устного ответа + конспект из файла.
-  assert.equal((ai.match(/trackedGeneration\(\s*c\.env/g) || []).length, 4, "все ИИ-маршруты журналируются");
+  // 5 точек: два маршрута тьютора + оценка устного ответа + конспект из файла
+  // + арбитр ответа на тестовый вопрос.
+  assert.equal((ai.match(/trackedGeneration\(\s*c\.env/g) || []).length, 5, "все ИИ-маршруты журналируются");
   assert.match(ai, /route: "POST \/ai\/chat"/);
   assert.match(ai, /route: "POST \/ai\/conversations\/:id\/messages"/);
   assert.match(ai, /route: "POST \/ai\/oral-evaluate"/);
   assert.match(ai, /route: "POST \/ai\/notes-from-file"/);
+  assert.match(ai, /route: "POST \/ai\/check-answer"/);
   // Диагностика провайдеров тоже видна в журнале.
   assert.match(ai, /feature: "diagnostics"/);
   assert.match(ai, /withAiCall(?:<[^>]*>)?\(\s*c\.env,/);
