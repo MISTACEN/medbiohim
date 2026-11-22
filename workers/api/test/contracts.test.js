@@ -380,8 +380,9 @@ test("admin test-question editor covers text, options, answer and type via the s
     "question-bank PUT must be admin+moderator only",
   );
   // type/text/answer/options заменяются целиком, is_published/difficulty и
-  // учебная привязка — опционально.
-  assert.match(route, /\{ type, text, answer, options: options \|\| \[\], updated_at/);
+  // учебная привязка — опционально. В questions НЕТ updated_at: поле в патче
+  // давало 42703 и 503 «Не удалось сохранить вопрос» на каждом сохранении.
+  assert.match(route, /const patch: Record<string, unknown> = \{ type, text, answer, options: options \|\| \[\] \}/);
   for (const field of ["is_published", "difficulty"]) {
     assert.ok(route.includes("patch." + field), "question-bank PUT drops field: " + field);
   }
