@@ -132,6 +132,7 @@ export function registerQuestions(admin: AdminApp) {
       // Версия — аудит: без неё правка всё равно сохраняется, поэтому ошибка
       // журнала только логируется и не превращает успешную запись в 503.
       let versionNo: number | null = null;
+      let versionErrorText: string | null = null;
       try {
         // row_key — jsonb: достаём id текстовым оператором, иначе сравнение не
         // совпадает, версия всегда считается первой и вставка падает на unique.
@@ -149,10 +150,12 @@ export function registerQuestions(admin: AdminApp) {
         if (versionWrite.error && service) versionWrite = await insertVersion(service);
         if (versionWrite.error) {
           console.warn("[admin:question-version]", versionWrite.error.message);
+          versionErrorText = String(versionWrite.error.message || versionWrite.error.code || "insert failed");
           versionNo = null;
         }
       } catch (versionError) {
         console.warn("[admin:question-version]", versionError instanceof Error ? versionError.message : String(versionError));
+        versionErrorText = versionError instanceof Error ? versionError.message : String(versionError);
         versionNo = null;
       }
 
@@ -173,7 +176,11 @@ export function registerQuestions(admin: AdminApp) {
         return c.json(body, status as 503);
       }
       if (!writeResult.data) return error(c, rid, 404, "NOT_FOUND", "Вопрос не найден");
-      return c.json(ok({ question: writeResult.data, version_no: versionNo }, rid));
+      return c.json(ok({
+        question: writeResult.data,
+        version_no: versionNo,
+        ...(versionNo ? {} : { version_error: versionErrorText }),
+      }, rid));
     } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_ERROR", "Не удалось выполнить операцию с вопросом"); }
   });
 }
