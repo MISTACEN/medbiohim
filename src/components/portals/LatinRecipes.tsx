@@ -95,9 +95,11 @@ export default function LatinRecipes({ embedded = false }: { embedded?: boolean 
         <div className="card p-5 text-sm text-slate-500">Ничего не найдено.</div>
       )}
 
+      {/* Номера рецептов повторяются между наборами (82–84 есть и в химических
+          элементах, и в дополнительном наборе), поэтому ключ — «набор + номер». */}
       <div className="grid gap-3 sm:grid-cols-2">
         {filtered.map((r) => (
-          <article key={r.num} className="card p-4">
+          <article key={`${r.group}-${r.num}`} className="card p-4">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="font-bold uppercase tracking-wide">№ {r.num} · {labelOf(r.group)}</span>
               {r.isNew && <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-bold text-indigo-600">новый</span>}

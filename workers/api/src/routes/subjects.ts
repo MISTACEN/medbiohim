@@ -6,6 +6,7 @@ import { callerRoles } from "../lib/permissions";
 import { cached } from "../lib/cache";
 import { getRedis } from "../lib/redis";
 import { paginate, parsePage } from "../lib/pagination";
+import { pickBestSubjectRow } from "./subjects-pick";
 
 const subjects = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -85,12 +86,9 @@ subjects.get("/", requireAuth, async (c) => {
     if (!slug) continue;
     const current = bySlug.get(slug);
     if (!current) { bySlug.set(slug, row); continue; }
-    // Дубль: оставляем строку с большей нагрузкой (часы), затем с кафедрой.
-    const better =
-      Number(row?.total_hours || 0) > Number(current?.total_hours || 0) ||
-      (Number(row?.total_hours || 0) === Number(current?.total_hours || 0) &&
-        !current?.specialty_slug && Boolean(row?.specialty_slug));
-    if (better) bySlug.set(slug, row);
+    // Строки одного предмета различаются курсом/семестром: в каталоге нужна одна,
+    // выбранная тем же правилом, что и в карточке.
+    bySlug.set(slug, pickBestSubjectRow([current, row]) ?? current);
   }
   // Пагинация необязательная: без limit/offset тело ответа прежнее ({ items }).
   const items = [...bySlug.values()];
@@ -118,20 +116,19 @@ subjects.get("/:id", requireAuth, async (c) => {
   const id = String(c.req.param("id") ?? "");
   const query = UUID.test(id)
     ? db.from("subjects").select("*").eq("id", id).limit(2)
-    : db.from("subjects").select("*").in("slug", slugVariants(id)).eq("is_active", true).limit(2);
+    : db.from("subjects").select("*").in("slug", slugVariants(id)).eq("is_active", true).limit(10);
   const { data: rows, error } = await query;
   if (error) { const { body, status } = fail("DB_UNAVAILABLE", "Subject unavailable", 503, rid); return c.json(body, status as 503); }
   // В БД один предмет может занимать несколько активных строк (по курсу и
-  // семестру) под одним и тем же слагом-алиасом. Сначала выигрывает точный
-  // слаг; если его нет — выбираем строку курса/семестра студента; иначе
-  // неоднозначность честно отдаётся как 409.
+  // семестру) под одним и тем же слагом-алиасом. Выбор детерминированный:
+  // 1) единственная строка с точным слагом (если остальные — алиасы);
+  // 2) строка курса/семестра студента, если она одна;
+  // 3) иначе та же строка, что и в каталоге (часы → кафедра → дата создания).
+  // Раньше третий случай отдавал 409 и предмет не открывался вовсе.
   let data = rows?.[0];
   if ((rows || []).length > 1) {
-    // 1) точный слаг помогает, только если он выделяет одну строку
-    //    (смешанные канонические/алиасные записи);
-    // 2) иначе строка курса/семестра студента;
-    // 3) иначе честный 409.
-    const exact = (rows || []).filter((row: any) => String(row.slug || "") === id);
+    const all = rows || [];
+    const exact = all.filter((row: any) => String(row.slug || "") === id);
     if (exact.length === 1) {
       data = exact[0];
     } else {
@@ -144,11 +141,10 @@ subjects.get("/:id", requireAuth, async (c) => {
         profileCourse = profileCourse || (profile as any)?.course_number || null;
         profileSemester = profileSemester || (profile as any)?.semester || null;
       }
-      const candidates = (rows || []).filter((row: any) =>
+      const candidates = all.filter((row: any) =>
         (profileCourse == null || Number(row.course_number) === Number(profileCourse)) &&
         (profileSemester == null || Number(row.semester) === Number(profileSemester)));
-      if (candidates.length === 1) data = candidates[0];
-      else { const { body, status } = fail("AMBIGUOUS_SUBJECT", "Предмет с таким адресом не уникален", 409, rid); return c.json(body, status as 409); }
+      data = pickBestSubjectRow(candidates.length ? candidates : all) ?? data;
     }
   }
   if (!data) { const { body, status } = fail("NOT_FOUND", "Not found", 404, rid); return c.json(body, status as 404); }
