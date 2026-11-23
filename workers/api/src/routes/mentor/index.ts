@@ -30,6 +30,7 @@ import {
 } from "./model";
 import { consumeMentorCode, storeMentorCode } from "./store";
 import documents from "./documents";
+import results from "./results";
 
 const mentor = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -231,5 +232,8 @@ mentor.post("/context", requireAuth, async (c) => {
 
 // Document Bridge: чтение файлов MEDBIOHIM сервером PdfMentor (HMAC, без сессии).
 mentor.route("/", documents);
+
+// Result Bridge: PdfMentor возвращает результаты обработки (HMAC, без сессии).
+mentor.route("/", results);
 
 export default mentor;

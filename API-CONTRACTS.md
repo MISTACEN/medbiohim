@@ -121,10 +121,18 @@ Browser / PWA
   Отказ по правам — `200 { allowed: false }` в `access` и `403` в `content`.
   Метаданные в `access`: `name` из `files.original_name`, `checksum` из
   `files.sha256`, `version` — `null` (версию оригинала ведёт PdfMentor).
-- Регистрация внешних документов, версии/checksum на стороне PdfMentor, Result
-  и Sync Bridge не реализованы.
+- `POST /api/v1/mentor/results` — Result Bridge: PdfMentor возвращает
+  результаты обработки (страницы, фрагменты, маршрут). Подпись та же, что у
+  Document Bridge. Ответ `200 { accepted: true, stored: true }`; отсутствие
+  файла — `200 { stored: false, reason: "NOT_FOUND" }`, а не `404` (PdfMentor
+  читает `404/405` как «эндпоинт не реализован» и перестаёт пушить). Повтор
+  той же версии перезаписывает результат (upsert по `file_id+user_id+version`),
+  таблица `bridge_document_results` закрыта для `anon`/`authenticated`.
+- Регистрация внешних документов и версии/checksum реализованы на стороне
+  PdfMentor (2026-11-23); Sync Bridge остаётся планом.
 
-Тесты контракта: `workers/api/test/mentor-bridge.test.js`.
+Тесты контракта: `workers/api/test/mentor-bridge.test.js`,
+`workers/api/test/mentor-documents.test.js`, `workers/api/test/mentor-results.test.js`.
 
 ## 9. Микропрепараты: методические карточки и диагностикум
 
