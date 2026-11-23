@@ -30,7 +30,15 @@ const q = async (s, p = []) => (await db.query(s, p)).rows;
 
 const argv = process.argv.slice(2);
 const archiveIndex = argv.indexOf("--archive-ids");
-const mode = argv.includes("--revert") ? "revert" : argv.includes("--apply") ? "apply" : archiveIndex > -1 ? "archive" : "plan";
+const mode = argv.includes("--revert")
+  ? "revert"
+  : argv.includes("--apply")
+    ? "apply"
+    : argv.includes("--resolve-conflicts")
+      ? "resolve"
+      : archiveIndex > -1
+        ? "archive"
+        : "plan";
 const carry = argv.includes("--carry");
 const revertPath = argv[argv.indexOf("--revert") + 1];
 const archiveIds = archiveIndex > -1 ? String(argv[archiveIndex + 1] || "").split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -74,6 +82,72 @@ if (mode === "revert") {
     await db.query("rollback");
     console.error("Откат:", error.message);
   }
+  await db.end();
+  process.exit(0);
+}
+
+// Одинаковый вопрос и одинаковые варианты, но разные ключи. Банк
+// local:histology-cyto-embryo-mixed-2007 содержит систематически перепутанные
+// ответы: во всех 28 группах, где рядом есть hist_mcq / histology-mbh, верный
+// ключ у hist_mcq («котиледон — тип гаструляции» — это ошибка). Такая копия не
+// несёт нового контента и учит неверному — её место в скрытых, а вопрос
+// остаётся в банке через верного двойника.
+const SUSPECT = "local:histology-cyto-embryo-mixed-2007";
+const TRUSTED = ["hist_mcq:", "histology-mbh:"];
+if (mode === "resolve") {
+  const rows = await q(
+    `select q.id, coalesce(s.slug,'—') slug, coalesce(q.source_key,'') source_key, left(q.text,70) text,
+            btrim(lower(regexp_replace(
+              replace(regexp_replace(coalesce(q.text, ''), '([0-9a-zA-Zа-яА-ЯёЁ])-([0-9a-zA-Zа-яА-ЯёЁ])', '\\1\\2', 'g'), 'ё', 'е'),
+              '[^0-9a-zA-Zа-яА-Я]+', ' ', 'g'))) k,
+            coalesce((select string_agg(coalesce(o->>'label',''), '|' order by coalesce(o->>'label',''))
+                       from jsonb_array_elements(coalesce(q.options,'[]'::jsonb)) o), '') labels,
+            coalesce((select o->>'label' from jsonb_array_elements(coalesce(q.options,'[]'::jsonb)) o
+                       where (o->>'correct')::boolean is true limit 1), '<не отмечен>') marked
+       from questions q join subjects s on s.id=q.subject_id
+      where q.is_published and q.archived_at is null and ${NOT_PHOTO}`,
+  );
+  const g = new Map();
+  for (const r of rows) {
+    const key = `${r.k}|${r.labels}`;
+    const list = g.get(key) ?? [];
+    list.push(r);
+    g.set(key, list);
+  }
+  const victims = [];
+  const unresolved = [];
+  for (const list of g.values()) {
+    if (list.length < 2 || new Set(list.map((r) => r.marked)).size < 2) continue;
+    const trusted = list.filter((r) => TRUSTED.some((p) => r.source_key.startsWith(p)));
+    const suspects = list.filter((r) => r.source_key.startsWith(SUSPECT));
+    if (trusted.length && suspects.length && new Set([...trusted, ...suspects].map((r) => r.marked)).size > 1) {
+      for (const s of suspects) victims.push({ id: s.id, slug: s.slug, text: s.text, keepId: trusted[0].id });
+    } else {
+      unresolved.push(list.map((r) => `${r.id} ${r.source_key}`).join(" | ") + ` — «${list[0].text}»`);
+    }
+  }
+  console.log(`К скрытию как заведомо неверные копии: ${victims.length}`);
+  console.log(`Требуют решения человеком: ${unresolved.length}`);
+  for (const u2 of unresolved) console.log(`  · ${u2}`);
+  if (!victims.length) {
+    console.log("Нечего скрывать.");
+    await db.end();
+    process.exit(0);
+  }
+  await db.query("begin");
+  const res = await db.query(
+    `update questions set is_published = false
+      where id = any($1::uuid[]) and is_published and archived_at is null`,
+    [victims.map((v) => v.id)],
+  );
+  await db.query("commit");
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const logPath = `tmp/dedup-conflicts-${stamp}.json`;
+  fs.writeFileSync(logPath, JSON.stringify({
+    appliedAt: new Date().toISOString(), hidden: victims, inserted: [], skipped: [], archived: [],
+  }, null, 2));
+  console.log(`Снято с публикации: ${res.rowCount}; лог: ${logPath}`);
+  console.log(`Откат: node scripts/apply-question-dedup.mjs --revert ${logPath}`);
   await db.end();
   process.exit(0);
 }
