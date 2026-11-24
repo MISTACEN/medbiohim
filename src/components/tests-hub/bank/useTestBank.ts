@@ -91,6 +91,7 @@ export function useTestBank(params: Promise<{ id: string }>) {
             is_closed: typeof q.is_closed === "boolean" ? q.is_closed : null,
             requires_order: q.requires_order === true,
             topicTitle: q.topic_title == null ? null : String(q.topic_title),
+            media: Array.isArray(q.media) ? (q.media as BankQuestion["media"]) : [],
           }))
         : [],
       progress: bankProgress.ok ? bankProgress.data : null,

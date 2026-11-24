@@ -3,6 +3,7 @@
 import { Pencil, X } from "lucide-react";
 
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
+import { QuestionMedia } from "@/components/test-prep/QuestionMedia";
 import { AnswerOption } from "@/components/questions/AnswerOption";
 import { QuestionReport } from "@/components/QuestionReport";
 import { correctOf, keyOf, labelOf, type BankQuestion } from "./model";
@@ -79,6 +80,7 @@ export function BankQuestions({ page }: Props) {
                 )}
               </div>
               <ChemRichText text={q.text} className="mt-3 font-medium" />
+              <QuestionMedia media={q.media} className="mt-3 space-y-2" />
 
               <div className="mt-3 space-y-2">
                 {q.options.map((option, oi) => {

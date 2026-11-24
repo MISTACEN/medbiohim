@@ -10,6 +10,7 @@ import { optionLabel } from "@/components/test-prep/useAttemptRunner";
 import { AnswerVerdict } from "@/components/test-prep/AnswerVerdict";
 import { ChoiceAnswer } from "@/components/test-prep/ChoiceAnswer";
 import { ClozeAnswer, MatchAnswer, OpenAnswer } from "@/components/test-prep/OtherAnswers";
+import { QuestionMedia } from "@/components/test-prep/QuestionMedia";
 import type { PreparationController } from "@/components/test-prep/usePreparation";
 import type { QuestionView } from "@/components/test-prep/view";
 
@@ -30,6 +31,7 @@ export function QuestionCard({ page, view }: { page: PreparationController; view
         </div>
       </div>
       <ChemRichText text={String(q.text || q.body || "")} className="text-lg font-semibold" />
+      <QuestionMedia media={q.media} />
 
       {/* Пометка о нескольких верных: иначе выбор идёт наугад и теряется
           второй правильный вариант. */}

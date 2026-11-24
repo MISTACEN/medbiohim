@@ -31,7 +31,7 @@ tests.get("/preview/:id", requireAuth, async (c) => {
       return c.json(body, status as 404);
     }
     const { data: links, error: linkError } = await db.from("test_questions")
-      .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,archived_at,topic:topics(title))")
+      .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,media,difficulty,is_published,archived_at,topic:topics(title))")
       .eq("test_id", id)
       .order("order_index", { ascending: true });
     if (linkError) {
@@ -162,7 +162,7 @@ tests.get("/:id", requireAuth, async (c) => {
       }
     }
     const { data: links, error: linkError } = await db.from("test_questions")
-      .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,difficulty,is_published,archived_at,topic:topics(title))")
+      .select("order_index,question:questions(id,subject_id,module_id,topic_id,type,text,answer,options,media,difficulty,is_published,archived_at,topic:topics(title))")
       .eq("test_id", id)
       .order("order_index", { ascending: true });
     if (linkError) {

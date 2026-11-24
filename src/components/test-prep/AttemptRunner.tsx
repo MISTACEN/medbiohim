@@ -7,6 +7,7 @@ import { AnswerOption } from "@/components/questions/AnswerOption";
 import { ChemRichText } from "@/modules/subjects/submodules/chemistry";
 import { ExplainWithAi } from "@/components/tests/ExplainWithAi";
 import { AttemptFinished } from "./AttemptFinished";
+import { QuestionMedia } from "./QuestionMedia";
 import { optionLabel } from "./useAttemptRunner";
 import type { AttemptRunnerController } from "./useAttemptRunner";
 
@@ -38,6 +39,7 @@ export function AttemptRunner({ page }: { page: AttemptRunnerController }) {
       </header>
       <div className="card space-y-4 p-5">
         <ChemRichText text={q.text} className="text-lg font-semibold" />
+        <QuestionMedia media={(q as { media?: Parameters<typeof QuestionMedia>[0]["media"] }).media} />
         {/* Пометка о нескольких верных: без неё студент выбирает наугад и
             теряет балл на втором правильном варианте. */}
         {isClosed && isMulti && !checked[q.id] ? (
@@ -50,7 +52,10 @@ export function AttemptRunner({ page }: { page: AttemptRunnerController }) {
           <div className="space-y-2">
             {entries.map(({ option, key, index }) => {
               const selected = selectedKeys.includes(key);
-              const isCorrect = checked[q.id] && gradingRow?.is_correct === true && key === gradingRow?.correct_keys?.[0];
+              // Несколько верных вариантов: подсвечиваем ВСЕ ключи, а не первый,
+              // иначе студент видит одну «галочку» и решает, что ответил частично.
+              const isCorrect = checked[q.id] && gradingRow?.is_correct === true
+                && (gradingRow?.correct_keys || []).includes(key);
               const label = optionLabel(option);
               return (
                 <AnswerOption key={key + "-" + index} as="label" variant="choice"

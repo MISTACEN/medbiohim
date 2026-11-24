@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { ok, fail, requestId } from "../lib/response";
 import { requireAuth, type AuthVariables } from "../middleware/auth";
 import { logActivity } from "../lib/activity";
+import { attachQuestionMedia } from "../lib/question-media";
 // Reuse the archived, already hardened Supabase/RLS preparation implementation while
 // the API is consolidated into one Worker. This is bundled into this Worker, not a
 // runtime proxy to PHP/SpaceWeb or the Shadow Worker.
@@ -98,6 +99,7 @@ preparation.post("/:id/preparation/start", requireAuth, async (c) => {
       const deadline = await loadDeadline(c.get("supabase"), String(result.data.session.id));
       if (deadline) result.data.session.deadline_at = deadline;
     }
+    await attachQuestionMedia(c.get("supabase"), result?.data?.questions);
     return respond(c, rid, result, "Не удалось начать подготовку");
   } catch (error) {
     console.error("MEDBIOHIM_PREPARATION_START_ROUTE", String(error));
@@ -119,6 +121,7 @@ preparation.get("/preparation/:id", requireAuth, async (c) => {
       const deadline = await loadDeadline(c.get("supabase"), String(result.data.session.id));
       if (deadline) result.data.session.deadline_at = deadline;
     }
+    await attachQuestionMedia(c.get("supabase"), result?.data?.questions);
     return respond(c, rid, result, "Подготовка временно недоступна");
   } catch {
     const { body, status } = fail("PREPARATION_UNAVAILABLE", "Подготовка временно недоступна", 503, rid);
@@ -165,6 +168,7 @@ preparation.post("/preparation/:id/finish", requireAuth, async (c) => {
     // честно помечаем, что лимит был превышен.
     const deadline = await loadDeadline(c.get("supabase"), id);
     const result = await finishSupabasePreparation(c.req.raw.clone(), c.env, id);
+    await attachQuestionMedia(c.get("supabase"), result?.data?.questions);
     if (result?.ok && result.data && deadline && isExpired(deadline)) {
       result.data.time_exceeded = true;
       result.data.deadline_at = deadline;

@@ -77,7 +77,14 @@ export function useAttemptRunner(testId: string) {
   const options = useMemo(() => (Array.isArray(q?.options) ? q.options : []), [q]);
   const entries = useMemo(() => displayOptionEntries(q, options as any[], optionKey), [q, options]);
   const isClosed = q?.is_closed !== false && options.length > 0;
-  const isMulti = q?.allow_multiple === true || ((grading[q?.id]?.correct_keys as string[] | undefined)?.length ?? 0) > 1;
+  // Мультивыбор определяем и до проверки: у вопроса может быть несколько
+  // верных пунктов в options, а вердикт сервера приходит только после ответа.
+  const localCorrectCount = options.filter(
+    (option: unknown) => option && typeof option === "object" && (option as { correct?: unknown }).correct === true,
+  ).length;
+  const isMulti = q?.allow_multiple === true
+    || localCorrectCount > 1
+    || ((grading[q?.id]?.correct_keys as string[] | undefined)?.length ?? 0) > 1;
 
   function toggle(key: string) {
     if (!q || checked[q.id] || busy) return;

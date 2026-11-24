@@ -10,6 +10,7 @@ export type BankQuestion = {
   is_closed?: boolean | null;
   requires_order?: boolean;
   topicTitle?: string | null;
+  media?: Array<{ url?: string; label?: string; width?: number; height?: number; alt?: string }>;
 };
 
 export type EditOption = { label: string; correct: boolean };

@@ -1,5 +1,6 @@
 import { ok, fail, requestId } from "../../lib/response";
 import { requireAuth } from "../../middleware/auth";
+import { attachQuestionMedia } from "../../lib/question-media";
 import { UUID, invalid, rpcResult } from "./shared";
 
 import type { TestsRouter } from "./types";
@@ -11,6 +12,7 @@ async function startAttempt(c: any, rid: string, testId: string) {
   if (!UUID.test(testId) || (groupId && !UUID.test(groupId))) return invalid(c, rid, "Некорректный ID теста или группы");
   try {
     const { data, error } = await db.rpc("medbiohim_start_test_attempt", { p_test_id: testId, p_group_id: groupId || null });
+    await attachQuestionMedia(db, (data as any)?.questions);
     return rpcResult(c, rid, data, error, "Не удалось начать тест", "attempt");
   } catch {
     const { body, status } = fail("ATTEMPT_START_UNAVAILABLE", "Не удалось начать тест", 503, rid);
