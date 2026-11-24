@@ -67,6 +67,16 @@ export function normalizeChemistryItem(raw: any, doc: any): Record<string, unkno
     answer: answer || null,
     answer_status: raw?.answer_status || (answer ? "prepared_from_text" : "unprepared"),
     options: Array.isArray(raw?.options) && raw.options.length ? raw.options : undefined,
+    // Позиция может иметь несколько верных вариантов (например, «выберите все
+    // соединения, которые гидролизуются»), пары соответствия и рисунки из
+    // сборника. Эти поля необязательны: старые документы их просто не содержат.
+    answer_indexes: Array.isArray(raw?.answer_indexes) && raw.answer_indexes.length ? raw.answer_indexes : undefined,
+    pairs_left: Array.isArray(raw?.pairs_left) && raw.pairs_left.length ? raw.pairs_left : undefined,
+    answer_pairs: Array.isArray(raw?.answer_pairs) && raw.answer_pairs.length ? raw.answer_pairs : undefined,
+    media: Array.isArray(raw?.media) && raw.media.length ? raw.media : undefined,
+    options_on_figure: raw?.options_on_figure === true || undefined,
+    theme: String(raw?.theme || "").trim() || undefined,
+    chemistry_note: raw?.chemistry_note ? String(raw.chemistry_note) : undefined,
     source: String(raw?.source || raw?.source_document || doc?.title || ""),
     source_number: raw?.source_number ?? (raw?.num != null ? String(raw.num) : ""),
     subject_slug: doc?.subject_slug || "",
