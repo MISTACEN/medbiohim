@@ -261,3 +261,48 @@ export async function listPreparationStructures() {
     endpoints.preparations.structures(),
   );
 }
+
+// --- Свои препараты студента ------------------------------------------------
+// Личные карточки владельца (`public.user_preparations` под RLS). Кэш здесь не
+// используется: список меняется сразу после добавления или удаления.
+
+export type MyPreparation = {
+  id: string;
+  subject_slug: string;
+  name: string;
+  organ: string | null;
+  stain: string | null;
+  description: string | null;
+  /** Готовая ссылка на фото: внешняя, статическая или подписанная Worker’ом. */
+  image: string | null;
+  image_expires_at: string | null;
+  created_at: string;
+};
+
+export async function listMyPreparations(subjectSlug = "histology") {
+  const query = new URLSearchParams({ subject: subjectSlug }).toString();
+  return api<{ items: MyPreparation[]; count: number }>(
+    endpoints.content.trainersMyPreparations(query),
+  );
+}
+
+export async function createMyPreparation(payload: {
+  name: string;
+  organ?: string;
+  stain?: string;
+  description?: string;
+  image_url?: string;
+  file_id?: string | null;
+  subject_slug?: string;
+}) {
+  return api<{ item: { id: string } }>(endpoints.content.trainersMyPreparations(), {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteMyPreparation(id: string) {
+  return api<{ deleted: boolean }>(endpoints.content.trainersMyPreparation(id), {
+    method: "DELETE",
+  });
+}

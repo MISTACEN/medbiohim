@@ -165,6 +165,9 @@ export const endpoints = {
     trainerFeedImageLabel: (): string => "/trainers/feed/:id/image",
     trainerFeedStats: (): string => "/trainers/feed/stats",
     trainerFeedAnswer: (): string => "/trainers/feed/answer",
+    /** Свои препараты студента (личные, только владелец; не кэшируются). */
+    trainersMyPreparations: (query?: string): string => withQuery("/trainers/feed/mine", query),
+    trainersMyPreparation: (id: string): string => `/trainers/feed/mine/${enc(id)}`,
     attestations: (query?: string): string => withQuery("/attestations", query),
     attestation: (subjectSlug: string, slug: string): string => `/attestations/${enc(subjectSlug)}/${enc(slug)}`,
     lessonPlan: (query?: string): string => withQuery("/lesson-plan", query),

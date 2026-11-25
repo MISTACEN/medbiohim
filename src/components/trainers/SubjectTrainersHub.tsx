@@ -11,7 +11,8 @@
  * экрана и без промежуточного меню.
  */
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Brain, Check, Droplets, Flame, FlaskConical, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import { BookOpen, Brain, Check, Droplets, Flame, FlaskConical, ImagePlus, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import MyPreparations from "@/components/trainers/MyPreparations";
 import Labs from "@/components/Labs";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
@@ -37,6 +38,7 @@ const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string
 /** Разделы страницы: id — якорь, по нему прыгают чипы навигации. */
 const SECTIONS: Array<{ id: string; label: string; Icon: typeof Droplets }> = [
   { id: "histology-atlas", label: "Препараты и диагностикум", Icon: Microscope },
+  { id: "my-preparations", label: "Свои препараты", Icon: ImagePlus },
   { id: "leukocytes", label: "Лейкоцитарная формула", Icon: Droplets },
   { id: "norms", label: "Возрастные нормы", Icon: Table2 },
   { id: "meaning", label: "Ответ по смыслу", Icon: Sparkles },
@@ -281,6 +283,7 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
           Icon={Microscope}
         />
         <HistologyTrainer embedded />
+        <MyPreparations subjectSlug="histology" />
       </section>
 
       <section className="space-y-4 border-t border-[var(--border)] pt-6">
