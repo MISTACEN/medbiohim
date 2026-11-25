@@ -42,6 +42,10 @@ export async function getTestBank(id: string, groupId?: string) {
 export type AssignedTest = {
   id: string;
   test_id: string;
+  /** Предмет теста — нужен для блока назначений на странице предмета. */
+  subject_id?: string | null;
+  /** Группа назначения; null — персональное назначение. */
+  group_id?: string | null;
   title: string | null;
   due_at: string | null;
   time_limit_sec: number | null;

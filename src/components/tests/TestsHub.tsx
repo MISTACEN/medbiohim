@@ -67,6 +67,7 @@ export function TestsHub({
   autoStart = false,
   highlightTestId = "",
   hideHeader = false,
+  hideAssigned = false,
 }: {
   subjectId?: string;
   subjectSlug?: string;
@@ -82,6 +83,8 @@ export function TestsHub({
   highlightTestId?: string;
   /** Страница сама рисует шапку (новая страница тестов) — не дублируем h1. */
   hideHeader?: boolean;
+  /** Назначения рисует страница выше (блок «Назначено преподавателем» первым). */
+  hideAssigned?: boolean;
 }) {
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<TestItem[]>([]);
@@ -337,7 +340,7 @@ export function TestsHub({
   return (
     <section className="space-y-4">
       {!embedded && <ContinueCard />}
-      {!embedded && <AssignedTests />}
+      {!embedded && !hideAssigned && <AssignedTests />}
 
       {!embedded && !hideHeader && (
         <header className="flex flex-wrap items-end justify-between gap-3">

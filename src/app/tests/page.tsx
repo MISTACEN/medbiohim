@@ -12,6 +12,7 @@ import { TestsPageHero } from "@/components/tests-hub/catalog/TestsPageHero";
 import { TestsViewNav } from "@/components/tests-hub/catalog/TestsViewNav";
 import { useTestsCatalog } from "@/components/tests-hub/catalog/useTestsCatalog";
 import TestsHub from "@/components/tests/TestsHub";
+import { AssignedTests } from "@/components/tests/AssignedTests";
 import { RecommendedTests } from "@/components/tests/RecommendedTests";
 import { PracticeView } from "@/components/practice/PracticeView";
 
@@ -45,8 +46,10 @@ function TestsPageInner() {
       <TestsViewNav page={page} />
 
       <div className="space-y-5">
+        {/* Назначения — первым блоком: это контролируемая работа со сроком. */}
+        {page.view === "tests" && <AssignedTests />}
         {page.view === "tests" && <RecommendedTests />}
-        {page.view === "tests" && <TestsHub highlightTestId={page.openTestId} hideHeader />}
+        {page.view === "tests" && <TestsHub highlightTestId={page.openTestId} hideHeader hideAssigned />}
 
         {page.view === "questions" && <PracticeView compact />}
 
