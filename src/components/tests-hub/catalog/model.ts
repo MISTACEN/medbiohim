@@ -1,6 +1,6 @@
-import { ClipboardCheck, FlaskConical, History } from "lucide-react";
+import { BookOpenCheck, ClipboardCheck, FlaskConical, History } from "lucide-react";
 
-export type View = "tests" | "chemistry" | "history";
+export type View = "tests" | "questions" | "chemistry" | "history";
 
 /** Серверный статус попытки — студенту нужен русский текст, а не сырой enum. */
 const ATTEMPT_STATUS: Record<string, string> = {
@@ -23,6 +23,7 @@ export function attemptStatusText(status: unknown): string {
 
 export const VIEWS: Array<{ id: View; label: string; Icon: typeof ClipboardCheck }> = [
   { id: "tests", label: "Тесты и банки", Icon: ClipboardCheck },
+  { id: "questions", label: "База вопросов", Icon: BookOpenCheck },
   { id: "chemistry", label: "Химия", Icon: FlaskConical },
   { id: "history", label: "История попыток", Icon: History },
 ];

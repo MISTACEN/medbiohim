@@ -175,6 +175,19 @@ export function buildHref(test: TestItem, mode: Mode, count: number) {
   return `/tests/preparation/${encodeURIComponent(test.id)}?${params.toString()}`;
 }
 
+/**
+ * Открыть экран запуска банка: режим, количество и состав выбираются уже там.
+ * Список банков больше не задаёт режим за студента — иначе один и тот же
+ * выбор приходилось делать дважды (в списке и на экране запуска).
+ */
+export function preparationHref(test: TestItem) {
+  const params = new URLSearchParams();
+  const subject = subjectLabel(test.subjectSlug, test.subjectName);
+  if (subject) params.set("subject", subject);
+  const qs = params.toString();
+  return `/tests/preparation/${encodeURIComponent(test.id)}${qs ? `?${qs}` : ""}`;
+}
+
 /** Пройти только часть банка: позиции 1-based в порядке методички. */
 export function buildRangeHref(test: TestItem, from: number, to: number) {
   const params = new URLSearchParams();

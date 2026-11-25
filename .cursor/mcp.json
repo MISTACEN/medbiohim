@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "stitch": {
+      "url": "https://stitch.googleapis.com/mcp",
+      "headers": {
+        "Accept": "application/json, text/event-stream",
+        "Authorization": "Bearer ${env:STITCH_ACCESS_TOKEN}"
+      }
+    }
+  }
+}

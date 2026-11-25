@@ -26,6 +26,34 @@
       "sourceType": "github",
       "skillPath": "skills/modern-web-guidance/SKILL.md",
       "computedHash": "d9f3ceba8b5c77b12ae6f852932a349843ce086d03ce76ab5e2257e7e5acd16d"
+    },
+    "stitch-extract-design-md": {
+      "source": "google-labs-code/stitch-skills",
+      "commit": "75f4696f162000fb69fca6a31489b5b21d47a506",
+      "sourceType": "github",
+      "skillPath": "plugins/stitch-design/skills/extract-design-md/SKILL.md",
+      "computedHash": "7043172cca4ff2003686118202f3a16aacbb6cf17e6f0187d11ed2f7c0dad5d5"
+    },
+    "stitch-generate-design": {
+      "source": "google-labs-code/stitch-skills",
+      "commit": "75f4696f162000fb69fca6a31489b5b21d47a506",
+      "sourceType": "github",
+      "skillPath": "plugins/stitch-design/skills/generate-design/SKILL.md",
+      "computedHash": "cda92e2df63bec22d3ae93aa42233a02398f10d08890a48fc86637293a525d28"
+    },
+    "stitch-manage-design-system": {
+      "source": "google-labs-code/stitch-skills",
+      "commit": "75f4696f162000fb69fca6a31489b5b21d47a506",
+      "sourceType": "github",
+      "skillPath": "plugins/stitch-design/skills/manage-design-system/SKILL.md",
+      "computedHash": "729e353b2e420243adfe21dc1e07c3a69a5eae1a434cff1dd5a71a0f676fb70c"
+    },
+    "stitch-react-components": {
+      "source": "google-labs-code/stitch-skills",
+      "commit": "75f4696f162000fb69fca6a31489b5b21d47a506",
+      "sourceType": "github",
+      "skillPath": "plugins/stitch-build/skills/react-components/SKILL.md",
+      "computedHash": "18af5c0556da52765aa9eb5a899805bb6a94831011a4800ee221de02617b3f0e"
     }
   }
 }

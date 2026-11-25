@@ -56,3 +56,10 @@ tutor-*.png
 /screenshots/
 # Бандл wrangler dry-run: собирается при `npm run check`, в git не нужен
 workers/api/.wrangler-bundle/
+
+# Stitch MCP: локальный gcloud и его креды (не коммитим)
+.stitch/gcloud/
+.stitch/cache/
+.stitch/adc/
+.stitch/key
+.stitch/auth*.json

@@ -27,10 +27,7 @@ export function BankQuestions({ page }: Props) {
   return (
     <section className="card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold">Все вопросы и ответы</h2>
-          <p className="text-sm text-slate-500">Эталон выделен отдельно; для вопросов с несколькими правильными вариантами показаны все правильные пункты.</p>
-        </div>
+        <h2 className="text-lg font-bold">Все вопросы и ответы</h2>
         <button
           type="button"
           onClick={() => setShowAnswers((v) => !v)}

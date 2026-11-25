@@ -1,9 +1,10 @@
 "use client";
 
-import type React from "react";
+import { useState, type ReactNode } from "react";
 
-import { Check, SkipForward, X } from "lucide-react";
+import { BookOpenCheck, Check, SkipForward, X } from "lucide-react";
 import { AnswerOption } from "@/components/questions/AnswerOption";
+import { PreparationGuidePanel } from "@/components/trainers/PreparationGuidePanel";
 
 type Option = { id: string; label: string; correct?: boolean };
 type CapSlot = { kind?: string; key?: string | null; label?: string };
@@ -25,7 +26,9 @@ export type HistologyQuestionProps = {
   labelMode?: string | null;
   contentType?: string | null;
   working?: boolean;
-  ImageBox: (props: { id: string; variant?: string }) => React.ReactNode;
+  /** Ключ методической карточки: после ответа открывается рядом с разбором. */
+  guideKey?: string | null;
+  ImageBox: (props: { id: string; variant?: string }) => ReactNode;
   onAnswer: (value: string | null, skip?: boolean) => void;
 };
 
@@ -40,9 +43,11 @@ export function HistologyQuestionCard({
   labelMode,
   contentType,
   working = false,
+  guideKey = null,
   ImageBox,
   onAnswer,
 }: HistologyQuestionProps) {
+  const [guideOpen, setGuideOpen] = useState(false);
   const q = a.question_snapshot as any;
   const answeredNow = a.user_answer != null || a.is_skipped;
   const manual = labelMode === "manual";
@@ -240,6 +245,27 @@ export function HistologyQuestionCard({
               ))}
             </ul>
           </div>
+        ) : null}
+        {answeredNow && guideKey ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setGuideOpen(true)}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-800 hover:bg-indigo-100"
+            >
+              <BookOpenCheck className="h-4 w-4" /> Методичка препарата
+            </button>
+            <span className="text-xs text-slate-500">
+              как искать структуры и что обычно путают
+            </span>
+          </div>
+        ) : null}
+        {guideOpen && guideKey ? (
+          <PreparationGuidePanel
+            guideKey={guideKey}
+            title={showPrepName || "Препарат"}
+            onClose={() => setGuideOpen(false)}
+          />
         ) : null}
       </div>
     </article>

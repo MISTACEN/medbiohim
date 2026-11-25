@@ -1,0 +1,62 @@
+{
+  "diagnostics": 1,
+  "title": "Первая диагностика · экзаменационные препараты",
+  "audience": "леч., пед., МБХ ф-ты",
+  "sections": [
+    {
+      "id": "cytology",
+      "title": "Цитология",
+      "items": [
+        { "exam": "1.1", "slug": "cytology-fat-inclusions", "name": "Жировые включения" },
+        { "exam": "1.2", "slug": "cytology-mitosis", "name": "Митоз" }
+      ]
+    },
+    {
+      "id": "embryology",
+      "title": "Эмбриология",
+      "items": [
+        { "exam": "2.1", "slug": "embryology-sperm", "name": "Сперматозоиды" },
+        { "exam": "2.2", "slug": "embryology-egg", "name": "Яйцеклетка" },
+        { "exam": "2.3", "slug": "embryology-axial-organs", "name": "Осевые органы" }
+      ]
+    },
+    {
+      "id": "epithelium",
+      "title": "Эпителиальные ткани",
+      "items": [
+        { "exam": "3.1", "slug": "epithelium-columnar-intestine", "name": "Цилиндрический эпителий (тонкая кишка)" },
+        { "exam": "3.2", "slug": "epithelium-ciliated-trachea", "name": "Мерцательный эпителий (трахея)" },
+        { "exam": "3.3", "slug": "epithelium-nonkeratinized-cornea", "name": "Многослойный плоский неороговевающий (роговица)" },
+        { "exam": "3.4", "slug": "epithelium-transitional-bladder", "name": "Многослойный переходный (мочевой пузырь)" }
+      ]
+    },
+    {
+      "id": "connective",
+      "title": "Соединительные и хрящевые ткани",
+      "items": [
+        { "exam": "4.1", "slug": "ct-blood-smear", "name": "Кровь мазок" },
+        { "exam": "4.2", "slug": "ct-tendon", "name": "Сухожилие" },
+        { "exam": "4.3", "slug": "ct-hyaline-cartilage", "name": "Гиалиновый хрящ" },
+        { "exam": "4.4", "slug": "ct-elastic-cartilage", "name": "Эластический хрящ" }
+      ]
+    },
+    {
+      "id": "bone-muscle",
+      "title": "Костные и мышечные ткани",
+      "items": [
+        { "exam": "5.1", "slug": "bone-tubular", "name": "Трубчатая кость (диафиз)" },
+        { "exam": "5.2", "slug": "bone-development", "name": "Развитие кости на месте мезенхимы" },
+        { "exam": "5.3", "slug": "muscle-striated", "name": "Поперечно-полосатая скелетная мышечная ткань" }
+      ]
+    },
+    {
+      "id": "nerve",
+      "title": "Нервная ткань",
+      "items": [
+        { "exam": "6.1", "slug": "nerve-myelin", "name": "Миелиновые нервные волокна" },
+        { "exam": "6.2", "slug": "nerve-astrocytes", "name": "Астроцитарная глия" },
+        { "exam": "6.3", "slug": "nerve-pacinian", "name": "Пластинчатое тельце" }
+      ]
+    }
+  ]
+}

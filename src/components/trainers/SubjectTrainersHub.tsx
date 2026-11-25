@@ -11,7 +11,8 @@
  * экрана и без промежуточного меню.
  */
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Brain, Check, Droplets, Flame, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import { BookOpen, Brain, Check, Droplets, Flame, FlaskConical, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import Labs from "@/components/Labs";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
@@ -40,6 +41,7 @@ const SECTIONS: Array<{ id: string; label: string; Icon: typeof Droplets }> = [
   { id: "norms", label: "Возрастные нормы", Icon: Table2 },
   { id: "meaning", label: "Ответ по смыслу", Icon: Sparkles },
   { id: "blood-preparations", label: "Микропрепараты крови", Icon: Microscope },
+  { id: "labs", label: "Лабораторные", Icon: FlaskConical },
   { id: "srs", label: "Карточки SRS", Icon: Brain },
 ];
 
@@ -245,8 +247,9 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
             <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Лекция → практика</p>
             <h2 className="mt-1 text-xl font-extrabold text-slate-950">Все тренажёры гистологии на одной странице</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              Никаких переходов между пунктами меню: атлас, тренажёр и диагностикум работают по одному банку препаратов,
-              а ниже идут формула крови, нормы, ответы по смыслу и карточки повторения.
+              Никаких переходов между пунктами меню: атлас, тренажёр и разбор препарата работают по одному банку
+              препаратов, а методички открываются прямо в карточке. Ниже — формула крови, нормы, ответы по смыслу,
+              препараты крови, лабораторные и карточки повторения.
             </p>
           </div>
           <a href={lectureHref} className="hidden shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 sm:inline-flex">
@@ -326,8 +329,19 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
 
       <section className="space-y-4 border-t border-[var(--border)] pt-6">
         <SectionHeader
-          id="srs"
+          id="labs"
           step="Раздел 6"
+          title="Лабораторные"
+          hint="Интерактивные практикумы: выбрать лабораторную, пройти сессию по заданиям и увидеть прогресс — без перехода в отдельный раздел."
+          Icon={FlaskConical}
+        />
+        <Labs />
+      </section>
+
+      <section className="space-y-4 border-t border-[var(--border)] pt-6">
+        <SectionHeader
+          id="srs"
+          step="Раздел 7"
           title="Карточки SRS"
           hint="Интервальное повторение терминов и фактов: общая колода и свои карточки."
           Icon={Brain}

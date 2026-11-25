@@ -1,0 +1,1189 @@
+{
+  "source": "C:/Users/MISTACEN/Downloads/препараты бонус",
+  "generated": "2026-11-25",
+  "outRoot": "public/library/lectures/gistologiya/preparaty-bonus",
+  "targetSize": 1200,
+  "preparations": [
+    {
+      "exam": "1.1",
+      "slug": "cytology-fat-inclusions",
+      "name": "Жировые включения",
+      "stain": "OsO4, кармин",
+      "images": [
+        {
+          "role": "label",
+          "file": "cytology-fat-inclusions/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "cytology-fat-inclusions/shot-01.jpg",
+          "source": "photo_15_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 114,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "cytology-fat-inclusions/shot-02.jpg",
+          "source": "photo_16_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 116,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "cytology-fat-inclusions/shot-03.jpg",
+          "source": "photo_18_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 141,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "cytology-fat-inclusions/shot-04.jpg",
+          "source": "photo_19_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 116,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "1.2",
+      "slug": "cytology-mitosis",
+      "name": "Митоз",
+      "stain": "рисунок карандашом",
+      "images": [
+        {
+          "role": "label",
+          "file": "cytology-mitosis/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "2.1",
+      "slug": "embryology-sperm",
+      "name": "Сперматозоиды",
+      "stain": "железный гематоксилин",
+      "images": [
+        {
+          "role": "label",
+          "file": "embryology-sperm/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "embryology-sperm/shot-01.jpg",
+          "source": "photo_40_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 93,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "embryology-sperm/shot-02.jpg",
+          "source": "photo_41_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 123,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "embryology-sperm/shot-03.jpg",
+          "source": "photo_42_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 121,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "2.2",
+      "slug": "embryology-egg",
+      "name": "Яйцеклетка",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "embryology-egg/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "embryology-egg/shot-01.jpg",
+          "source": "photo_37_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 101,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "embryology-egg/shot-02.jpg",
+          "source": "photo_38_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 119,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "3.1",
+      "slug": "epithelium-columnar-intestine",
+      "name": "Цилиндрический эпителий (тонкая кишка)",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "epithelium-columnar-intestine/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-columnar-intestine/shot-01.jpg",
+          "source": "photo_30_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 141,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-columnar-intestine/shot-02.jpg",
+          "source": "photo_31_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 127,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-columnar-intestine/shot-03.jpg",
+          "source": "photo_32_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 126,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "3.2",
+      "slug": "epithelium-ciliated-trachea",
+      "name": "Мерцательный эпителий (трахея)",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "epithelium-ciliated-trachea/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-ciliated-trachea/shot-01.jpg",
+          "source": "photo_21_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 137,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-ciliated-trachea/shot-02.jpg",
+          "source": "photo_22_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 151,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "3.3",
+      "slug": "epithelium-nonkeratinized-cornea",
+      "name": "Многослойный плоский неороговевающий (роговица)",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "epithelium-nonkeratinized-cornea/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-nonkeratinized-cornea/shot-01.jpg",
+          "source": "photo_24_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 150,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-nonkeratinized-cornea/shot-02.jpg",
+          "source": "photo_25_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 117,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-nonkeratinized-cornea/shot-03.jpg",
+          "source": "photo_26_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 121,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-nonkeratinized-cornea/shot-04.jpg",
+          "source": "photo_27_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 135,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-nonkeratinized-cornea/shot-05.jpg",
+          "source": "photo_28_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 124,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "3.4",
+      "slug": "epithelium-transitional-bladder",
+      "name": "Многослойный переходный (мочевой пузырь)",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "epithelium-transitional-bladder/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-transitional-bladder/shot-01.jpg",
+          "source": "photo_34_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 114,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "epithelium-transitional-bladder/shot-02.jpg",
+          "source": "photo_35_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 112,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "4.1",
+      "slug": "ct-blood-smear",
+      "name": "Кровь мазок",
+      "stain": "азур-эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "ct-blood-smear/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-blood-smear/shot-01.jpg",
+          "source": "photo_9_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 124,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-blood-smear/shot-02.jpg",
+          "source": "photo_10_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 142,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "4.2",
+      "slug": "ct-tendon",
+      "name": "Сухожилие",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "ct-tendon/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-tendon/shot-01.jpg",
+          "source": "photo_6_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 121,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-tendon/shot-02.jpg",
+          "source": "photo_7_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 112,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "4.3",
+      "slug": "ct-hyaline-cartilage",
+      "name": "Гиалиновый хрящ",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "ct-hyaline-cartilage/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-hyaline-cartilage/shot-01.jpg",
+          "source": "photo_2_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 107,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-hyaline-cartilage/shot-02.jpg",
+          "source": "photo_3_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 123,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-hyaline-cartilage/shot-03.jpg",
+          "source": "photo_4_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 124,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exam": "4.4",
+      "slug": "ct-elastic-cartilage",
+      "name": "Эластический хрящ",
+      "stain": "гематоксилин, эозин",
+      "images": [
+        {
+          "role": "label",
+          "file": "ct-elastic-cartilage/label.jpg",
+          "cropped": false,
+          "brightness": null,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 900,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 900
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-elastic-cartilage/shot-01.jpg",
+          "source": "photo_12_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 118,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        },
+        {
+          "role": "micro",
+          "file": "ct-elastic-cartilage/shot-02.jpg",
+          "source": "photo_13_2026-11-25_17-24-02.jpg",
+          "cropped": true,
+          "brightness": 127,
+          "size": {
+            "format": "jpeg",
+            "mediaType": "image/jpeg",
+            "width": 1200,
+            "height": 1200,
+            "space": "srgb",
+            "channels": 3,
+            "depth": "uchar",
+            "density": 72,
+            "chromaSubsampling": "4:2:0",
+            "isProgressive": true,
+            "isPalette": false,
+            "hasProfile": false,
+            "hasAlpha": false,
+            "autoOrient": {
+              "width": 1200,
+              "height": 1200
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "preparations": 12,
+    "files": 42,
+    "micro": 30
+  }
+}

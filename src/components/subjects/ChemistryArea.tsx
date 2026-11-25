@@ -13,10 +13,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { Atom, Beaker, Calculator, Droplets, FlaskConical, Layers, ListChecks } from "lucide-react";
+import { Atom, Beaker, Calculator, Droplets, FlaskConical, Layers, ListChecks, Sigma } from "lucide-react";
 import {
   ChemTools,
   ChemistryWorkbench,
+  EffectsReference,
   LabBench,
   PeriodicTable,
   PracticeRunner,
@@ -24,10 +25,11 @@ import {
 } from "@/modules/subjects/submodules/chemistry";
 import { SolubilityTableView } from "@/components/tools/SolubilityTableView";
 
-type ChemSection = "core" | "elements" | "reactions" | "solutions" | "practice" | "lab" | "solubility";
+type ChemSection = "core" | "effects" | "elements" | "reactions" | "solutions" | "practice" | "lab" | "solubility";
 
 const SECTIONS: Array<{ id: ChemSection; label: string; Icon: typeof Atom }> = [
   { id: "core", label: "Ядро", Icon: Layers },
+  { id: "effects", label: "Эффекты", Icon: Sigma },
   { id: "elements", label: "Элементы", Icon: Atom },
   { id: "reactions", label: "Реакции", Icon: FlaskConical },
   { id: "solutions", label: "Растворы и pH", Icon: Droplets },
@@ -88,6 +90,18 @@ export function ChemistryArea() {
       </div>
 
       {section === "core" && <ChemistryWorkbench embedded />}
+      {section === "effects" && (
+        <section className="card p-4 sm:p-5">
+          <h2 className="text-lg font-bold">Электронные эффекты</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            ±I и ±M по заместителям, ориентация в аренах и следствия для кислотности, основности и реакций —
+            с поиском и переходом в тест по теме 1.2.
+          </p>
+          <div className="mt-4">
+            <EffectsReference />
+          </div>
+        </section>
+      )}
       {section === "elements" && (
         <section className="card p-4 sm:p-5">
           <h2 className="text-lg font-bold">Периодическая таблица</h2>

@@ -1,0 +1,209 @@
+{
+  "source": "C:/Users/MISTACEN/Downloads/препараты бонус",
+  "sourceFilePattern": "photo_<n>_2026-11-25_17-24-02.jpg",
+  "generated": "2026-11-25",
+  "status": "approved",
+  "note": "Дополнительные препараты к уже существующим на сайте: цель — разнообразие, а не замена. Связь установлена по фото этикеток и подтверждена владельцем 2026-11-25. Файлы обработаны в public/library/lectures/gistologiya/preparaty-bonus/, в БД и storage не загружены.",
+  "examList": "src/data/preparations-exam-list-2026-11.json",
+  "diagnostics": 1,
+  "mapped": [
+    {
+      "exam": "1.1",
+      "slug": "cytology-fat-inclusions",
+      "name": "Жировые включения",
+      "labelPhoto": "photo_14_2026-11-25_17-24-02.jpg",
+      "stain": "OsO4, кармин",
+      "shots": [
+        "photo_15_2026-11-25_17-24-02.jpg",
+        "photo_16_2026-11-25_17-24-02.jpg",
+        "photo_18_2026-11-25_17-24-02.jpg",
+        "photo_19_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": "Кадры 18–19 — тонкие полосы; проверить, что это тот же препарат."
+    },
+    {
+      "exam": "1.2",
+      "slug": "cytology-mitosis",
+      "name": "Митоз",
+      "labelPhoto": "photo_17_2026-11-25_17-24-02.jpg",
+      "stain": "рисунок карандашом",
+      "shots": [],
+      "confidence": "handwritten-label",
+      "ambiguity": "Рукописная подпись на предметном стекле; кадр в окуляр отсутствует."
+    },
+    {
+      "exam": "2.1",
+      "slug": "embryology-sperm",
+      "name": "Сперматозоиды",
+      "labelPhoto": "photo_39_2026-11-25_17-24-02.jpg",
+      "stain": "железный гематоксилин",
+      "shots": [
+        "photo_40_2026-11-25_17-24-02.jpg",
+        "photo_41_2026-11-25_17-24-02.jpg",
+        "photo_42_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": "Кадры 41–42 — срез, не мазок; возможно, относятся к другому препарату."
+    },
+    {
+      "exam": "2.2",
+      "slug": "embryology-egg",
+      "name": "Яйцеклетка",
+      "labelPhoto": "photo_36_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_37_2026-11-25_17-24-02.jpg",
+        "photo_38_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": ""
+    },
+    {
+      "exam": "3.1",
+      "slug": "epithelium-columnar-intestine",
+      "name": "Цилиндрический эпителий (тонкая кишка)",
+      "labelPhoto": "photo_29_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_30_2026-11-25_17-24-02.jpg",
+        "photo_31_2026-11-25_17-24-02.jpg",
+        "photo_32_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": ""
+    },
+    {
+      "exam": "3.2",
+      "slug": "epithelium-ciliated-trachea",
+      "name": "Мерцательный эпителий (трахея)",
+      "labelPhoto": "photo_20_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_21_2026-11-25_17-24-02.jpg",
+        "photo_22_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": "Кадры похожи на рыхлую соединительную ткань; проверить, что это стенка трахеи."
+    },
+    {
+      "exam": "3.3",
+      "slug": "epithelium-nonkeratinized-cornea",
+      "name": "Многослойный плоский неороговевающий (роговица)",
+      "labelPhoto": "photo_23_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_24_2026-11-25_17-24-02.jpg",
+        "photo_25_2026-11-25_17-24-02.jpg",
+        "photo_26_2026-11-25_17-24-02.jpg",
+        "photo_27_2026-11-25_17-24-02.jpg",
+        "photo_28_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": ""
+    },
+    {
+      "exam": "3.4",
+      "slug": "epithelium-transitional-bladder",
+      "name": "Многослойный переходный (мочевой пузырь)",
+      "labelPhoto": "photo_33_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_34_2026-11-25_17-24-02.jpg",
+        "photo_35_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": "Кадры тёмные, детали плохо различимы."
+    },
+    {
+      "exam": "4.1",
+      "slug": "ct-blood-smear",
+      "name": "Кровь мазок",
+      "labelPhoto": "photo_8_2026-11-25_17-24-02.jpg",
+      "stain": "азур-эозин",
+      "shots": [
+        "photo_9_2026-11-25_17-24-02.jpg",
+        "photo_10_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": ""
+    },
+    {
+      "exam": "4.2",
+      "slug": "ct-tendon",
+      "name": "Сухожилие",
+      "labelPhoto": "photo_5_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_6_2026-11-25_17-24-02.jpg",
+        "photo_7_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": ""
+    },
+    {
+      "exam": "4.3",
+      "slug": "ct-hyaline-cartilage",
+      "name": "Гиалиновый хрящ",
+      "labelPhoto": "photo_1_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_2_2026-11-25_17-24-02.jpg",
+        "photo_3_2026-11-25_17-24-02.jpg",
+        "photo_4_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": "Кадр 2 тёмный и расфокусированный."
+    },
+    {
+      "exam": "4.4",
+      "slug": "ct-elastic-cartilage",
+      "name": "Эластический хрящ",
+      "labelPhoto": "photo_11_2026-11-25_17-24-02.jpg",
+      "stain": "гематоксилин, эозин",
+      "shots": [
+        "photo_12_2026-11-25_17-24-02.jpg",
+        "photo_13_2026-11-25_17-24-02.jpg"
+      ],
+      "confidence": "label",
+      "ambiguity": "Кадр 13 — складчатая пластинка (надгортанник?), проверить."
+    }
+  ],
+  "missing": [
+    {
+      "exam": "2.3",
+      "slug": "embryology-axial-organs",
+      "name": "Осевые органы"
+    },
+    {
+      "exam": "5.1",
+      "slug": "bone-tubular",
+      "name": "Трубчатая кость (диафиз)"
+    },
+    {
+      "exam": "5.2",
+      "slug": "bone-development",
+      "name": "Развитие кости на месте мезенхимы"
+    },
+    {
+      "exam": "5.3",
+      "slug": "muscle-striated",
+      "name": "Поперечно-полосатая скелетная мышечная ткань"
+    },
+    {
+      "exam": "6.1",
+      "slug": "nerve-myelin",
+      "name": "Миелиновые нервные волокна"
+    },
+    {
+      "exam": "6.2",
+      "slug": "nerve-astrocytes",
+      "name": "Астроцитарная глия"
+    },
+    {
+      "exam": "6.3",
+      "slug": "nerve-pacinian",
+      "name": "Пластинчатое тельце"
+    }
+  ]
+}

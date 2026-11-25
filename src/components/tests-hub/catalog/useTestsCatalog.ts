@@ -30,7 +30,14 @@ export function useTestsCatalog() {
   const [chemistryFormula, setChemistryFormula] = useState("");
 
   useEffect(() => {
-    if (requestedView === "chemistry" || requestedView === "history" || requestedView === "tests") setView(requestedView);
+    if (
+      requestedView === "chemistry" ||
+      requestedView === "history" ||
+      requestedView === "questions" ||
+      requestedView === "tests"
+    ) {
+      setView(requestedView);
+    }
   }, [requestedView]);
 
   function selectView(next: View) {

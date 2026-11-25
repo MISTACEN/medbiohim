@@ -14,6 +14,7 @@ describe("ChemistryModule", () => {
 
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "Структуры",
+      "Эффекты",
       "Реакции",
       "Растворы",
       "Лаборатория",

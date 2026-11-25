@@ -13,16 +13,25 @@ export default function TrainerFeedPage({ params }: { params: Promise<{ subject:
   const page = useTrainerFeedPage(params);
   const { queue, card, result, allCards, loading, subject, note } = page;
 
+  // Дополнительные снимки препаратов лежат статикой в public/ и не проходят
+  // через Blob/Drive-ключи Worker’а, поэтому берём их напрямую, если карточка
+  // явно помечена preparation.imageStatic.
+  const staticImage =
+    typeof (card?.preparation as Record<string, unknown> | undefined)?.imageStatic === "string"
+      ? String((card?.preparation as Record<string, unknown>).imageStatic)
+      : null;
+
   const { data: imageUrl, loading: imageLoading } = useApiRequest<string | null>(
     async () => {
       if (!card) return null;
+      if (staticImage) return staticImage;
       // Электронограмма до ответа — «чистый» вариант без подписей: подписанная
       // версия раскрывает правильный ответ. После ответа — полная с подписями.
       const variant = isElectronogramCard(card) && result === null ? "clean" : undefined;
       return getTrainerImageUrl(card.id, variant);
     },
     // Зависимость от result намеренная: после ответа нужна другая версия картинки.
-    [card?.id, result === null]
+    [card?.id, result === null, staticImage]
   );
 
   if (!hasToken()) return <div className="card mx-auto mt-10 max-w-md p-8 text-center"><p className="text-slate-600">Войдите, чтобы проходить тренажёр.</p><Link href="/login" className="btn-primary mt-4 inline-flex">Войти</Link></div>;

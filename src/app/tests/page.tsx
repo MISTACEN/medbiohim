@@ -13,6 +13,7 @@ import { TestsViewNav } from "@/components/tests-hub/catalog/TestsViewNav";
 import { useTestsCatalog } from "@/components/tests-hub/catalog/useTestsCatalog";
 import TestsHub from "@/components/tests/TestsHub";
 import { RecommendedTests } from "@/components/tests/RecommendedTests";
+import { PracticeView } from "@/components/practice/PracticeView";
 
 function TestsPageInner() {
   const page = useTestsCatalog();
@@ -46,6 +47,8 @@ function TestsPageInner() {
       <div className="space-y-5">
         {page.view === "tests" && <RecommendedTests />}
         {page.view === "tests" && <TestsHub highlightTestId={page.openTestId} hideHeader />}
+
+        {page.view === "questions" && <PracticeView compact />}
 
         {page.view === "chemistry" && <ChemistryBank page={page} />}
 

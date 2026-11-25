@@ -5,6 +5,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { ReactionBalancer } from "./ReactionBalancer";
 import { ChemistryWorkbench } from "./ChemistryWorkbench";
 import ChemTools from "./ChemTools";
+import { EffectsReference } from "./EffectsReference";
 import { LabBench } from "./LabBench";
 import { PeriodicTable } from "./PeriodicTable";
 import { PracticeRunner } from "./PracticeRunner";
@@ -23,6 +24,7 @@ import { PracticeRunner } from "./PracticeRunner";
  */
 export type ChemistrySection =
   | "structures"
+  | "effects"
   | "reactions"
   | "solutions"
   | "lab"
@@ -34,6 +36,11 @@ const SECTIONS: Array<{ id: ChemistrySection; label: string; hint: string }> = [
     id: "structures",
     label: "Структуры",
     hint: "Название, формула или SMILES → 2D, 3D, VSEPR, проекции Фишера/Haworth/Newman/Chair и механизмы со стрелками электронов.",
+  },
+  {
+    id: "effects",
+    label: "Эффекты",
+    hint: "Индуктивный ±I и мезомерный ±M эффекты: кто отдаёт и кто тянет электроны, род ориентанта, следствия для кислотности, основности и реакций.",
   },
   {
     id: "reactions",
@@ -110,6 +117,7 @@ export function ChemistryModule({
           className="min-w-0"
         >
           {item.id === "structures" && <ChemistryWorkbench embedded initialSubstances={initialSubstances} />}
+          {item.id === "effects" && <EffectsReference />}
           {item.id === "reactions" && <ReactionBalancer initialEquation={initialEquation} />}
           {item.id === "solutions" && <ChemTools />}
           {item.id === "lab" && <LabBench />}

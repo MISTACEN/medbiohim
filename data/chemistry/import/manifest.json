@@ -1,0 +1,65 @@
+{
+  "source": "data/chemistry/part1-collection-2026-11.json",
+  "subject_key": "chemistry_organic_physical",
+  "is_published": false,
+  "totals": {
+    "themes": 18,
+    "questionsInSource": 813,
+    "byKind": {
+      "mcq": 408,
+      "match": 207,
+      "open": 198
+    },
+    "exported": {
+      "tests": 18,
+      "questions": 577,
+      "links": 577
+    },
+    "skippedMatch": 207,
+    "skippedUnkeyed": 29
+  },
+  "files": [
+    {
+      "name": "chem-part1-01.xlsx",
+      "themes": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "2.1",
+        "3.1",
+        "3.2",
+        "3.3"
+      ],
+      "tests": 8,
+      "questions": 222,
+      "rows": 452
+    },
+    {
+      "name": "chem-part1-02.xlsx",
+      "themes": [
+        "3.4",
+        "3.5",
+        "3.6",
+        "3.7",
+        "3.8",
+        "3.9"
+      ],
+      "tests": 6,
+      "questions": 217,
+      "rows": 440
+    },
+    {
+      "name": "chem-part1-03.xlsx",
+      "themes": [
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13"
+      ],
+      "tests": 4,
+      "questions": 138,
+      "rows": 280
+    }
+  ]
+}

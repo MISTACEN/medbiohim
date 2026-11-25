@@ -7,6 +7,7 @@ export { ChemRichText } from "./ChemRichText";
 export { default as ChemTools } from "./ChemTools";
 export { default as ConductometryLab } from "./ConductometryLab";
 export { ChemistryModule, type ChemistrySection } from "./ChemistryModule";
+export { EffectsReference } from "./EffectsReference";
 export { ChemistryWorkbench } from "./ChemistryWorkbench";
 export { LabBench } from "./LabBench";
 export { MechanismView } from "./MechanismView";

@@ -12,13 +12,13 @@ import { ClipboardCheck, FlaskConical, History, Microscope, Sparkles } from "luc
 import type { TestsCatalogController } from "./useTestsCatalog";
 
 const QUICK_LINKS = [
-  { href: "/practice", label: "База вопросов", hint: "вопросы и эталоны", Icon: Sparkles },
+  { href: "/tests?view=questions", label: "База вопросов", hint: "вопросы и эталоны", Icon: Sparkles },
   { href: "/atlas", label: "Атлас", hint: "фото препаратов", Icon: Microscope },
   { href: "/subjects/histology?tab=trainers", label: "Тренажёры", hint: "практика", Icon: ClipboardCheck },
 ];
 
 export function TestsPageHero({ page }: { page: TestsCatalogController }) {
-  const { selectView, chemistryTotal, attempts } = page;
+  const { chemistryTotal, attempts } = page;
   const finished = attempts.filter((attempt: { status?: string }) =>
     /complet|finish|graded/.test(String(attempt.status || "").toLowerCase()),
   ).length;
@@ -76,19 +76,6 @@ export function TestsPageHero({ page }: { page: TestsCatalogController }) {
             </Link>
           ))}
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5 border-t border-indigo-100 bg-white/60 px-4 py-2 text-[11px] text-slate-600 sm:gap-2 sm:px-6 sm:py-3 sm:text-xs">
-        <span className="hidden font-semibold text-slate-800 sm:inline">Начать быстро:</span>
-        <button type="button" onClick={() => selectView("tests")} className="rounded-full border border-indigo-200 bg-white px-2.5 py-1 font-semibold text-indigo-700 transition hover:bg-indigo-50 sm:px-3 sm:py-1.5">
-          Все банки
-        </button>
-        <button type="button" onClick={() => selectView("chemistry")} className="rounded-full border border-[var(--border)] bg-white px-2.5 py-1 font-semibold text-slate-700 transition hover:border-indigo-300 sm:px-3 sm:py-1.5">
-          Химия
-        </button>
-        <button type="button" onClick={() => selectView("history")} className="rounded-full border border-[var(--border)] bg-white px-2.5 py-1 font-semibold text-slate-700 transition hover:border-indigo-300 sm:px-3 sm:py-1.5">
-          История
-        </button>
       </div>
     </header>
   );

@@ -7,7 +7,7 @@ import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Menu, Microscope } f
 import { getAccountSettings } from "@/lib/settings-api";
 import {
   answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
-  getTraining, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
+  getTraining, listPreparationGuides, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
   type TrainingLabelMode, type TrainingLayout,
 } from "@/lib/content-api";
 import { compareLessons, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
@@ -15,7 +15,7 @@ import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCa
 import { topicLabel, ImageBox, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
 import { HistologyAtlas } from "@/components/trainers/HistologyAtlas";
 import { DiagnosticumRunner } from "@/components/trainers/DiagnosticumRunner";
-import { groupAtlasCards } from "@/lib/histologyAtlas";
+import { groupAtlasCards, guideForCard, indexGuides, type PreparationGuide } from "@/lib/histologyAtlas";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { compareRu } from "@/lib/collation";
@@ -57,6 +57,21 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   );
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Методички препаратов: разбор показывает их прямо в карточке тренажёра,
+  // поэтому индекс гидов грузим один раз на всю сессию.
+  const [guideIndex, setGuideIndex] = useState<Map<string, PreparationGuide> | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    listPreparationGuides()
+      .then((result) => {
+        if (alive && result.ok) setGuideIndex(indexGuides(result.data.items || []));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -241,6 +256,17 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
   const hasMoreHistory = sessions.length > 4;
 
+  // Гид для карточки: ключ методички берём из того же индекса, что и атлас.
+  const guideKeyFor = (a: AnswerRow): string | null => {
+    if (!guideIndex) return null;
+    const snapshot = (a.question_snapshot || {}) as { preparation?: unknown; title?: unknown };
+    const preparation =
+      snapshot.preparation && typeof snapshot.preparation === "object"
+        ? (snapshot.preparation as Record<string, unknown>)
+        : { name: String(snapshot.title || "") };
+    return guideForCard({ preparation } as never, guideIndex)?.key || null;
+  };
+
   const question = (a: AnswerRow, i: number, compact = false) => (
     <HistologyQuestionCard
       key={a.id}
@@ -248,6 +274,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
       i={i}
       total={answers.length}
       compact={compact}
+      guideKey={guideKeyFor(a)}
       labelMode={training?.label_mode}
       contentType={training?.content_type}
       working={working}

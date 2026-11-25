@@ -39,7 +39,9 @@ export function TestsViewNav({ page }: { page: TestsCatalogController }) {
             }
           >
             <Icon className="h-4 w-4 shrink-0" />
-            <span className="sm:hidden">{id === "tests" ? "Банки" : id === "chemistry" ? "Химия" : "История"}</span>
+            <span className="sm:hidden">
+              {id === "tests" ? "Банки" : id === "questions" ? "Вопросы" : id === "chemistry" ? "Химия" : "История"}
+            </span>
             <span className="hidden sm:inline">{label}</span>
             {count !== null && (
               <span

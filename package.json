@@ -16,6 +16,12 @@
     "test:physiology": "node --test test/physiology-content.test.mjs",
     "test:histology": "node --test test/histology-content.test.mjs",
     "test:overrides": "python -m unittest tools/histology/test_build_content_overrides.py",
+    "test:preparations": "node --test test/preparations-bonus.test.mjs",
+    "test:preparations:images": "node --test test/preparations-bonus-images.test.mjs",
+    "preparations:photos": "node tools/preparations/process_bonus_photos.mjs",
+    "test:chemistry": "node --test test/chemistry-part1.test.mjs",
+    "chem:import-xlsx": "node tools/chem/build_import_xlsx.mjs",
+    "test:chem-xlsx": "node --test test/chemistry-import-xlsx.test.mjs",
     "test:contrast": "node scripts/check-contrast.mjs",
     "test:e2e": "playwright test",
     "test:e2e:supabase": "node scripts/e2e-live-supabase.mjs",
@@ -23,7 +29,11 @@
     "test:e2e:study": "node scripts/e2e-live-study.mjs",
     "test:e2e:agent": "node scripts/e2e-live-agent.mjs",
     "test:e2e:pages": "node scripts/e2e-live-pages.mjs",
-    "dev:clean": "node scripts/dev-clean.mjs"
+    "dev:clean": "node scripts/dev-clean.mjs",
+    "stitch:install": "node scripts/stitch/install.mjs",
+    "stitch:login": "node scripts/stitch/login.mjs",
+    "stitch:check": "node scripts/stitch/check.mjs",
+    "stitch:tools": "node scripts/stitch/mcp.mjs tools"
   },
   "dependencies": {
     "clsx": "^2.1.1",
