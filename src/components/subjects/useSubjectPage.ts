@@ -148,11 +148,14 @@ export function useSubjectPage({ params }: { params: Promise<{ id: string }> }) 
   const error = coreError;
 
   function selectTab(id: TabId) {
-    setTab(id);
+    // Алиасы (trainer → trainers) применяем и здесь: чип плана или лекции
+    // не должен открыть пустую панель практики со старым id.
+    const next = normalizeTab(id);
+    setTab(next);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
-      url.searchParams.set("tab", id);
-      url.hash = id;
+      url.searchParams.set("tab", next);
+      url.hash = next;
       window.history.replaceState(null, "", url.toString());
     }
   }
@@ -331,8 +334,10 @@ export function useSubjectPage({ params }: { params: Promise<{ id: string }> }) 
           ]
         : group === "practice"
           ? [
-              { id: "trainers", label: "Тренажёры" },
-              { id: "trainer", label: histology ? "Микропрепараты" : "Препараты" },
+              // Препараты и остальные тренажёры — один режим: внутри него
+              // переключаются атлас, тренажёр, формат и разбор. Отдельного
+              // «Микропрепараты» больше нет — старый ?tab=trainer ведёт сюда.
+              { id: "trainers", label: histology ? "Тренажёры и препараты" : "Тренажёры" },
               { id: "labs", label: "Лабораторные" },
               // Химия — один вход на все её разделы: ядро, элементы, реакции,
               // растворы, практика, лаборатория, растворимость.

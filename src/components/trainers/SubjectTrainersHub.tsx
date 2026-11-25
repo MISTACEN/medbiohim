@@ -11,9 +11,8 @@
  * экрана и без промежуточного меню.
  */
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Brain, Check, Droplets, Flame, FlaskConical, ImagePlus, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import { BookOpen, Brain, Check, ChevronDown, Droplets, Flame, ImagePlus, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
 import MyPreparations from "@/components/trainers/MyPreparations";
-import Labs from "@/components/Labs";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
 import BloodMeaningTrainer from "@/components/trainers/BloodMeaningTrainer";
@@ -43,7 +42,6 @@ const SECTIONS: Array<{ id: string; label: string; Icon: typeof Droplets }> = [
   { id: "norms", label: "Возрастные нормы", Icon: Table2 },
   { id: "meaning", label: "Ответ по смыслу", Icon: Sparkles },
   { id: "blood-preparations", label: "Микропрепараты крови", Icon: Microscope },
-  { id: "labs", label: "Лабораторные", Icon: FlaskConical },
   { id: "srs", label: "Карточки SRS", Icon: Brain },
 ];
 
@@ -250,8 +248,8 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
             <h2 className="mt-1 text-xl font-extrabold text-slate-950">Все тренажёры гистологии на одной странице</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
               Никаких переходов между пунктами меню: атлас, тренажёр и разбор препарата работают по одному банку
-              препаратов, а методички открываются прямо в карточке. Ниже — формула крови, нормы, ответы по смыслу,
-              препараты крови, лабораторные и карточки повторения.
+              препаратов, а методички открываются прямо в карточке. Ниже — препараты крови, нормы, ответы по смыслу
+              и карточки повторения. Лабораторные — отдельный режим практики.
             </p>
           </div>
           <a href={lectureHref} className="hidden shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 sm:inline-flex">
@@ -279,14 +277,22 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
           id="histology-atlas"
           step="Раздел 1"
           title="Микропрепараты, тренажёр и диагностикум"
-          hint="Один банк препаратов: посмотреть атлас, пройти карточки и определить препарат в диагностикуме — без перехода на другую страницу."
+          hint="Один банк препаратов: атлас и тренажёр, форматы заданий, карточки и разбор с методичкой — всё на этом экране, без перехода на другую страницу."
           Icon={Microscope}
         />
         <HistologyTrainer embedded />
         <MyPreparations subjectSlug="histology" />
       </section>
 
-      <section className="space-y-4 border-t border-[var(--border)] pt-6">
+      {/* Остальные тренажёры — одна сворачиваемая группа, а не простыня блоков
+          подряд; чипы навигации ведут к якорям внутри неё. */}
+      <details open className="group border-t border-[var(--border)] pt-6">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold text-slate-900">
+          Ещё тренажёры: формула крови, нормы, ответ по смыслу, препараты крови
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-5 space-y-6">
+      <section className="space-y-4">
         <SectionHeader
           id="leukocytes"
           step="Раздел 2"
@@ -329,22 +335,13 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
         />
         <BloodPreparationTrainer />
       </section>
-
-      <section className="space-y-4 border-t border-[var(--border)] pt-6">
-        <SectionHeader
-          id="labs"
-          step="Раздел 6"
-          title="Лабораторные"
-          hint="Интерактивные практикумы: выбрать лабораторную, пройти сессию по заданиям и увидеть прогресс — без перехода в отдельный раздел."
-          Icon={FlaskConical}
-        />
-        <Labs />
-      </section>
+        </div>
+      </details>
 
       <section className="space-y-4 border-t border-[var(--border)] pt-6">
         <SectionHeader
           id="srs"
-          step="Раздел 7"
+          step="Раздел 6"
           title="Карточки SRS"
           hint="Интервальное повторение терминов и фактов: общая колода и свои карточки."
           Icon={Brain}

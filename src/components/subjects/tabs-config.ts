@@ -47,6 +47,9 @@ export function normalizeTab(v: string) {
   // Алиасы старых адресов: билеты теперь живут во вкладке «Экзамен / Билеты».
   if (v === "tickets") return "exam" as TabId;
   if (v === "cards") return "trainers" as TabId;
+  // «Микропрепараты» и «Тренажёры» — один экран практики: старый адрес
+  // ?tab=trainer (атлас, ссылки из лекций и плана) ведёт туда же.
+  if (v === "trainer") return "trainers" as TabId;
   return v as TabId;
 }
 

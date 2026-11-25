@@ -6,7 +6,6 @@ import { ClipboardList } from "lucide-react";
 import AttestationList from "@/components/attestations/AttestationList";
 import Labs from "@/components/Labs";
 import SubjectTrainersHub from "@/components/trainers/SubjectTrainersHub";
-import HistologyTrainer from "@/components/trainers/HistologyTrainer";
 import TabFallback from "@/components/subjects/TabFallback";
 import type { SubjectController } from "@/components/subjects/useSubjectPage";
 
@@ -15,18 +14,9 @@ export function SubjectPracticePanels({ page }: { page: SubjectController }) {
 
   return (
     <>
-      {tab === "trainer" && (
-        histology ? (
-          <HistologyTrainer embedded />
-        ) : (
-          <TabFallback
-            title="Микропрепараты"
-            description="Для этого предмета микропрепараты пока не подключены. Потренируйтесь на вопросах с эталонами или запустите тест."
-            onOpenTab={selectTab}
-          />
-        )
-      )}
-
+      {/* «Микропрепараты» отдельным режимом больше не рисуются: атлас,
+          тренажёр и разбор живут в одном экране «Тренажёры», а старый
+          адрес ?tab=trainer нормализуется в него в normalizeTab. */}
       {tab === "trainers" && (
         histology ? (
           <SubjectTrainersHub lectureHref={`/subjects/${encodeURIComponent(subjectId)}?tab=lectures`} />

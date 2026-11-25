@@ -163,10 +163,8 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
     });
     if (!r.ok) { setError(describeApiError(r.error)); setWorking(false); return; }
     const tid = r.data.training.id;
-    if (embedded && typeof window !== "undefined") {
-      window.location.assign("/trainers/feed/histology?training=" + encodeURIComponent(tid));
-      return;
-    }
+    // Сессия идёт на этом же экране: раньше встроенный тренажёр уводил на
+    // /trainers/feed/histology, и страница практики терялась.
     await loadSession(tid);
   };
 
@@ -298,7 +296,6 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
             </p>
           </header>
         )}
-        {embedded && (<div><h2 className="text-lg font-bold">Микропрепараты</h2><p className="mt-1 text-sm text-slate-500">Атлас и тренажёр — по одному банку препаратов.</p></div>)}
 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас</button>
