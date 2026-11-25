@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Прохождение теста: Эпителиальные ткани</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              DEFAULT: '#2563eb',
+              dark: '#1d4ed8',
+              soft: '#eff6ff',
+            },
+            surface: {
+              bg: '#f9fafb',
+              card: '#ffffff',
+            },
+            status: {
+              okText: '#047857',
+              okBg: '#ecfdf5',
+              okBorder: '#a7f3d0',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #f9fafb;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#f9fafb] text-[#0f172a] flex flex-col justify-between">
+
+  <!-- Top Navigation / Test Status Bar (Sticky Header) -->
+  <header class="sticky top-0 z-30 bg-[#f9fafb]/90 backdrop-blur-md border-b border-slate-200/80">
+    <div class="max-w-[768px] mx-auto px-4 h-16 flex items-center justify-between">
+      <!-- Left: Back link and test title -->
+      <div class="flex items-center gap-3">
+        <a href="#" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 transition-colors" title="Завершить и выйти">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+        </a>
+        <div class="flex flex-col">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Гистология · Модуль 1</span>
+          <span class="text-[15px] font-semibold text-slate-900 leading-tight">Эпителиальные ткани</span>
+        </div>
+      </div>
+
+      <!-- Center: Timer Pill with Tabular Numbers -->
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200/90 text-slate-700 shadow-sm">
+        <svg class="w-4 h-4 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span class="font-mono text-sm font-semibold tabular-nums tracking-wide text-slate-800">12:34</span>
+      </div>
+
+      <!-- Right: Question counter & mode -->
+      <div class="flex items-center gap-2 text-right">
+        <div class="text-[13px] font-medium text-slate-500">
+          Вопрос <span class="text-slate-900 font-semibold">3</span> из <span class="text-slate-700">10</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thin Progress Line (30%) -->
+    <div class="w-full bg-slate-200/80 h-[3px]">
+      <div class="bg-blue-600 h-[3px] w-[30%] transition-all duration-300"></div>
+    </div>
+  </header>
+
+  <!-- Main Content Area: Focused Reading Container (Max-w 768px) -->
+  <main class="flex-1 max-w-[768px] w-full mx-auto px-4 py-6 flex flex-col gap-6">
+
+    <!-- Primary Question Card -->
+    <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 sm:p-7 flex flex-col gap-6">
+
+      <!-- Question Header: Micro label & Question Text -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+            Вопрос 3 · Один ответ
+          </span>
+          <span class="text-xs text-slate-400 font-medium">Базовый уровень · 1 балл</span>
+        </div>
+        <h1 class="text-xl sm:text-[22px] font-semibold text-slate-900 leading-snug tracking-tight mt-1">
+          Какой эпителий выстилает слизистую оболочку желудка?
+        </h1>
+      </div>
+
+      <!-- Options List (56px rows) -->
+      <div class="flex flex-col gap-3">
+
+        <!-- Option 1: Normal state -->
+        <label class="group flex items-center justify-between min-h-[56px] px-4 py-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60 cursor-pointer transition-all">
+          <div class="flex items-center gap-3.5">
+            <!-- Radio circle -->
+            <div class="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center group-hover:border-slate-400 bg-white shrink-0"></div>
+            <!-- Letter badge -->
+            <span class="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0">А</span>
+            <!-- Text -->
+            <span class="text-[15px] text-slate-700 font-normal leading-normal">Многослойный плоский неороговевающий</span>
+          </div>
+        </label>
+
+        <!-- Option 2: Selected active state (Blue border, light blue tint, filled radio) -->
+        <label class="group flex items-center justify-between min-h-[56px] px-4 py-3 rounded-xl border-2 border-blue-600 bg-blue-50/60 cursor-pointer shadow-xs transition-all">
+          <div class="flex items-center gap-3.5">
+            <!-- Filled Radio circle -->
+            <div class="w-5 h-5 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center shrink-0">
+              <div class="w-2.5 h-2.5 rounded-full bg-blue-600"></div>
+            </div>
+            <!-- Letter badge selected -->
+            <span class="w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">Б</span>
+            <!-- Text -->
+            <span class="text-[15px] text-blue-950 font-semibold leading-normal">Однослойный призматический железистый</span>
+          </div>
+          <!-- Selected indicator icon -->
+          <svg class="w-5 h-5 text-blue-600 shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </label>
+
+        <!-- Option 3: Normal state -->
+        <label class="group flex items-center justify-between min-h-[56px] px-4 py-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60 cursor-pointer transition-all">
+          <div class="flex items-center gap-3.5">
+            <!-- Radio circle -->
+            <div class="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center group-hover:border-slate-400 bg-white shrink-0"></div>
+            <!-- Letter badge -->
+            <span class="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0">В</span>
+            <!-- Text -->
+            <span class="text-[15px] text-slate-700 font-normal leading-normal">Переходный</span>
+          </div>
+        </label>
+
+        <!-- Option 4: Normal state -->
+        <label class="group flex items-center justify-between min-h-[56px] px-4 py-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60 cursor-pointer transition-all">
+          <div class="flex items-center gap-3.5">
+            <!-- Radio circle -->
+            <div class="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center group-hover:border-slate-400 bg-white shrink-0"></div>
+            <!-- Letter badge -->
+            <span class="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0">Г</span>
+            <!-- Text -->
+            <span class="text-[15px] text-slate-700 font-normal leading-normal">Многорядный реснитчатый</span>
+          </div>
+        </label>
+
+      </div>
+
+      <!-- Answered-State Verdict Block (Green Tinted Panel with Check & Explanation) -->
+      <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4 sm:p-5 flex flex-col gap-2.5">
+        <div class="flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <span class="text-[15px] font-bold text-emerald-900">Верно!</span>
+              <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">+1 к рейтингу</span>
+            </div>
+            <p class="text-sm text-emerald-950 mt-1 leading-relaxed">
+              <strong class="font-semibold text-emerald-900">Однослойный призматический железистый</strong> — все клетки выстилки желудка достигают базальной мембраны и обладают секреторной активностью, вырабатывая защитную слизь (муцин) и бикарбонаты для защиты от соляной кислоты.
+            </p>
+          </div>
+        </div>
+
+        <div class="border-t border-emerald-200/70 pt-2.5 mt-1 flex items-center justify-between">
+          <button class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-950 transition-colors">
+            <span>Подробное пояснение из атласа Быкова</span>
+            <svg class="w-3.5 h-3.5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <span class="text-[11px] text-emerald-700/80">Гистологический препарат № 14</span>
+        </div>
+      </div>
+
+      <!-- Card Footer Area: Controls + Question Navigator Grid -->
+      <div class="border-t border-slate-100 pt-5 flex flex-col sm:flex-row items-center justify-between gap-5">
+        
+        <!-- Left & Middle: Navigation Action Buttons -->
+        <div class="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-start">
+          <button class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-sm font-semibold transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            <span>Назад</span>
+          </button>
+          
+          <button class="px-3.5 py-2.5 text-slate-500 hover:text-slate-800 text-sm font-medium transition-colors">
+            Пропустить
+          </button>
+
+          <button class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2">
+            <span>Далее</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Right Side: Question Navigator Grid 1–10 (32px squares) -->
+        <div class="flex items-center gap-1.5 flex-wrap justify-end">
+          <!-- 1: Answered (green outline/bg) -->
+          <button class="w-8 h-8 rounded-lg border border-emerald-400 bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center hover:bg-emerald-100 transition-colors" title="Вопрос 1 (Верно)">
+            1
+          </button>
+          <!-- 2: Answered (green outline/bg) -->
+          <button class="w-8 h-8 rounded-lg border border-emerald-400 bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center hover:bg-emerald-100 transition-colors" title="Вопрос 2 (Верно)">
+            2
+          </button>
+          <!-- 3: Current (filled blue) -->
+          <button class="w-8 h-8 rounded-lg bg-blue-600 text-white text-xs font-bold flex items-center justify-center shadow-xs ring-2 ring-blue-300 ring-offset-1" title="Текущий вопрос 3">
+            3
+          </button>
+          <!-- 4: Unanswered (grey) -->
+          <button class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-medium flex items-center justify-center hover:bg-slate-100 transition-colors" title="Вопрос 4">
+            4
+          </button>
+          <!-- 5: Unanswered (grey) -->
+          <button class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-medium flex items-center justify-center hover:bg-slate-100 transition-colors" title="Вопрос 5">
+            5
+          </button>
+          <!-- 6: Unanswered (grey) -->
+          <button class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-medium flex items-center justify-center hover:bg-slate-100 transition-colors" title="Вопрос 6">
+            6
+          </button>
+          <!-- 7: Unanswered (grey) -->
+          <button class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-medium flex items-center justify-center hover:bg-slate-100 transition-colors" title="Вопрос 7">
+            7
+          </button>
+          <!-- 8: Unanswered (grey) -->
+          <button class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-medium flex items-center justify-center hover:bg-slate-100 transition-colors" title="Вопрос 8">
+            8
+          </button>
+          <!-- 9: Unanswered (grey) -->
+          <button class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-medium flex items-center justify-center hover:bg-slate-100 transition-colors" title="Вопрос 9">
+            9
+          </button>
+          <!-- 10: Unanswered (grey) -->
+          <button class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-medium flex items-center justify-center hover:bg-slate-100 transition-colors" title="Вопрос 10">
+            10
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Quick Shortcuts / Session info hints -->
+    <div class="flex items-center justify-between text-xs text-slate-400 px-2">
+      <div class="flex items-center gap-4">
+        <span>Горячие клавиши: <kbd class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-600 font-mono text-[11px]">1–4</kbd> выбор, <kbd class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-600 font-mono text-[11px]">Enter</kbd> далее</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Режим подготовки · Проверка сразу</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="border-t border-slate-200/80 bg-white/70 py-4 mt-8">
+    <div class="max-w-[768px] mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <span>© 2025 MEDBIOHIM. Учебная платформа для студентов-медиков.</span>
+      <div class="flex items-center gap-4">
+        <a href="#" class="hover:text-slate-800 transition-colors">Биохимия</a>
+        <a href="#" class="hover:text-slate-800 transition-colors">Гистология</a>
+        <a href="#" class="hover:text-slate-800 transition-colors">Тестирование</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

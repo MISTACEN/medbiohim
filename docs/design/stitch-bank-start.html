@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"input-border":"rgba(15,23,42,0.55)","surface":"#faf8ff","surface-dim":"#d9d9e5","primary-fixed":"#dbe1ff","surface-container-high":"#e7e7f3","inverse-surface":"#2e3039","on-secondary-fixed":"#001a42","muted":"#64748b","on-surface":"#191b23","on-secondary-container":"#fefcff","tertiary":"#943700","surface-tint":"#0053db","background":"#f9fafb","on-primary":"#ffffff","primary":"#004ac6","on-error":"#ffffff","tertiary-fixed":"#ffdbcd","primary-fixed-dim":"#b4c5ff","primary-container":"#2563eb","tertiary-fixed-dim":"#ffb596","tertiary-container":"#bc4800","border":"rgba(15,23,42,0.16)","surface-container":"#ededf9","surface-bright":"#faf8ff","on-background":"#191b23","primary-soft":"#eff6ff","inverse-on-surface":"#f0f0fb","on-tertiary-fixed-variant":"#7d2d00","on-primary-fixed":"#00174b","surface-container-low":"#f3f3fe","error-container":"#ffdad6","secondary":"#0058be","on-tertiary-container":"#ffede6","card":"#ffffff","on-primary-fixed-variant":"#003ea8","surface-container-highest":"#e1e2ed","secondary-fixed-dim":"#adc6ff","on-secondary-fixed-variant":"#004395","on-primary-container":"#eeefff","inverse-primary":"#b4c5ff","surface-container-lowest":"#ffffff","on-surface-variant":"#434655","on-tertiary-fixed":"#360f00","on-error-container":"#93000a","error":"#ba1a1a","secondary-fixed":"#d8e2ff","surface-variant":"#e1e2ed","text":"#0f172a","primary-dark":"#1d4ed8","secondary-container":"#2170e4","outline":"#737686","on-secondary":"#ffffff","on-tertiary":"#ffffff","outline-variant":"#c3c6d7"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin":"24px","gutter":"16px","space-sm":"8px","space-xl":"20px","space-md":"12px","space-2xl":"24px","space-xs":"4px","space-lg":"16px"},"fontFamily":{"metric-num":["Inter"],"body-sm":["Inter"],"headline-md":["Inter"],"body-base":["Inter"],"headline-lg":["Inter"],"micro-label":["Inter"]},"fontSize":{"metric-num":["32px",{"lineHeight":"1.1","fontWeight":"800"}],"body-sm":["14px",{"lineHeight":"1.5","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"1.3","letterSpacing":"-0.025em","fontWeight":"700"}],"body-base":["15px",{"lineHeight":"1.6","fontWeight":"400"}],"headline-lg":["30px",{"lineHeight":"1.2","letterSpacing":"-0.025em","fontWeight":"700"}],"micro-label":["11px",{"lineHeight":"1.2","letterSpacing":"0.05em","fontWeight":"700"}]}}}};</script></head><body class="bg-background font-body-base text-body-base text-on-background"><header class="fixed top-0 w-full z-50 bg-card border-b border-border"><div class="h-16 max-w-6xl mx-auto px-margin flex items-center justify-between gap-gutter"><div class="flex items-center gap-space-2xl"><a class="font-headline-md text-headline-md tracking-tight text-on-surface uppercase" data-path="главная" href="#">MEDBIOHIM</a><nav class="hidden md:flex items-center gap-space-sm" data-active-classes="bg-primary-container text-on-primary-container font-bold rounded-lg"><a class="px-space-md py-space-sm font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="главная" href="#">Главная</a><a class="px-space-md py-space-sm font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="тесты" href="#">Тесты</a><a class="px-space-md py-space-sm font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="препараты" href="#">Препараты</a><a class="px-space-md py-space-sm font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="химия" href="#">Химия</a></nav></div><div class="flex items-center gap-space-md"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-background"><div class="flex flex-col w-full">
+<div class="w-full max-w-3xl mx-auto px-margin pb-28 pt-6">
+<!-- Top Navigation & Breadcrumb -->
+<div class="flex flex-col mb-6">
+<a class="inline-flex items-center gap-1.5 font-body-sm text-body-sm text-muted hover:text-primary transition-colors w-fit mb-3" href="#">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>К тестам</span>
+</a>
+<div class="flex items-center gap-space-sm mb-2">
+<span class="inline-block px-2 py-0.5 rounded bg-primary-soft text-primary font-micro-label text-micro-label uppercase tracking-wider">
+          Гистология
+        </span>
+<span class="inline-block font-micro-label text-micro-label text-muted uppercase">
+          Модуль 1 · Цитология и ткани
+        </span>
+</div>
+<h1 class="font-headline-md text-headline-md text-text">
+        Эпителиальные ткани: банк вопросов
+      </h1>
+<p class="font-body-sm text-body-sm text-muted mt-1">
+        Выберите режим и объём — настройка одна на весь банк. Свободная подготовка не уходит преподавателю.
+      </p>
+</div>
+<!-- Mode Configuration Card -->
+<section class="bg-card rounded-2xl p-6 shadow-sm mb-4 bg-surface-container-lowest">
+<div class="flex items-center justify-between mb-space-md">
+<h2 class="font-body-base text-body-base font-semibold text-text">Режим</h2>
+<span class="font-micro-label text-micro-label text-muted uppercase">4 варианта логики</span>
+</div>
+<!-- Mode Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="mode-selector">
+<!-- Mode 1: Selected -->
+<button class="mode-card text-left p-3.5 rounded-xl bg-primary-soft transition-all relative flex items-start gap-3 shadow-sm ring-2 ring-primary" data-mode="training" type="button">
+<div class="w-9 h-9 shrink-0 rounded-lg bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div class="flex-1 min-w-0 pr-6">
+<div class="font-body-sm text-body-sm font-semibold text-text leading-tight">Подготовка</div>
+<div class="font-micro-label text-micro-label text-primary mt-0.5">проверка сразу</div>
+</div>
+<div class="absolute top-3 right-3 text-primary">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</button>
+<!-- Mode 2 -->
+<button class="mode-card text-left p-3.5 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low transition-all relative flex items-start gap-3" data-mode="solving" type="button">
+<div class="w-9 h-9 shrink-0 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">assignment</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-body-sm text-body-sm font-semibold text-text leading-tight">Решение</div>
+<div class="font-micro-label text-micro-label text-muted mt-0.5">проверка в конце</div>
+</div>
+</button>
+<!-- Mode 3 -->
+<button class="mode-card text-left p-3.5 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low transition-all relative flex items-start gap-3" data-mode="control" type="button">
+<div class="w-9 h-9 shrink-0 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-body-sm text-body-sm font-semibold text-text leading-tight">Контрольный</div>
+<div class="font-micro-label text-micro-label text-muted mt-0.5">без подсказок</div>
+</div>
+</button>
+<!-- Mode 4 -->
+<button class="mode-card text-left p-3.5 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low transition-all relative flex items-start gap-3" data-mode="exam" type="button">
+<div class="w-9 h-9 shrink-0 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">timer</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-body-sm text-body-sm font-semibold text-text leading-tight">Экзамен</div>
+<div class="font-micro-label text-micro-label text-muted mt-0.5">строго, по таймеру</div>
+</div>
+</button>
+</div>
+<!-- Linear Mode Secondary Row -->
+<button class="w-full mt-3 p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-between text-left" id="toggle-sequential" type="button">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 shrink-0 rounded-lg bg-card text-on-surface-variant flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[20px]">auto_stories</span>
+</div>
+<div>
+<div class="font-body-sm text-body-sm font-semibold text-text">Весь банк подряд</div>
+<div class="font-micro-label text-micro-label text-muted">Вопросы по порядку, прогресс сохраняется</div>
+</div>
+</div>
+<div class="w-5 h-5 rounded-full bg-card flex items-center justify-center text-primary" id="sequential-indicator">
+<span class="material-symbols-outlined text-[16px] text-muted">radio_button_unchecked</span>
+</div>
+</button>
+</section>
+<!-- Question Volume Selector Card -->
+<section class="bg-card rounded-2xl p-6 shadow-sm mb-4 bg-surface-container-lowest">
+<div class="flex justify-between items-center mb-space-md">
+<h2 class="font-body-base text-body-base font-semibold text-text">Сколько вопросов взять</h2>
+<span class="font-body-sm text-body-sm text-muted tabular-nums" id="bank-total-hint">10 из 200 в банке</span>
+</div>
+<div class="flex items-center gap-2 flex-wrap" id="quantity-chips">
+<button class="qty-btn h-11 px-5 rounded-xl font-body-sm text-body-sm font-semibold bg-primary text-on-primary transition-all" data-qty="10" type="button">
+          10
+        </button>
+<button class="qty-btn h-11 px-5 rounded-xl font-body-sm text-body-sm font-medium bg-surface-container-low text-text hover:bg-surface-container transition-all" data-qty="20" type="button">
+          20
+        </button>
+<button class="qty-btn h-11 px-5 rounded-xl font-body-sm text-body-sm font-medium bg-surface-container-low text-text hover:bg-surface-container transition-all" data-qty="50" type="button">
+          50
+        </button>
+<button class="qty-btn h-11 px-5 rounded-xl font-body-sm text-body-sm font-medium bg-surface-container-low text-text hover:bg-surface-container transition-all" data-qty="all" type="button">
+          Все (200)
+        </button>
+<div class="inline-flex items-center h-11 rounded-xl px-3 bg-surface-container-low text-text focus-within:bg-card focus-within:ring-2 focus-within:ring-primary transition-all">
+<label class="font-micro-label text-micro-label text-muted mr-1.5 cursor-pointer uppercase" for="custom-qty-input">своё:</label>
+<input class="w-12 text-center font-body-sm text-body-sm font-medium bg-transparent outline-none text-text placeholder-muted" id="custom-qty-input" max="200" min="1" placeholder="—" type="number"/>
+</div>
+</div>
+</section>
+<!-- Cognitive Taxonomy / Bloom Card -->
+<section class="bg-card rounded-2xl p-6 shadow-sm mb-4 bg-surface-container-lowest">
+<div class="flex items-center justify-between mb-space-md">
+<h2 class="font-body-base text-body-base font-semibold text-text">Пирамида сложности</h2>
+<span class="font-micro-label text-micro-label text-muted uppercase">Таксономия Блума</span>
+</div>
+<div class="flex gap-2 flex-wrap" id="taxonomy-chips">
+<button class="level-btn px-3.5 py-1.5 rounded-full font-micro-label text-micro-label font-bold bg-primary-soft text-primary transition-colors" data-level="all" type="button">
+          Все вопросы · 200
+        </button>
+<button class="level-btn px-3.5 py-1.5 rounded-full font-micro-label text-micro-label font-semibold bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-colors" data-level="base" type="button">
+          База · 90
+        </button>
+<button class="level-btn px-3.5 py-1.5 rounded-full font-micro-label text-micro-label font-semibold bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-colors" data-level="comprehension" type="button">
+          Понимание · 70
+        </button>
+<button class="level-btn px-3.5 py-1.5 rounded-full font-micro-label text-micro-label font-semibold bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-colors" data-level="application" type="button">
+          Применение · 40
+        </button>
+</div>
+<!-- Cognitive distribution visual bar -->
+<div class="mt-4 pt-3 flex flex-col gap-1.5">
+<div class="flex justify-between font-micro-label text-micro-label text-muted">
+<span>Распределение в выборке</span>
+<span class="tabular-nums">45% База · 35% Понимание · 20% Клиника</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container overflow-hidden flex">
+<div class="bg-primary h-full" style="width: 45%"></div>
+<div class="bg-secondary-container h-full" style="width: 35%"></div>
+<div class="bg-tertiary-container h-full" style="width: 20%"></div>
+</div>
+</div>
+</section>
+<!-- Collapsible Questions Composition -->
+<div class="bg-card rounded-2xl shadow-sm mb-4 bg-surface-container-lowest overflow-hidden">
+<button class="w-full p-5 flex items-center justify-between text-left hover:bg-surface-container-low transition-colors" id="accordion-toggle" type="button">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+</div>
+<span class="font-body-sm text-body-sm font-semibold text-text">Состав банка и темы</span>
+<span class="font-micro-label text-micro-label text-muted bg-surface-container px-2 py-0.5 rounded uppercase font-medium">8 тем</span>
+</div>
+<div class="flex items-center gap-2 text-muted">
+<span class="font-micro-label text-micro-label" id="accordion-action-text">открыть</span>
+<span class="material-symbols-outlined text-[20px] transition-transform duration-200" id="accordion-chevron">expand_more</span>
+</div>
+</button>
+<div class="hidden px-5 pb-5 pt-2" id="accordion-content">
+<div class="space-y-2">
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-3">
+<span class="font-micro-label text-micro-label text-muted w-5">01</span>
+<div>
+<p class="font-body-sm text-body-sm font-medium text-text">Однослойный плоский и кубический эпителий</p>
+<p class="font-micro-label text-micro-label text-muted">Базальная мембрана, мезотелий, канальцы почки</p>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-muted tabular-nums">28 вопр.</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-3">
+<span class="font-micro-label text-micro-label text-muted w-5">02</span>
+<div>
+<p class="font-body-sm text-body-sm font-medium text-text">Однослойный призматический и каемчатый эпителий</p>
+<p class="font-micro-label text-micro-label text-muted">Энтероциты, микроворсинки, бокаловидные экзокриноциты</p>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-muted tabular-nums">34 вопр.</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-3">
+<span class="font-micro-label text-micro-label text-muted w-5">03</span>
+<div>
+<p class="font-body-sm text-body-sm font-medium text-text">Многорядный мерцательный эпителий дыхательных путей</p>
+<p class="font-micro-label text-micro-label text-muted">Реснички, регенерация, базальные стволовые клетки</p>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-muted tabular-nums">32 вопр.</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-3">
+<span class="font-micro-label text-micro-label text-muted w-5">04</span>
+<div>
+<p class="font-body-sm text-body-sm font-medium text-text">Многослойный ороговевающий эпидермис</p>
+<p class="font-micro-label text-micro-label text-muted">Дифференцировка кератиноцитов, 5 слоев кожи пальца</p>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-muted tabular-nums">42 вопр.</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-3">
+<span class="font-micro-label text-micro-label text-muted w-5">05</span>
+<div>
+<p class="font-body-sm text-body-sm font-medium text-text">Переходный эпителий (уротелий) и железистый эпителий</p>
+<p class="font-micro-label text-micro-label text-muted">Куполообразные клетки, фазы секреции, типы секреции</p>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-muted tabular-nums">64 вопр.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Launch Bar -->
+<aside class="sticky bottom-0 w-full bg-card/95 backdrop-blur-md shadow-lg z-30 py-3.5">
+<div class="max-w-3xl mx-auto px-margin flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-body-base text-body-base font-bold text-text leading-tight" id="footer-mode-label">
+          Подготовка
+        </span>
+<span class="font-body-sm text-body-sm text-muted leading-tight mt-0.5" id="footer-summary-label">
+          10 вопросов · проверка сразу
+        </span>
+</div>
+<button class="min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-2 hover:bg-primary-dark transition-all shadow-sm" id="start-test-btn" type="button">
+<span id="start-btn-text">Начать · 10</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</aside>
+</div>
+<script>
+  (function initLaunchBank() {
+    let currentMode = 'training';
+    let currentQty = '10';
+    let isSequential = false;
+
+    const modeLabels = {
+      training: { title: 'Подготовка', sub: 'проверка сразу' },
+      solving: { title: 'Решение', sub: 'проверка в конце' },
+      control: { title: 'Контрольный', sub: 'без подсказок' },
+      exam: { title: 'Экзамен', sub: 'строго, по таймеру' }
+    };
+
+    function updateFooter() {
+      const footerMode = document.getElementById('footer-mode-label');
+      const footerSub = document.getElementById('footer-summary-label');
+      const startBtnText = document.getElementById('start-btn-text');
+
+      const modeInfo = modeLabels[currentMode] || modeLabels.training;
+      footerMode.textContent = isSequential ? 'Весь банк подряд' : modeInfo.title;
+
+      const qtyText = currentQty === 'all' ? '200' : currentQty;
+      footerSub.textContent = `${qtyText} вопросов · ${modeInfo.sub}`;
+      startBtnText.textContent = `Начать · ${qtyText}`;
+    }
+
+    // Mode Selector interaction
+    const modeCards = document.querySelectorAll('.mode-card');
+    modeCards.forEach(card => {
+      card.addEventListener('click', () => {
+        isSequential = false;
+        document.getElementById('sequential-indicator').innerHTML = '<span class="material-symbols-outlined text-[16px] text-muted">radio_button_unchecked</span>';
+
+        modeCards.forEach(c => {
+          c.classList.remove('bg-primary-soft', 'ring-2', 'ring-primary', 'shadow-sm');
+          c.classList.add('bg-surface-container-lowest');
+          const iconBox = c.querySelector('div:first-child');
+          iconBox.classList.remove('bg-primary', 'text-on-primary');
+          iconBox.classList.add('bg-surface-container', 'text-on-surface-variant');
+          const checkIcon = c.querySelector('.material-symbols-outlined:last-child');
+          if (c.querySelector('.absolute')) {
+            c.querySelector('.absolute').remove();
+          }
+        });
+
+        card.classList.remove('bg-surface-container-lowest');
+        card.classList.add('bg-primary-soft', 'ring-2', 'ring-primary', 'shadow-sm');
+        const activeIcon = card.querySelector('div:first-child');
+        activeIcon.classList.remove('bg-surface-container', 'text-on-surface-variant');
+        activeIcon.classList.add('bg-primary', 'text-on-primary');
+
+        const checkBadge = document.createElement('div');
+        checkBadge.className = 'absolute top-3 right-3 text-primary';
+        checkBadge.innerHTML = '<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: \'FILL\' 1;">check_circle</span>';
+        card.appendChild(checkBadge);
+
+        currentMode = card.getAttribute('data-mode');
+        updateFooter();
+      });
+    });
+
+    // Sequential Toggle
+    const seqToggle = document.getElementById('toggle-sequential');
+    seqToggle.addEventListener('click', () => {
+      isSequential = !isSequential;
+      const indicator = document.getElementById('sequential-indicator');
+      if (isSequential) {
+        indicator.innerHTML = '<span class="material-symbols-outlined text-[18px] text-primary" style="font-variation-settings: \'FILL\' 1;">check_circle</span>';
+      } else {
+        indicator.innerHTML = '<span class="material-symbols-outlined text-[16px] text-muted">radio_button_unchecked</span>';
+      }
+      updateFooter();
+    });
+
+    // Quantity Chips
+    const qtyButtons = document.querySelectorAll('.qty-btn');
+    const customInput = document.getElementById('custom-qty-input');
+
+    qtyButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        qtyButtons.forEach(b => {
+          b.classList.remove('bg-primary', 'text-on-primary', 'font-semibold');
+          b.classList.add('bg-surface-container-low', 'text-text', 'font-medium');
+        });
+        btn.classList.remove('bg-surface-container-low', 'text-text', 'font-medium');
+        btn.classList.add('bg-primary', 'text-on-primary', 'font-semibold');
+        customInput.value = '';
+
+        currentQty = btn.getAttribute('data-qty');
+        document.getElementById('bank-total-hint').textContent = `${currentQty === 'all' ? '200' : currentQty} из 200 в банке`;
+        updateFooter();
+      });
+    });
+
+    customInput.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (val > 0 && val <= 200) {
+        qtyButtons.forEach(b => {
+          b.classList.remove('bg-primary', 'text-on-primary', 'font-semibold');
+          b.classList.add('bg-surface-container-low', 'text-text', 'font-medium');
+        });
+        currentQty = val.toString();
+        document.getElementById('bank-total-hint').textContent = `${currentQty} из 200 в банке`;
+        updateFooter();
+      }
+    });
+
+    // Taxonomy Chips
+    const levelButtons = document.querySelectorAll('.level-btn');
+    levelButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        levelButtons.forEach(b => {
+          b.classList.remove('bg-primary-soft', 'text-primary', 'font-bold');
+          b.classList.add('bg-surface-container-low', 'text-on-surface-variant', 'font-semibold');
+        });
+        btn.classList.remove('bg-surface-container-low', 'text-on-surface-variant', 'font-semibold');
+        btn.classList.add('bg-primary-soft', 'text-primary', 'font-bold');
+      });
+    });
+
+    // Accordion Toggle
+    const accordionBtn = document.getElementById('accordion-toggle');
+    const accordionContent = document.getElementById('accordion-content');
+    const accordionChevron = document.getElementById('accordion-chevron');
+    const accordionActionText = document.getElementById('accordion-action-text');
+
+    accordionBtn.addEventListener('click', () => {
+      const isHidden = accordionContent.classList.contains('hidden');
+      if (isHidden) {
+        accordionContent.classList.remove('hidden');
+        accordionChevron.classList.add('rotate-180');
+        accordionActionText.textContent = 'свернуть';
+      } else {
+        accordionContent.classList.add('hidden');
+        accordionChevron.classList.remove('rotate-180');
+        accordionActionText.textContent = 'открыть';
+      }
+    });
+
+    updateFooter();
+  })();
+</script></main><footer class="w-full bg-card border-t border-border py-space-xl"><div class="max-w-6xl mx-auto px-margin flex flex-col sm:flex-row items-center justify-between gap-space-md font-body-sm text-body-sm text-muted"><span>© 2025 MEDBIOHIM. Учебная платформа для студентов-медиков.</span><span>Биохимия · Гистология · Тестирование</span></div></footer></body></html>
