@@ -249,6 +249,56 @@ type StatsRow = {
 };
 
 /** GET /diagnosticum/stats — сводка по своим попыткам и слабые разделы. */
+/**
+ * GET /diagnosticum/attempt/:id — текущее задание попытки без ключа ответа.
+ *
+ * Нужно экзаменационной серии: после перезагрузки страницы клиент находит
+ * сохранённую попытку и продолжает с того же вопроса. Строка попытки читается
+ * service-клиентом (в ней `answers`), но в ответ уходит только `question`.
+ */
+session.get("/attempt/:id", requireAuth, async (c) => {
+  const rid = requestId();
+  const attemptId = String(c.req.param("id") || "");
+  if (!UUID_PATTERN.test(attemptId)) {
+    const { body: errorBody, status } = fail("VALIDATION_ERROR", "Некорректная попытка", 422, rid);
+    return c.json(errorBody, status as 422);
+  }
+
+  const service = createServiceClient(c.env);
+  if (!service) {
+    const { body: errorBody, status } = fail("DB_UNAVAILABLE", "Сервис данных недоступен", 503, rid);
+    return c.json(errorBody, status as 503);
+  }
+
+  const loaded = await loadAttempt(service, attemptId, c.get("user").id);
+  if ("error" in loaded) {
+    const notFound = loaded.error === "NOT_FOUND";
+    const { body: errorBody, status } = fail(
+      notFound ? "NOT_FOUND" : "DB_UNAVAILABLE",
+      "Попытка не найдена",
+      notFound ? 404 : 503,
+      rid,
+    );
+    return c.json(errorBody, status as 404 | 503);
+  }
+
+  const attempt = loaded.row;
+  return c.json(
+    ok(
+      {
+        attempt_id: attempt.id,
+        mode: attempt.mode,
+        section: String(attempt.section || ""),
+        question: attempt.question,
+        hints_total: MAX_HINTS,
+        hints_used: Number(attempt.hints_used || 0),
+        answered: Boolean(attempt.answered_at),
+      },
+      rid,
+    ),
+  );
+});
+
 session.get("/stats", requireAuth, async (c) => {
   const rid = requestId();
   const { data, error } = await c

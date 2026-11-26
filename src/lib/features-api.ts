@@ -190,6 +190,13 @@ export async function srsAddCard(payload: { front: string; back?: string; subjec
 export async function srsAddTrainerCards(count = 10) {
   return api<{ added: number }>("/srs/trainer", { method: "POST", body: JSON.stringify({ count }) });
 }
+/** Один препарат в повторение — из разбора ошибки в диагностикуме. */
+export async function srsAddTrainerCard(guideKey: string) {
+  return api<{ added: number; requested?: number }>("/srs/trainer", {
+    method: "POST",
+    body: JSON.stringify({ keys: [guideKey] }),
+  });
+}
 export async function srsDeleteCard(id: string) {
   return api<{ deleted: boolean }>(`/srs/cards/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

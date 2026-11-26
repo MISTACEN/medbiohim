@@ -163,6 +163,9 @@ export const endpoints = {
     trainerFeedImage: (id: string, variant?: string): string => variant ? `/trainers/feed/${enc(id)}/image?variant=${enc(variant)}` : `/trainers/feed/${enc(id)}/image`,
     /** Метка для журнала `mbh:api-log` (не путь запроса, но живёт в реестре). */
     trainerFeedImageLabel: (): string => "/trainers/feed/:id/image",
+    /** Дополнительное изображение карточки (trainer_card_images). */
+    trainerFeedImageItem: (id: string, imageId: string): string => `/trainers/feed/${enc(id)}/images/${enc(imageId)}`,
+    trainerFeedImageItemLabel: (): string => "/trainers/feed/:id/images/:imageId",
     trainerFeedStats: (): string => "/trainers/feed/stats",
     trainerFeedAnswer: (): string => "/trainers/feed/answer",
     /** Свои препараты студента (личные, только владелец; не кэшируются). */
@@ -311,6 +314,11 @@ export const endpoints = {
     contentImport: (): string => "/admin/content/import",
     preparationGuides: (): string => "/admin/preparation-guides",
     preparationGuide: (key: string): string => `/admin/preparation-guides/${enc(key)}`,
+    /** Карточки препаратов v2: архив, изображения, подписи. */
+    trainerCards: (query?: string): string => withQuery("/admin/trainer-cards", query),
+    trainerCard: (id: string): string => `/admin/trainer-cards/${enc(id)}`,
+    trainerCardImages: (id: string): string => `/admin/trainer-cards/${enc(id)}/images`,
+    trainerCardImage: (id: string, imageId: string): string => `/admin/trainer-cards/${enc(id)}/images/${enc(imageId)}`,
     contentPackageImport: (): string => "/admin/content/package/import",
     contentValidate: (): string => "/admin/content/validate",
     announcements: (): string => "/admin/announcements",
@@ -371,6 +379,8 @@ export const endpoints = {
     start: (): string => "/diagnosticum/start",
     hint: (): string => "/diagnosticum/hint",
     answer: (): string => "/diagnosticum/answer",
+    /** Текущее задание попытки без ключа ответа — восстановление серии. */
+    attempt: (id: string): string => `/diagnosticum/attempt/${enc(id)}`,
     stats: (): string => "/diagnosticum/stats",
     mistakes: (): string => "/diagnosticum/mistakes",
   },

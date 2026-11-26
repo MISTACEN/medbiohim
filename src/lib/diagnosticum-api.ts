@@ -21,6 +21,8 @@ export type DiagnosticumSection = {
   section: string;
   total: number;
   systems: string[];
+  /** Позиции набора без методички: показываем «18 из 19», а не молчим. */
+  missing?: number;
 };
 
 export type DiagnosticumOverview = {
@@ -53,6 +55,8 @@ export type DiagnosticumAttempt = {
   question: DiagnosticumQuestion;
   hints_total: number;
   hints_used: number;
+  /** Задание уже отвечено — восстанавливать серию с него нельзя. */
+  answered?: boolean;
 };
 
 export type DiagnosticumHint = {
@@ -120,6 +124,11 @@ export function submitDiagnosticumAnswer(
     method: "POST",
     body: JSON.stringify({ attempt_id: attemptId, submitted }),
   });
+}
+
+/** Текущее задание попытки — восстановление экзамена после перезагрузки. */
+export function getDiagnosticumAttempt(attemptId: string) {
+  return api<DiagnosticumAttempt>(endpoints.diagnosticum.attempt(attemptId));
 }
 
 export function getDiagnosticumStats() {

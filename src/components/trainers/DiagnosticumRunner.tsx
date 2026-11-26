@@ -8,11 +8,12 @@
  * не знает правильный вариант, поэтому «подсмотреть» в разметке нечего.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, HelpCircle, Loader2, Play, RotateCcw, XCircle } from "lucide-react";
 import { getTrainerImageUrl } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import {
+  getDiagnosticumAttempt,
   getDiagnosticumOverview,
   requestDiagnosticumHint,
   startDiagnosticumAttempt,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/diagnosticum-api";
 import { PreparationGuidePanel } from "@/components/trainers/PreparationGuidePanel";
 import { DiagnosticumStats } from "@/components/trainers/DiagnosticumStats";
+import { srsAddTrainerCard } from "@/lib/features-api";
 
 /**
  * Режим можно задать снаружи — так тренажёр выбирает диагностикум форматом
@@ -43,6 +45,19 @@ type DiagnosticumRunnerProps = {
  */
 const STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"];
 
+/** Ключ sessionStorage для незавершённой экзаменационной серии. */
+const EXAM_STORAGE_KEY = "mbh:diagnosticum:exam";
+
+type SavedExam = { attemptId?: string; total?: number; index?: number; scores?: number[] };
+
+function clearExamStorage() {
+  try {
+    window.sessionStorage.removeItem(EXAM_STORAGE_KEY);
+  } catch {
+    /* приватный режим: хранилища нет — чистить нечего */
+  }
+}
+
 export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true }: DiagnosticumRunnerProps = {}) {
   const [overview, setOverview] = useState<DiagnosticumOverview | null>(null);
   // `mode` — только стартовое значение: переключатель внутри раннера должен
@@ -56,12 +71,30 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
   const [hints, setHints] = useState<DiagnosticumHint[]>([]);
   const [result, setResult] = useState<DiagnosticumResult | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  // Статистика не показывается сразу: это вторичный блок, и он не должен
+  // удлинять экран задания. Заодно запрос статистики уходит только при
+  // открытии, а не при каждом входе в тренажёр.
+  const [statsOpen, setStatsOpen] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
+  // Ошибка сразу уходит в повторение: препарат добавляется точечно по ключу
+  // методички, а не пачкой из десяти случайных.
+  const [repeatState, setRepeatState] = useState<"idle" | "busy" | "saved" | "exists">("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Экзамен — серия вопросов без подсказок и без эталона до итога.
   const [exam, setExam] = useState<{ total: number; index: number; scores: number[]; finished: boolean } | null>(null);
-  const EXAM_TOTAL = 10;
+  // Длина серии и таймер на вопрос — оставшиеся требования §7.4 концепции.
+  // Оба значения живут в клиенте: сервер по-прежнему хранит отдельные попытки,
+  // а не сессию, поэтому миграция БД не нужна.
+  const [examLength, setExamLength] = useState(10);
+  const [examTime, setExamTime] = useState(90);
+  const [timeLeft, setTimeLeft] = useState(90);
+  const [timedOut, setTimedOut] = useState(false);
+  const EXAM_LENGTHS = [10, 20, 30] as const;
+  // Серия переживает перезагрузку: ход серии — в sessionStorage, само задание
+  // восстанавливается с сервера по id попытки (без ключа ответа).
+  const [resumedNote, setResumedNote] = useState(false);
+  const resumeTried = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -89,7 +122,79 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     setSelected({});
     setHints([]);
     setExam(null);
+    setTimedOut(false);
+    setRepeatState("idle");
+    resumeTried.current = false;
+    setResumedNote(false);
   }, [mode]);
+
+  // Восстановление экзамена после перезагрузки. Одного раза на вход в режим
+  // достаточно: дальше серия живёт в состоянии, а не в хранилище.
+  useEffect(() => {
+    if (resumeTried.current || mode !== "exam") return;
+    resumeTried.current = true;
+    let raw = "";
+    try {
+      raw = window.sessionStorage.getItem(EXAM_STORAGE_KEY) || "";
+    } catch {
+      return;
+    }
+    if (!raw) return;
+
+    let saved: SavedExam | null = null;
+    try {
+      saved = JSON.parse(raw) as SavedExam;
+    } catch {
+      saved = null;
+    }
+    const attemptId = saved?.attemptId;
+    if (!attemptId) {
+      clearExamStorage();
+      return;
+    }
+
+    void getDiagnosticumAttempt(attemptId).then((res) => {
+      // Отвеченное задание не переигрываем и не показываем второй раз.
+      if (!res.ok || res.data.answered) {
+        clearExamStorage();
+        return;
+      }
+      setAttempt(res.data);
+      setExam({
+        total: Number(saved?.total) || examLength,
+        index: Number(saved?.index) || 1,
+        scores: Array.isArray(saved?.scores) ? saved.scores : [],
+        finished: false,
+      });
+      setTimeLeft(examTime);
+      setResumedNote(true);
+    });
+  }, [mode, examLength, examTime]);
+
+  // Сохраняем только активный вопрос: после ответа ждём перехода к следующему,
+  // иначе после перезагрузки студент увидел бы уже отвеченное задание.
+  useEffect(() => {
+    if (mode !== "exam" || !attempt || !exam || exam.finished || result) return;
+    try {
+      window.sessionStorage.setItem(
+        EXAM_STORAGE_KEY,
+        JSON.stringify({
+          attemptId: attempt.attempt_id,
+          total: exam.total,
+          index: exam.index,
+          scores: exam.scores,
+        }),
+      );
+    } catch {
+      /* приватный режим: серия просто не восстановится */
+    }
+  }, [mode, attempt, exam, result]);
+
+  // Итог серии — серия закончена, восстанавливать нечего.
+  useEffect(() => {
+    if (mode !== "exam" || !exam?.finished) return;
+    clearExamStorage();
+  }, [mode, exam?.finished]);
 
   useEffect(() => {
     const cardId = attempt?.question.image_card_id;
@@ -115,12 +220,15 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     setSelected({});
     setHints([]);
     setResult(null);
+    setRepeatState("idle");
     if (mode === "exam") {
       setExam((current) =>
         current && !current.finished && current.index <= current.total
           ? current
-          : { total: EXAM_TOTAL, index: 1, scores: [], finished: false },
+          : { total: examLength, index: 1, scores: [], finished: false },
       );
+      setTimeLeft(examTime);
+      setTimedOut(false);
     } else {
       setExam(null);
     }
@@ -137,7 +245,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     } finally {
       setBusy(false);
     }
-  }, [mode, section]);
+  }, [mode, section, examLength, examTime]);
 
   const askHint = useCallback(async () => {
     if (!attempt || result) return;
@@ -183,6 +291,38 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     setExam({ ...exam, index: exam.index + 1 });
     await start();
   }, [exam, start]);
+
+  // Отсчёт только для активного вопроса экзамена: без результата и без итога.
+  useEffect(() => {
+    if (mode !== "exam" || !examTime || !attempt || result || !exam || exam.finished) return;
+    const timer = window.setInterval(() => {
+      setTimeLeft((value) => (value > 0 ? value - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [mode, examTime, attempt, result, exam]);
+
+  // Время вышло — ответ уходит автоматически с тем, что отмечено. Пустой выбор
+  // тоже принимается: пропуск по времени не должен ждать студента.
+  useEffect(() => {
+    if (mode !== "exam" || !examTime || timeLeft > 0) return;
+    if (!attempt || result || !exam || exam.finished) return;
+    setTimedOut(true);
+    void submit();
+  }, [mode, examTime, timeLeft, attempt, result, exam, submit]);
+
+  /** Положить разобранный препарат в очередь повторения (идемпотентно). */
+  const addToRepeat = useCallback(async () => {
+    const key = result?.guide_key;
+    if (!key || repeatState === "busy" || repeatState === "saved" || repeatState === "exists") return;
+    setRepeatState("busy");
+    const res = await srsAddTrainerCard(key);
+    if (!res.ok) {
+      setRepeatState("idle");
+      setError(describeApiError(res.error));
+      return;
+    }
+    setRepeatState(res.data.added > 0 ? "saved" : "exists");
+  }, [result?.guide_key, repeatState]);
 
   const labels = useMemo(() => {
     const map = new Map<string, string>();
@@ -254,9 +394,34 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
             {(overview?.sections ?? []).map((item) => (
               <option key={item.section} value={item.section}>
                 {item.section} · {item.total}
+                {item.missing ? ` из ${item.total + item.missing}` : ""}
               </option>
             ))}
           </select>
+          {mode === "exam" ? (
+            <>
+              <select
+                value={examLength}
+                onChange={(event) => setExamLength(Number(event.target.value))}
+                className={selectClass}
+                aria-label="Вопросов в экзамене"
+              >
+                {EXAM_LENGTHS.map((value) => (
+                  <option key={value} value={value}>{value} вопросов</option>
+                ))}
+              </select>
+              <select
+                value={examTime}
+                onChange={(event) => setExamTime(Number(event.target.value))}
+                className={selectClass}
+                aria-label="Время на вопрос"
+              >
+                <option value={0}>Без таймера</option>
+                <option value={60}>60 с на вопрос</option>
+                <option value={90}>90 с на вопрос</option>
+              </select>
+            </>
+          ) : null}
           <button
             type="button"
             onClick={() => void start()}
@@ -290,9 +455,29 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
         <div className="card space-y-4 p-4">
           <p className="text-sm font-semibold text-slate-700">{attempt.question.prompt}</p>
           {mode === "exam" && exam ? (
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
-              Экзамен · вопрос {Math.min(exam.index, exam.total)} из {exam.total}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                  Экзамен · вопрос {Math.min(exam.index, exam.total)} из {exam.total}
+                </p>
+                {resumedNote ? (
+                  <p className="text-[11px] text-slate-500">Серия продолжена с того же вопроса.</p>
+                ) : null}
+              </div>
+              {examTime && !exam.finished && !result ? (
+                <span
+                  className={
+                    "rounded-full px-2.5 py-1 text-xs font-bold tabular-nums " +
+                    (timeLeft <= 10
+                      ? "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
+                      : "bg-slate-100 text-slate-700")
+                  }
+                  aria-label="Осталось времени на вопрос"
+                >
+                  {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+                </span>
+              ) : null}
+            </div>
           ) : null}
           <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-slate-50">
             {imageUrl ? (
@@ -371,8 +556,24 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
                 {result.correct ? "Верно" : "Есть ошибки"} · {result.score} баллов
                 {result.hints_used ? ` · подсказок: ${result.hints_used}` : ""}
               </p>
-              {(result.parts ?? []).map((part) => (
+              {(result.parts ?? []).map((part) => {
+                const partTitle =
+                  attempt.question.parts.find((item) => item.id === part.part_id)?.title ?? part.part_id;
+                return (
                 <div key={part.part_id} className="text-sm text-slate-600">
+                  <p
+                    className={
+                      "flex items-center gap-1.5 font-semibold " +
+                      (part.correct ? "text-[var(--status-ok-fg)]" : "text-slate-900")
+                    }
+                  >
+                    {part.correct ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-[var(--status-critical-fg)]" />
+                    )}
+                    {partTitle}
+                  </p>
                   {part.missing.length ? (
                     <p>
                       Не отмечено: {part.missing.map((id) => label(part.part_id, id)).join(", ")}.
@@ -385,7 +586,8 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
                   ) : null}
                   <p className="mt-1 text-slate-500">{part.explanation}</p>
                 </div>
-              ))}
+                );
+              })}
               <div className="flex flex-wrap gap-2 pt-1">
                 <button
                   type="button"
@@ -402,6 +604,22 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
                     className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
                   >
                     Методика поиска
+                  </button>
+                ) : null}
+                {result.guide_key && !result.correct ? (
+                  <button
+                    type="button"
+                    onClick={() => void addToRepeat()}
+                    disabled={repeatState !== "idle"}
+                    className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-200 disabled:opacity-60"
+                  >
+                    {repeatState === "busy"
+                      ? "Добавляю…"
+                      : repeatState === "saved"
+                        ? "В повторении"
+                        : repeatState === "exists"
+                          ? "Уже в колоде"
+                          : "В повторение"}
                   </button>
                 ) : null}
               </div>
@@ -431,6 +649,11 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
               ) : (
                 <>
                   <p className="text-sm font-bold text-slate-900">Ответ принят · {result.score} баллов</p>
+                  {timedOut ? (
+                    <p className="text-xs font-semibold text-[var(--status-warn-fg)]">
+                      Время на вопрос вышло — ответ отправлен автоматически.
+                    </p>
+                  ) : null}
                   <p className="text-xs text-slate-500">
                     Вопрос {exam.index} из {exam.total}. Разбор и эталон — только после последнего вопроса.
                   </p>
@@ -479,7 +702,19 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
         </div>
       ) : null}
 
-      <DiagnosticumStats refreshKey={statsKey} />
+      <details
+        className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3"
+        onToggle={(event) => setStatsOpen(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+          Мои результаты и ошибки
+        </summary>
+        {statsOpen ? (
+          <div className="mt-3">
+            <DiagnosticumStats refreshKey={statsKey} />
+          </div>
+        ) : null}
+      </details>
 
       {guideOpen && result?.guide_key ? (
         <PreparationGuidePanel

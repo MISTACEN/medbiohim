@@ -5,7 +5,7 @@
  * архитектурном бюджете и читался целиком.
  */
 import type { AuthVariables } from "../../middleware/auth";
-import type { AnswerKey, CardRow, DiagnosticumMode, GuideRow } from "./model";
+import type { AnswerKey, CardRow, DiagnosticumMode, GuideRow, Question } from "./model";
 
 export const MODE_LABELS: Record<DiagnosticumMode, string> = {
   identify: "Определи препарат",
@@ -106,6 +106,8 @@ export type AttemptRow = {
   guide_key: string;
   /** Форма как в /start: готовый AnswerKey ({parts: {...}}), не отдельные части. */
   answers: AnswerKey;
+  /** Вопрос без ключа ответа: по нему восстанавливается прерванная серия. */
+  question: Question;
   hints: number[] | null;
   hints_used: number | null;
   answered_at: string | null;
@@ -126,7 +128,7 @@ export async function loadAttempt(
 ): Promise<{ row: AttemptRow } | { error: "NOT_FOUND" | "DB_UNAVAILABLE" }> {
   const { data, error } = await client
     .from("diagnosticum_attempts")
-    .select("id,mode,section,guide_key,answers,hints,hints_used,answered_at,created_at")
+    .select("id,mode,section,guide_key,question,answers,hints,hints_used,answered_at,created_at")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();

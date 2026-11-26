@@ -100,6 +100,18 @@ srs.post("/trainer", requireAuth, async (c) => {
     payload = await c.req.json();
   } catch {}
   const count = Math.max(1, Math.min(50, Number(payload?.count ?? 10) || 10));
+  // Точечное добавление: `keys` — конкретные препараты (например, ошибка в
+  // диагностикуме). Без `keys` сохраняется прежний режим «набрать колоду».
+  const requestedKeys: string[] = Array.isArray(payload?.keys)
+    ? Array.from(
+        new Set(
+          (payload.keys as unknown[])
+            .map((item) => String(item || "").trim())
+            .filter(Boolean),
+        ),
+      ).slice(0, 20)
+    : [];
+  const limitRows = requestedKeys.length ? requestedKeys.length : count;
   try {
     const { data: guides, error: guidesError } = await supabase
       .from("preparation_guides")
@@ -117,8 +129,11 @@ srs.post("/trainer", requireAuth, async (c) => {
     const covered = new Set((existing || []).map((row: any) => String(row.source_key || "")));
 
     const rows: Record<string, unknown>[] = [];
-    for (const guide of (guides || []) as any[]) {
-      if (rows.length >= count) break;
+    const pool = requestedKeys.length
+      ? ((guides || []) as any[]).filter((row) => requestedKeys.includes(String(row.key || "")))
+      : ((guides || []) as any[]);
+    for (const guide of pool) {
+      if (rows.length >= limitRows) break;
       const key = String(guide.key || "");
       const name = String(guide.name || "").trim();
       const features = Array.isArray(guide.features)
@@ -145,10 +160,10 @@ srs.post("/trainer", requireAuth, async (c) => {
       });
     }
 
-    if (!rows.length) return c.json(ok({ added: 0 }, rid));
+    if (!rows.length) return c.json(ok({ added: 0, requested: requestedKeys.length }, rid));
     const { error: insertError } = await supabase.from("srs_cards").insert(rows);
     if (insertError) throw insertError;
-    return c.json(ok({ added: rows.length }, rid));
+    return c.json(ok({ added: rows.length, requested: requestedKeys.length }, rid));
   } catch (error) {
     console.error("[srs:trainer]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Не удалось добавить микропрепараты", 503, rid);

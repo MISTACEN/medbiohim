@@ -27,3 +27,22 @@ test("srs: микропрепараты добавляются отдельны�
   const client = await read("src/components/cards/SrsReview.tsx");
   assert.ok(client.includes("+10 микропрепаратов"), "в колоде есть кнопка добавления препаратов");
 });
+
+test("srs: конкретную ошибку можно отправить в повторение точечно", async () => {
+  const cards = await read("workers/api/src/routes/srs/02-cards.ts");
+  assert.ok(cards.includes("const requestedKeys:"), "маршрут принимает список ключей препаратов");
+  assert.ok(cards.includes("requestedKeys.includes(String(row.key"), "ключи фильтруют методички");
+  assert.ok(cards.includes("limitRows"), "точечное добавление не режется пачкой из десяти");
+
+  const api = await read("src/lib/features-api.ts");
+  assert.ok(api.includes("srsAddTrainerCard"), "у клиента есть точечное добавление");
+
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(runner.includes("srsAddTrainerCard(key)"), "разбор ошибки отправляет препарат в повторение");
+  assert.ok(runner.includes("!result.correct"), "кнопка только для ошибки, а не для верного ответа");
+
+  // Атлас/тренировка пользуются той же панелью методички — кнопка нужна там.
+  const panel = await read("src/components/trainers/PreparationGuidePanel.tsx");
+  assert.ok(panel.includes("srsAddTrainerCard(guideKey)"), "из методички препарат уходит в повторение");
+  assert.ok(panel.includes('repeat === "exists"'), "повторное добавление не выдаётся за новое");
+});

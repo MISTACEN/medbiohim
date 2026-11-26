@@ -26,6 +26,7 @@ import {
   type Question,
 } from "./model";
 import { MODE_LABELS, isConstraintViolation, isMissingTable, loadBank } from "./shared";
+import { FIRST_DIAGNOSTICUM, isSetSection, setGuides } from "./sets";
 import session from "./session";
 
 const diagnosticum = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -60,11 +61,24 @@ diagnosticum.get("/", requireAuth, async (c) => {
     bySection.set(section, entry);
   }
 
-  const sections = Array.from(bySection.values()).map((entry) => ({
-    section: entry.section,
-    total: entry.total,
-    systems: Array.from(entry.systems),
-  }));
+  // Набор первой диагностики — первым разделом: он собран из тех же методичек,
+  // но по списку концепции, и его неполнота видна сразу («18 из 19»).
+  const first = setGuides(FIRST_DIAGNOSTICUM, loaded.bank.guides);
+  const sections = [
+    {
+      section: FIRST_DIAGNOSTICUM.title,
+      total: first.guides.length,
+      systems: [],
+      ...(first.missing.length ? { missing: first.missing.length } : {}),
+    },
+    ...Array.from(bySection.values())
+      .filter((entry) => !isSetSection(FIRST_DIAGNOSTICUM, entry.section))
+      .map((entry) => ({
+        section: entry.section,
+        total: entry.total,
+        systems: Array.from(entry.systems),
+      })),
+  ];
 
   return c.json(
     ok(
@@ -113,9 +127,12 @@ diagnosticum.post("/start", requireAuth, async (c) => {
   }
 
   const { bank } = loaded;
-  const pool = section
-    ? bank.guides.filter((guide) => normalizeName(guide.section) === normalizeName(section))
-    : bank.guides;
+  const setRequested = isSetSection(FIRST_DIAGNOSTICUM, section);
+  const pool = setRequested
+    ? setGuides(FIRST_DIAGNOSTICUM, bank.guides).guides
+    : section
+      ? bank.guides.filter((guide) => normalizeName(guide.section) === normalizeName(section))
+      : bank.guides;
 
   // Электронограммы — отдельный банк без методичек, поэтому раздел препаратов
   // к ним не применяется.
@@ -210,7 +227,9 @@ diagnosticum.post("/start", requireAuth, async (c) => {
     });
     if (result) {
       built = {
-        section: String(guide.section || ""),
+        // Попытка из набора сохраняет имя набора, иначе статистика разложит её
+        // по системам органов и набор перестанет считаться отдельно.
+        section: setRequested ? FIRST_DIAGNOSTICUM.title : String(guide.section || ""),
         guideKey: guide.key,
         question: result.question,
         answers: result.answers,

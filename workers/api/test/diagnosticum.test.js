@@ -185,7 +185,8 @@ test("диагностикум: ЭМ отделены от препаратов,
   assert.ok(session.includes("exam: true"), "ответ экзамена не отдаёт разбор");
 
   const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
-  assert.ok(runner.includes("EXAM_TOTAL"), "экзамен идёт серией вопросов");
+  assert.ok(runner.includes("total: examLength"), "экзамен идёт серией вопросов настраиваемой длины");
+  assert.ok(runner.includes("setTimeLeft(examTime)"), "у каждого вопроса серии свой таймер");
   assert.ok(runner.includes("Экзамен завершён"), "серия заканчивается итогом");
 });
 
@@ -263,4 +264,42 @@ test("тренажёр: кнопки старта не дублируют дру
   assert.ok(trainer.includes("Начать тренировку"), "своя тренировка названа явно");
   const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
   assert.ok(runner.includes("Начать разбор") && runner.includes("Начать экзамен"), "режим диагностикума виден на кнопке");
+});
+
+test("набор первой диагностики: 19 позиций и честный пропуск", async () => {
+  const sets = await read("workers/api/src/routes/diagnosticum/sets.ts");
+  const items = sets.match(/\{ exam: "[^"]+", key: "[^"]+" \}/g) || [];
+  assert.equal(items.length, 19, "в наборе должно остаться 19 позиций концепции");
+  assert.ok(sets.includes("embryology-axial-organs"), "позиция без методички не удаляется из списка");
+  assert.ok(sets.includes("missing.push"), "позиция без методички попадает в missing");
+
+  const route = await read(ROUTE);
+  assert.ok(route.includes("setGuides(FIRST_DIAGNOSTICUM"), "старт фильтрует пул по набору");
+  assert.ok(
+    route.includes("setRequested ? FIRST_DIAGNOSTICUM.title"),
+    "попытка набора сохраняет имя набора для статистики",
+  );
+  assert.ok(
+    route.includes("isSetSection(FIRST_DIAGNOSTICUM, entry.section)"),
+    "набор не дублируется как обычный раздел",
+  );
+});
+
+test("экзамен: серия переживает перезагрузку страницы", async () => {
+  const session = await read(SESSION);
+  assert.ok(session.includes('session.get("/attempt/:id", requireAuth'), "есть чтение задания попытки");
+  const block = session.slice(
+    session.indexOf('session.get("/attempt/:id"'),
+    session.indexOf('session.get("/stats"'),
+  );
+  assert.ok(!/answers\s*:/.test(block), "ключ ответа не возвращается вместе с заданием");
+  assert.ok(block.includes("answered: Boolean(attempt.answered_at)"), "клиент знает, отвечено ли задание");
+
+  const api = await read("src/lib/diagnosticum-api.ts");
+  assert.ok(api.includes("getDiagnosticumAttempt"), "у клиента есть восстановление попытки");
+
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(runner.includes("EXAM_STORAGE_KEY"), "серия хранится в sessionStorage");
+  assert.ok(runner.includes("getDiagnosticumAttempt(attemptId)"), "задание восстанавливается с сервера");
+  assert.ok(runner.includes("res.data.answered"), "отвеченное задание не переигрывается");
 });

@@ -221,23 +221,18 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
 
   return (
     <div className="space-y-4">
-      <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
-            <BookOpen className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Практика гистологии</p>
-            <h2 className="mt-1 text-xl font-extrabold text-slate-950">Один экран, четыре раздела</h2>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              Тренажёр и диагностикум, свои препараты, кровь и повторение — по вкладкам. Внутри тренажёра
-              разбор, экзамен, электронограммы и своя серия карточек собраны в одном блоке.
-            </p>
-          </div>
-          <a href={lectureHref} className="hidden shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 sm:inline-flex">
-            <BookOpen className="h-4 w-4" /> Лекции
-          </a>
+      {/* Шапка — одна строка: разделы показывают вкладки ниже, пересказывать их
+          абзацем значит занимать экран до начала работы. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-extrabold text-slate-950">Практика гистологии</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Тренажёр и диагностикум, свои препараты, кровь и повторение — по вкладкам.
+          </p>
         </div>
+        <a href={lectureHref} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50">
+          <BookOpen className="h-4 w-4" /> Лекции
+        </a>
       </header>
 
       <div role="tablist" aria-label="Разделы практики" className="sticky top-2 z-10 -mx-1 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-2 py-2 backdrop-blur">

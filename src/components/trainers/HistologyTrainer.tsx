@@ -32,6 +32,15 @@ const PRACTICE_MODES = [
 
 type PracticeMode = (typeof PRACTICE_MODES)[number]["id"];
 
+/** Одна строка вместо абзаца: подсказка меняется вместе с выбранным режимом. */
+const PRACTICE_HINTS: Record<PracticeMode, string> = {
+  complex: "Разбор: препарат, структуры и утверждения в одном задании, с методичкой.",
+  exam: "Экзамен: без подсказок и эталонов; длина серии и таймер — до старта.",
+  electronogram: "Электронограммы: отдельный банк структур, без подсказок.",
+  cards: "Своя серия: тип, режим ответа, количество и темы.",
+  atlas: "Атлас: все препараты курса с карточками и методичками.",
+};
+
 
 function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const searchParams = useSearchParams();
@@ -311,9 +320,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
             <section className="card space-y-4 p-4 sm:p-5">
               <div>
                 <h2 className="font-bold">Практика по препаратам</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Один банк: разбор с методичкой, экзамен, электронограммы или своя серия карточек.
-                </p>
+                <p className="mt-1 text-sm text-slate-500">{PRACTICE_HINTS[practice]}</p>
               </div>
               <div className="flex flex-wrap gap-2" role="tablist" aria-label="Режим практики">
                 {PRACTICE_MODES.map((item) => (
@@ -456,8 +463,10 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
             )}
 
             {sessions.length > 0 && (
-              <section className="card p-5">
-                <h2 className="font-bold">История</h2>
+              <details className="card p-4 sm:p-5">
+                <summary className="cursor-pointer text-sm font-bold text-slate-800">
+                  История тренировок · {sessions.length}
+                </summary>
                 <div className="mt-3 space-y-2">
                   {visibleSessions.map((t) => (
                     <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
@@ -475,7 +484,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                     {historyExpanded ? "Свернуть" : "Показать ещё"} <ChevronDown className="inline h-4 w-4" />
                   </button>
                 )}
-              </section>
+              </details>
             )}
         </div>
 

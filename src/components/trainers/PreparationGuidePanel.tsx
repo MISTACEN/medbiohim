@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpenCheck, Loader2, X } from "lucide-react";
+import { BookOpenCheck, Loader2, RotateCcw, X } from "lucide-react";
 import { getPreparationGuide, type PreparationGuideDetail } from "@/lib/content-api";
 import { describeApiError } from "@/lib/errors";
+import { srsAddTrainerCard } from "@/lib/features-api";
 
 /**
  * Методическая карточка препарата: как искать структуры, что считать
@@ -22,11 +23,15 @@ export function PreparationGuidePanel({
   const [guide, setGuide] = useState<PreparationGuideDetail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  // Панель — единственная точка, откуда препарат уходит в повторение: ею
+  // пользуются атлас, разбор и тренировка по карточкам.
+  const [repeat, setRepeat] = useState<"idle" | "busy" | "saved" | "exists">("idle");
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError("");
+    setRepeat("idle");
     getPreparationGuide(guideKey)
       .then((result) => {
         if (!alive) return;
@@ -43,6 +48,19 @@ export function PreparationGuidePanel({
       alive = false;
     };
   }, [guideKey]);
+
+  /** Идемпотентно: сервер не создаёт дубль по тому же ключу гида. */
+  async function addToRepeat() {
+    if (!guideKey || repeat === "busy" || repeat === "saved" || repeat === "exists") return;
+    setRepeat("busy");
+    const res = await srsAddTrainerCard(guideKey);
+    if (!res.ok) {
+      setRepeat("idle");
+      setError(describeApiError(res.error));
+      return;
+    }
+    setRepeat(res.data.added > 0 ? "saved" : "exists");
+  }
 
   return (
     <div
@@ -156,6 +174,27 @@ export function PreparationGuidePanel({
                 </ul>
               </section>
             ) : null}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void addToRepeat()}
+                disabled={repeat !== "idle"}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+              >
+                <RotateCcw className="h-4 w-4" />
+                {repeat === "busy"
+                  ? "Добавляю…"
+                  : repeat === "saved"
+                    ? "В повторении"
+                    : repeat === "exists"
+                      ? "Уже в колоде"
+                      : "В повторение"}
+              </button>
+              <span className="text-xs text-slate-500">
+                Карточка повторения строится по признакам этого препарата.
+              </span>
+            </div>
 
             <p className="rounded-xl bg-[var(--status-warn-bg)] px-3 py-2 text-xs leading-5 text-[var(--status-warn-fg)]">
               Не все включения видны при обычной окраске: гид описывает то, что действительно
