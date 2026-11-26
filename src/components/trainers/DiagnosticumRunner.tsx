@@ -158,7 +158,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     } finally {
       setBusy(false);
     }
-  }, [attempt, result, selected]);
+  }, [attempt, result, selected, mode]);
 
   /** Следующий вопрос экзамена или итог после последнего. */
   const nextExamQuestion = useCallback(async () => {
@@ -169,7 +169,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     }
     setExam({ ...exam, index: exam.index + 1 });
     await start();
-  }, [exam, start, mode]);
+  }, [exam, start]);
 
   const labels = useMemo(() => {
     const map = new Map<string, string>();
