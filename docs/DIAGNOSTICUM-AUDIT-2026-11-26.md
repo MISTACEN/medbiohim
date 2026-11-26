@@ -192,6 +192,18 @@ hotspots нет **у всех 236**.
 Проверки: `tsc` 0, worker `tsc` 0, `eslint` 0, тесты диагностикума 11/11,
 `npm run build` — exit 0.
 
+### Режимы в интерфейсе
+
+Серверные режимы были недостижимы: `DiagnosticumRunner` всегда получал
+`mode="complex"` и `showModeChips={false}`. Теперь в разборе есть переключатель
+«Разбор препарата / Экзамен / Электронограмма» (`STUDENT_MODES`), а служебные
+режимы (`identify`, `structures`, `differential`, `schema`) остаются в API для
+старых ссылок и попыток, но студенту не показываются.
+
+Проверки: тесты диагностикума 12/12, `tsc` 0, `eslint` 0, `npm run build` 0;
+фронтенд в production `X-Medbiohim-Build: 3c885db9…`, API `revision =
+2026-11-26-diagnosticum-em`.
+
 ### Что требует отдельного разрешения (не сделано)
 
 - **SRS препаратов (`source_type = trainer_card`).** В живой БД стоит
