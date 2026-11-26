@@ -164,13 +164,13 @@ test("реестр эндпоинтов и разбор препарата вн�
   assert.ok(!page.includes("DiagnosticumRunner"), "свой рендер диагностикума на редиректе не нужен");
 
   const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
-  // Форматы задания вынесены из компонента в histologyFormat.ts.
-  const formats = await read("src/components/trainers/histologyFormat.ts");
   assert.ok(trainer.includes("<DiagnosticumRunner"), "разбор препарата рендерится в тренажёре");
-  assert.ok(
-    formats.includes('{ id: "complex", label: "Разбор препарата" }'),
-    "в форматах есть объединённый разбор препарата",
-  );
+  // Форматы «Карточки препаратов / Разбор препарата» объединены: один экран без
+  // переключателя форматов, поэтому в разметке его быть не должно.
+  assert.ok(!trainer.includes("Формат заданий"), "переключатель форматов убран");
+  assert.ok(trainer.includes("Своя тренировка по карточкам"), "карточки и диагностикум на одном экране");
+  const formats = await read("src/components/trainers/histologyFormat.ts");
+  assert.ok(!formats.includes("TRAINING_FORMATS"), "в модуле не осталось списка форматов");
 });
 
 test("диагностикум: ЭМ отделены от препаратов, экзамен без подсказок и разбора", async () => {

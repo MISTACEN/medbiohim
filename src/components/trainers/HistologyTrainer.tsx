@@ -19,7 +19,7 @@ import { groupAtlasCards, guideForCard, indexGuides, type PreparationGuide } fro
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { compareRu } from "@/lib/collation";
-import { TRAINING_FORMATS, formatFromParams, type AnswerRow, type TrainingFormat } from "@/components/trainers/histologyFormat";
+import type { AnswerRow } from "@/components/trainers/histologyFormat";
 
 
 function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
@@ -46,12 +46,11 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const [labelMode, setLabelMode] = useState<TrainingLabelMode>("without");
   const [layout, setLayout] = useState<TrainingLayout>("top");
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  // Атлас и тренажёр — два режима одного экрана. Диагностикум — не отдельный
-  // режим, а формат заданий внутри тренажёра: тот же банк препаратов, тот же
-  // экран, тот же атлас рядом.
-  const [format, setFormat] = useState<TrainingFormat>(() => formatFromParams(searchParams));
+  // Атлас и тренажёр — два режима одного экрана. Внутри тренажёра больше нет
+  // «форматов»: диагностикум и тренировка по карточкам живут на одном экране,
+  // разделять их переключателем значит заставлять выбирать до начала работы.
   const [section, setSection] = useState<"atlas" | "trainer">(
-    formatFromParams(searchParams) !== "cards" || searchParams.get("section") === "diagnosticum"
+    searchParams.get("section") === "diagnosticum" || searchParams.get("format") === "complex"
       ? "trainer"
       : "atlas",
   );
@@ -317,35 +316,24 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
 
         {section === "trainer" && (
           <div className="space-y-5">
+            <section className="card p-4 sm:p-5">
+              <h2 className="font-bold">Диагностикум</h2>
+              <p className="mb-3 text-sm text-slate-500">
+                Определи препарат по изображению: разбор, экзамен или электронограмма. Эталон
+                открывается только после ответа.
+              </p>
+              {/* Режимы (разбор, экзамен, электронограммы) переключаются внутри
+                  раннера: снаружи он всегда стартует с разбора препарата. */}
+              <DiagnosticumRunner mode="complex" />
+            </section>
+
             <section className="card space-y-4 p-5">
               <div>
-                <h2 className="font-bold">Формат заданий</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {TRAINING_FORMATS.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setFormat(item.id);
-                        // Формат живёт в адресе: ссылку «разбор препарата» можно
-                        // дать группе, и она откроется тем же заданием.
-                        try {
-                          const url = new URL(window.location.href);
-                          if (item.id === "cards") url.searchParams.delete("format");
-                          else url.searchParams.set("format", item.id);
-                          window.history.replaceState(null, "", url.toString());
-                        } catch {
-                          /* без истории формат всё равно выбран */
-                        }
-                      }}
-                      className={"rounded-xl border px-3 py-2 text-sm " + (format === item.id ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+                <h2 className="font-bold">Своя тренировка по карточкам</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Соберите серию из карточек банка: тема, количество и режим ответа.
+                </p>
               </div>
-              {format === "cards" && (<>
               <div>
                 <h2 className="font-bold">Тип</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -439,17 +427,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
               <button disabled={working} onClick={() => void start()} className="btn-primary">
                 {selectedCardIds.length ? `Начать (${selectedCardIds.length})` : "Начать"}
               </button>
-              </>)}
             </section>
-
-            {format !== "cards" && (
-              <section className="card p-4 sm:p-5">
-                {/* Режимы диагностикума (разбор, экзамен, электронограммы)
-                    переключаются внутри раннера: снаружи он всегда стартует с
-                    разбора препарата. */}
-                <DiagnosticumRunner mode="complex" />
-              </section>
-            )}
 
             {sessions.length > 0 && (
               <section className="card p-5">
