@@ -71,6 +71,17 @@ session.post("/hint", requireAuth, async (c) => {
     return c.json(errorBody, status as 409);
   }
 
+  // В экзаменационном режиме подсказок нет: это контролируемое определение.
+  if (attempt.mode === "exam") {
+    const { body: errorBody, status } = fail(
+      "CONFLICT",
+      "В экзамене подсказки недоступны",
+      409,
+      rid,
+    );
+    return c.json(errorBody, status as 409);
+  }
+
   const used = stringList(attempt.hints).map(Number).filter((value) => value > 0);
   const requested = Number(body?.level ?? Math.max(0, ...used) + 1);
   if (!Number.isInteger(requested) || requested < 1 || requested > MAX_HINTS) {
@@ -191,6 +202,22 @@ session.post("/answer", requireAuth, async (c) => {
     console.error("[diagnosticum:answer]", update.error.message, rid);
     const { body: errorBody, status } = fail("DB_UNAVAILABLE", "Не удалось сохранить ответ", 503, rid);
     return c.json(errorBody, status as 503);
+  }
+
+  // Экзамен: до завершения серии не показываем ни разбор, ни название препарата —
+  // только балл. Иначе эталон утекает в браузер после первого ответа.
+  if (attempt.mode === "exam") {
+    return c.json(
+      ok(
+        {
+          correct: result.correct,
+          score: result.score,
+          hints_used: 0,
+          exam: true,
+        },
+        rid,
+      ),
+    );
   }
 
   return c.json(

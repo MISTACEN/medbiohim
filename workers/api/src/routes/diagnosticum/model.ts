@@ -28,7 +28,8 @@ export type DiagnosticumMode =
   | "structures"
   | "differential"
   | "complex"
-  | "schema";
+  | "schema"
+  | "exam";
 
 /**
  * `complex` — единый разбор препарата: в одном задании препарат, его структуры
@@ -40,8 +41,8 @@ export const DIAGNOSTICUM_MODES: DiagnosticumMode[] = [
   "identify",
   "structures",
   "differential",
-  "complex",
   "schema",
+  "exam",
 ];
 
 /** Сколько подсказок доступно и сколько стоит каждая (в баллах из 100). */
@@ -101,8 +102,18 @@ export function hasImage(card: CardRow): boolean {
  * Подбор карточки банка для препарата: точное совпадение названия, затем
  * вхождение названия гида в название карточки («Митоз (корешок лука)»).
  */
-export function pickImageCard(guide: GuideRow, cards: CardRow[]): CardRow | null {
-  const withImage = cards.filter(hasImage);
+export function pickImageCard(
+  guide: GuideRow,
+  cards: CardRow[],
+  /** Банк: препараты и электронограммы не смешиваются в одном задании. */
+  bank: "preparation" | "electronogram" = "preparation",
+): CardRow | null {
+  const inBank = cards.filter((card) =>
+    bank === "electronogram"
+      ? card.mode_set === "electronogram"
+      : card.mode_set !== "electronogram",
+  );
+  const withImage = inBank.filter(hasImage);
   // `preparationNames` включает алиасы: препарат в банке может называться иначе
   // («Кровь мазок» для методички «Мазок крови»), см. PREPARATION_ALIASES.
   const names = preparationNames(guide);
@@ -150,12 +161,13 @@ export function buildQuestion(input: {
   guides: GuideRow[];
   cards: CardRow[];
   mode: DiagnosticumMode;
+  bank?: "preparation" | "electronogram";
   structureTitles?: Record<string, string>;
   random?: () => number;
 }): { question: Question; answers: AnswerKey } | null {
   const random = input.random ?? Math.random;
   const { guide, mode } = input;
-  const card = pickImageCard(guide, input.cards);
+  const card = pickImageCard(guide, input.cards, input.bank ?? "preparation");
   if (!card?.id) return null;
 
   const title = (slug: string) => input.structureTitles?.[slug] || slug.replace(/-/g, " ");
@@ -268,6 +280,23 @@ export function buildQuestion(input: {
         parts,
       },
       answers: { parts: answers },
+    };
+  }
+
+  // Экзамен — тот же вопрос «определи препарат», но без подсказок и без разбора
+  // до завершения: сервер отдаёт только балл, эталон остаётся в строке попытки.
+  if (mode === "exam") {
+    return {
+      question: {
+        ...base,
+        prompt: "Экзамен: определи препарат по изображению.",
+        parts: [namePart(4)],
+      },
+      answers: {
+        parts: {
+          preparation: { correct: [guide.key], explanation: exploration(guide) },
+        },
+      },
     };
   }
 

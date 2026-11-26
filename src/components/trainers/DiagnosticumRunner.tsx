@@ -50,6 +50,9 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
   const [statsKey, setStatsKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Экзамен — серия вопросов без подсказок и без эталона до итога.
+  const [exam, setExam] = useState<{ total: number; index: number; scores: number[]; finished: boolean } | null>(null);
+  const EXAM_TOTAL = 10;
 
   useEffect(() => {
     let alive = true;
@@ -72,6 +75,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     setResult(null);
     setSelected({});
     setHints([]);
+    setExam(null);
   }, [mode]);
 
   useEffect(() => {
@@ -98,6 +102,15 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     setSelected({});
     setHints([]);
     setResult(null);
+    if (mode === "exam") {
+      setExam((current) =>
+        current && !current.finished && current.index <= current.total
+          ? current
+          : { total: EXAM_TOTAL, index: 1, scores: [], finished: false },
+      );
+    } else {
+      setExam(null);
+    }
     try {
       const res = await startDiagnosticumAttempt({ mode, section: section || undefined });
       if (res.ok) {
@@ -134,6 +147,11 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
       if (res.ok) {
         setResult(res.data);
         setStatsKey((key) => key + 1);
+        if (mode === "exam") {
+          setExam((current) =>
+            current ? { ...current, scores: [...current.scores, res.data.score] } : current,
+          );
+        }
       } else {
         setError(describeApiError(res.error));
       }
@@ -141,6 +159,17 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
       setBusy(false);
     }
   }, [attempt, result, selected]);
+
+  /** Следующий вопрос экзамена или итог после последнего. */
+  const nextExamQuestion = useCallback(async () => {
+    if (!exam) return;
+    if (exam.index >= exam.total) {
+      setExam({ ...exam, finished: true });
+      return;
+    }
+    setExam({ ...exam, index: exam.index + 1 });
+    await start();
+  }, [exam, start, mode]);
 
   const labels = useMemo(() => {
     const map = new Map<string, string>();
@@ -241,6 +270,11 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
       {attempt ? (
         <div className="card space-y-4 p-4">
           <p className="text-sm font-semibold text-slate-700">{attempt.question.prompt}</p>
+          {mode === "exam" && exam ? (
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+              Экзамен · вопрос {Math.min(exam.index, exam.total)} из {exam.total}
+            </p>
+          ) : null}
           <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-slate-50">
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -267,7 +301,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
               <div className="grid gap-2 sm:grid-cols-2">
                 {part.options.map((option) => {
                   const active = (selected[part.id] ?? []).includes(option.id);
-                  const feedback = result?.parts.find((item) => item.part_id === part.id);
+                  const feedback = result?.parts?.find((item) => item.part_id === part.id);
                   const isCorrect = feedback ? !feedback.extra.includes(option.id) : false;
                   return (
                     <button
@@ -306,7 +340,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
             </ul>
           ) : null}
 
-          {result ? (
+          {result && mode !== "exam" ? (
             <div className="space-y-2 rounded-xl border border-[var(--border)] p-3">
               <p
                 className={
@@ -318,7 +352,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
                 {result.correct ? "Верно" : "Есть ошибки"} · {result.score} баллов
                 {result.hints_used ? ` · подсказок: ${result.hints_used}` : ""}
               </p>
-              {result.parts.map((part) => (
+              {(result.parts ?? []).map((part) => (
                 <div key={part.part_id} className="text-sm text-slate-600">
                   {part.missing.length ? (
                     <p>
@@ -350,6 +384,44 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
                 </button>
               </div>
             </div>
+          ) : result && mode === "exam" && exam ? (
+            <div className="space-y-2 rounded-xl border border-[var(--border)] p-3">
+              {exam.finished ? (
+                <>
+                  <p className="text-sm font-bold text-slate-900">
+                    Экзамен завершён: без ошибок {exam.scores.filter((score) => score >= 100).length} из {exam.total}
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    Средний балл: {exam.scores.length ? Math.round(exam.scores.reduce((sum, score) => sum + score, 0) / exam.scores.length) : 0}
+                    {" · "}лучший: {exam.scores.length ? Math.max(...exam.scores) : 0}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Ошибки уже в очереди повторения, разбор и эталоны — в режиме тренировки.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void start()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Новый экзамен
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-slate-900">Ответ принят · {result.score} баллов</p>
+                  <p className="text-xs text-slate-500">
+                    Вопрос {exam.index} из {exam.total}. Разбор и эталон — только после последнего вопроса.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void nextExamQuestion()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                  >
+                    {exam.index >= exam.total ? "Показать итог" : "Следующий вопрос"}
+                  </button>
+                </>
+              )}
+            </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -360,16 +432,24 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
               >
                 Ответить
               </button>
-              <button
-                type="button"
-                onClick={() => void askHint()}
-                disabled={busy || hints.length >= attempt.hints_total}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:border-indigo-200 disabled:opacity-60"
-              >
-                <HelpCircle className="h-4 w-4" />
-                Подсказка {hints.length + 1}/{attempt.hints_total}
-              </button>
-              <span className="text-xs text-slate-400">Каждая подсказка снижает балл на 10.</span>
+              {mode === "exam" ? (
+                <span className="text-xs text-slate-500">
+                  Экзамен: подсказок нет, эталон откроется только в разборе после серии.
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void askHint()}
+                    disabled={busy || hints.length >= attempt.hints_total}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:border-indigo-200 disabled:opacity-60"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    Подсказка {hints.length + 1}/{attempt.hints_total}
+                  </button>
+                  <span className="text-xs text-slate-400">Каждая подсказка снижает балл на 10.</span>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -377,9 +457,9 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
 
       <DiagnosticumStats refreshKey={statsKey} />
 
-      {guideOpen && result ? (
+      {guideOpen && result?.guide_key ? (
         <PreparationGuidePanel
-          guideKey={result.guide_key}
+          guideKey={result?.guide_key ?? ""}
           title="Методика поиска"
           onClose={() => setGuideOpen(false)}
         />

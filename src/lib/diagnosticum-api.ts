@@ -13,7 +13,8 @@ export type DiagnosticumMode =
   | "structures"
   | "differential"
   | "complex"
-  | "schema";
+  | "schema"
+  | "exam";
 
 export type DiagnosticumSection = {
   section: string;
@@ -72,9 +73,11 @@ export type DiagnosticumResult = {
   correct: boolean;
   score: number;
   hints_used: number;
-  parts: DiagnosticumPartFeedback[];
-  guide_key: string;
-  section: string;
+  /** В экзамене разбор не приходит: сервер отдаёт только балл. */
+  parts?: DiagnosticumPartFeedback[];
+  guide_key?: string;
+  section?: string;
+  exam?: boolean;
 };
 
 export type DiagnosticumStats = {

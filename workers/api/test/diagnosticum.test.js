@@ -172,3 +172,19 @@ test("реестр эндпоинтов и разбор препарата вн�
     "в форматах есть объединённый разбор препарата",
   );
 });
+
+test("диагностикум: ЭМ отделены от препаратов, экзамен без подсказок и разбора", async () => {
+  const model = await read(MODEL);
+  assert.ok(model.includes('bank: "preparation" | "electronogram"'), "банк должен передаваться в выбор карточки");
+  assert.ok(model.includes('card.mode_set !== "electronogram"'), "препараты не должны брать ЭМ-карточки");
+  assert.ok(model.includes('| "exam"'), "экзамен есть в типах режимов");
+
+  const session = await read(SESSION);
+  assert.ok(session.includes('attempt.mode === "exam"'), "экзамен проверяется на сервере");
+  assert.ok(session.includes("В экзамене подсказки недоступны"), "подсказки в экзамене запрещены");
+  assert.ok(session.includes("exam: true"), "ответ экзамена не отдаёт разбор");
+
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(runner.includes("EXAM_TOTAL"), "экзамен идёт серией вопросов");
+  assert.ok(runner.includes("Экзамен завершён"), "серия заканчивается итогом");
+});

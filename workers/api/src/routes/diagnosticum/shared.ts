@@ -13,6 +13,7 @@ export const MODE_LABELS: Record<DiagnosticumMode, string> = {
   differential: "Отличи похожие",
   complex: "Разбор препарата",
   schema: "Схема препарата",
+  exam: "Экзамен",
 };
 
 export type SupabaseError = { code?: string; message?: string } | null;
