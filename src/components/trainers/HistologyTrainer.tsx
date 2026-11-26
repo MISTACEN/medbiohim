@@ -61,10 +61,10 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   // разделять их переключателем значит заставлять выбирать до начала работы.
   // Один блок практики вместо двух: режим выбирается здесь же, где настройки.
   const [practice, setPractice] = useState<PracticeMode>("complex");
+  // По умолчанию сразу практика: атлас — отдельный режим для просмотра, а не
+  // вход на страницу.
   const [section, setSection] = useState<"atlas" | "trainer">(
-    searchParams.get("section") === "diagnosticum" || searchParams.get("format") === "complex"
-      ? "trainer"
-      : "atlas",
+    searchParams.get("section") === "atlas" ? "atlas" : "trainer",
   );
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -310,7 +310,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас</button>
-          <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Тренажёр</button>
+          <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Практика</button>
         </div>
 
         {section === "atlas" && (
