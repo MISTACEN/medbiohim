@@ -1,17 +1,15 @@
 "use client";
 
 /**
- * Практика предмета — одна страница вместо «хаба тренажёров».
+ * Практика предмета — вкладки вместо длинной простыни.
  *
- * Раньше здесь был список карточек-упражнений: чтобы что-то сделать, нужно было
- * сначала выбрать пункт меню, а потом ещё раз «назад ко всем темам». Теперь все
- * тренажёры предмета открыты сразу и идут подряд: микропрепараты с атласом и
- * диагностикумом, лейкоцитарная формула, нормы, ответ по смыслу, препараты
- * крови и карточки SRS. Навигация — якорные чипы сверху, без перезагрузки
- * экрана и без промежуточного меню.
+ * Раньше все тренажёры шли подряд одной страницей: чтобы добраться до норм или
+ * SRS, нужно было листать вниз через чужие блоки, а «Препараты и диагностикум»
+ * терялись среди крови. Теперь сверху четыре вкладки, и в каждый момент открыт
+ * ровно один раздел: тренажёр, свои препараты, кровь или SRS.
  */
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Brain, Check, ChevronDown, Droplets, Flame, ImagePlus, Microscope, RotateCcw, Sparkles, Table2 } from "lucide-react";
+import { BookOpen, Brain, Check, Droplets, Flame, ImagePlus, Microscope, RotateCcw } from "lucide-react";
 import MyPreparations from "@/components/trainers/MyPreparations";
 import { LeukocyteDifferentialTrainer } from "@/components/lectures/LeukocyteDifferentialTrainer";
 import BloodNormTableTrainer from "@/components/trainers/BloodNormTableTrainer";
@@ -34,41 +32,23 @@ const RATINGS: Array<{ r: Rating; label: string; hint: string; className: string
   { r: 4, label: "Легко", hint: "длиннее", className: "bg-sky-500 hover:bg-sky-600 text-white" },
 ];
 
-/** Разделы страницы: id — якорь, по нему прыгают чипы навигации. */
-const SECTIONS: Array<{ id: string; label: string; Icon: typeof Droplets }> = [
-  { id: "histology-atlas", label: "Препараты и диагностикум", Icon: Microscope },
-  { id: "my-preparations", label: "Свои препараты", Icon: ImagePlus },
-  { id: "leukocytes", label: "Лейкоцитарная формула", Icon: Droplets },
-  { id: "norms", label: "Возрастные нормы", Icon: Table2 },
-  { id: "meaning", label: "Ответ по смыслу", Icon: Sparkles },
-  { id: "blood-preparations", label: "Микропрепараты крови", Icon: Microscope },
+type Tab = "trainer" | "mine" | "blood" | "srs";
+
+const TABS: Array<{ id: Tab; label: string; Icon: typeof Droplets }> = [
+  { id: "trainer", label: "Тренажёр", Icon: Microscope },
+  { id: "mine", label: "Свои препараты", Icon: ImagePlus },
+  { id: "blood", label: "Кровь", Icon: Droplets },
   { id: "srs", label: "Карточки SRS", Icon: Brain },
 ];
 
-function SectionHeader({
-  id, step, title, hint, Icon,
-}: {
-  id: string;
-  step: string;
-  title: string;
-  hint: string;
-  Icon: typeof Droplets;
-}) {
-  return (
-    <div id={id} className="scroll-mt-24 sm:scroll-mt-28">
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
-          <Icon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">{step}</p>
-          <h2 className="mt-0.5 text-lg font-extrabold text-slate-950 sm:text-xl">{title}</h2>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--muted)]">{hint}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+const BLOOD_TABS = [
+  { id: "leukocytes", label: "Лейкоцитарная формула" },
+  { id: "norms", label: "Возрастные нормы" },
+  { id: "meaning", label: "Ответ по смыслу" },
+  { id: "blood-preparations", label: "Микропрепараты крови" },
+] as const;
+
+type BloodTab = (typeof BLOOD_TABS)[number]["id"];
 
 function SrsPanel() {
   const [scope, setScope] = useState<"shared" | "personal">("shared");
@@ -236,20 +216,22 @@ function SrsPanel() {
 }
 
 export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureHref?: string }) {
+  const [tab, setTab] = useState<Tab>("trainer");
+  const [bloodTab, setBloodTab] = useState<BloodTab>("leukocytes");
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
             <BookOpen className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Лекция → практика</p>
-            <h2 className="mt-1 text-xl font-extrabold text-slate-950">Все тренажёры гистологии на одной странице</h2>
+            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Практика гистологии</p>
+            <h2 className="mt-1 text-xl font-extrabold text-slate-950">Один экран, четыре раздела</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              Никаких переходов между пунктами меню: атлас, тренажёр и разбор препарата работают по одному банку
-              препаратов, а методички открываются прямо в карточке. Ниже — препараты крови, нормы, ответы по смыслу
-              и карточки повторения. Лабораторные — отдельный режим практики.
+              Тренажёр и диагностикум, свои препараты, кровь и повторение — по вкладкам. Внутри тренажёра
+              разбор, экзамен, электронограммы и своя серия карточек собраны в одном блоке.
             </p>
           </div>
           <a href={lectureHref} className="hidden shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 sm:inline-flex">
@@ -258,96 +240,80 @@ export function SubjectTrainersHub({ lectureHref = "?tab=lectures" }: { lectureH
         </div>
       </header>
 
-      <nav aria-label="Разделы практики" className="sticky top-2 z-10 -mx-1 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-2 py-2 backdrop-blur">
+      <div role="tablist" aria-label="Разделы практики" className="sticky top-2 z-10 -mx-1 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-2 py-2 backdrop-blur">
         <div className="flex flex-nowrap items-center gap-1.5">
-          {SECTIONS.map(({ id, label, Icon }) => (
-            <a
-              key={id}
-              href={"#" + id}
-              className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
-            >
-              <Icon className="h-3.5 w-3.5" /> {label}
-            </a>
-          ))}
+          {TABS.map(({ id, label, Icon }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(id)}
+                className={
+                  "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition " +
+                  (active
+                    ? "border-transparent bg-indigo-600 text-white"
+                    : "border-[var(--border)] bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-700")
+                }
+              >
+                <Icon className="h-3.5 w-3.5" /> {label}
+              </button>
+            );
+          })}
         </div>
-      </nav>
+      </div>
 
-      <section className="space-y-4">
-        <SectionHeader
-          id="histology-atlas"
-          step="Раздел 1"
-          title="Микропрепараты, тренажёр и диагностикум"
-          hint="Один банк препаратов: атлас и тренажёр, форматы заданий, карточки и разбор с методичкой — всё на этом экране, без перехода на другую страницу."
-          Icon={Microscope}
-        />
-        <HistologyTrainer embedded />
-        <MyPreparations subjectSlug="histology" />
-      </section>
+      {tab === "trainer" && <HistologyTrainer embedded />}
 
-      {/* Остальные тренажёры — одна сворачиваемая группа, а не простыня блоков
-          подряд; чипы навигации ведут к якорям внутри неё. */}
-      <details open className="group border-t border-[var(--border)] pt-6">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold text-slate-900">
-          Ещё тренажёры: формула крови, нормы, ответ по смыслу, препараты крови
-          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="mt-5 space-y-6">
-      <section className="space-y-4">
-        <SectionHeader
-          id="leukocytes"
-          step="Раздел 2"
-          title="Лейкоцитарная формула"
-          hint="Опознать клетку, оценить её долю в формуле и объяснить отклонение от нормы."
-          Icon={Droplets}
-        />
-        <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} />
-      </section>
+      {tab === "mine" && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-extrabold text-slate-950">Свои препараты</h2>
+          <MyPreparations subjectSlug="histology" />
+        </section>
+      )}
 
-      <section className="space-y-4 border-t border-[var(--border)] pt-6">
-        <SectionHeader
-          id="norms"
-          step="Раздел 3"
-          title="Возрастные нормы крови"
-          hint="Заполнить таблицу показателей по возрастам и сразу увидеть, где ошиблись."
-          Icon={Table2}
-        />
-        <BloodNormTableTrainer />
-      </section>
+      {tab === "blood" && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Тренажёры крови">
+            {BLOOD_TABS.map((item) => {
+              const active = bloodTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setBloodTab(item.id)}
+                  className={
+                    "rounded-xl border px-3 py-2 text-sm font-semibold transition " +
+                    (active
+                      ? "border-indigo-400 bg-indigo-50 text-indigo-800"
+                      : "border-[var(--border)] bg-white text-slate-600 hover:border-indigo-200")
+                  }
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
 
-      <section className="space-y-4 border-t border-[var(--border)] pt-6">
-        <SectionHeader
-          id="meaning"
-          step="Раздел 4"
-          title="Ответ по смыслу"
-          hint="Сформулировать содержание лекции своими словами — тренажёр сверит смысл, а не дословный текст."
-          Icon={Sparkles}
-        />
-        <BloodMeaningTrainer />
-      </section>
+          {bloodTab === "leukocytes" && (
+            <LeukocyteDifferentialTrainer raw={JSON.stringify({ title: "Лейкоцитарная формула — тренажёр", mode: "case", sourceMode: "mixed", rounds: 12 })} />
+          )}
+          {bloodTab === "norms" && <BloodNormTableTrainer />}
+          {bloodTab === "meaning" && <BloodMeaningTrainer />}
+          {bloodTab === "blood-preparations" && <BloodPreparationTrainer />}
+        </section>
+      )}
 
-      <section className="space-y-4 border-t border-[var(--border)] pt-6">
-        <SectionHeader
-          id="blood-preparations"
-          step="Раздел 5"
-          title="Микропрепараты крови"
-          hint="Узнать клетку по реальному препарату и объяснить её признаки."
-          Icon={Microscope}
-        />
-        <BloodPreparationTrainer />
-      </section>
-        </div>
-      </details>
-
-      <section className="space-y-4 border-t border-[var(--border)] pt-6">
-        <SectionHeader
-          id="srs"
-          step="Раздел 6"
-          title="Карточки SRS"
-          hint="Интервальное повторение терминов и фактов: общая колода и свои карточки."
-          Icon={Brain}
-        />
-        <SrsPanel />
-      </section>
+      {tab === "srs" && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-extrabold text-slate-950">Карточки SRS</h2>
+          <SrsPanel />
+        </section>
+      )}
     </div>
   );
 }

@@ -21,6 +21,16 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import { compareRu } from "@/lib/collation";
 import type { AnswerRow } from "@/components/trainers/histologyFormat";
 
+/** Режимы практики: диагностикум и своя серия — один выбор, а не два блока. */
+const PRACTICE_MODES = [
+  { id: "complex", label: "Разбор" },
+  { id: "exam", label: "Экзамен" },
+  { id: "electronogram", label: "Электронограммы" },
+  { id: "cards", label: "Своя серия" },
+] as const;
+
+type PracticeMode = (typeof PRACTICE_MODES)[number]["id"];
+
 
 function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const searchParams = useSearchParams();
@@ -49,6 +59,8 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   // Атлас и тренажёр — два режима одного экрана. Внутри тренажёра больше нет
   // «форматов»: диагностикум и тренировка по карточкам живут на одном экране,
   // разделять их переключателем значит заставлять выбирать до начала работы.
+  // Один блок практики вместо двух: режим выбирается здесь же, где настройки.
+  const [practice, setPractice] = useState<PracticeMode>("complex");
   const [section, setSection] = useState<"atlas" | "trainer">(
     searchParams.get("section") === "diagnosticum" || searchParams.get("format") === "complex"
       ? "trainer"
@@ -316,24 +328,34 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
 
         {section === "trainer" && (
           <div className="space-y-5">
-            <section className="card p-4 sm:p-5">
-              <h2 className="font-bold">Диагностикум</h2>
-              <p className="mb-3 text-sm text-slate-500">
-                Определи препарат по изображению: разбор, экзамен или электронограмма. Эталон
-                открывается только после ответа.
-              </p>
-              {/* Режимы (разбор, экзамен, электронограммы) переключаются внутри
-                  раннера: снаружи он всегда стартует с разбора препарата. */}
-              <DiagnosticumRunner mode="complex" />
-            </section>
-
-            <section className="card space-y-4 p-5">
+            <section className="card space-y-4 p-4 sm:p-5">
               <div>
-                <h2 className="font-bold">Своя тренировка по карточкам</h2>
+                <h2 className="font-bold">Практика по препаратам</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Соберите серию из карточек банка: тема, количество и режим ответа.
+                  Один банк: разбор с методичкой, экзамен, электронограммы или своя серия карточек.
                 </p>
               </div>
+              <div className="flex flex-wrap gap-2" role="tablist" aria-label="Режим практики">
+                {PRACTICE_MODES.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={practice === item.id}
+                    onClick={() => setPractice(item.id)}
+                    className={
+                      "rounded-full border px-3 py-1.5 text-sm font-semibold transition " +
+                      (practice === item.id
+                        ? "border-indigo-400 bg-indigo-50 text-indigo-800"
+                        : "border-[var(--border)] bg-white text-slate-600 hover:border-indigo-200")
+                    }
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              {practice === "cards" ? (
+                <>
               <div>
                 <h2 className="font-bold">Тип</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -429,6 +451,10 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                   ? `Начать тренировку (${selectedCardIds.length})`
                   : "Начать тренировку"}
               </button>
+                </>
+              ) : (
+                <DiagnosticumRunner mode={practice} showModeChips={false} />
+              )}
             </section>
 
             {sessions.length > 0 && (

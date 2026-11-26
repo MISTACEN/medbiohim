@@ -168,7 +168,7 @@ test("реестр эндпоинтов и разбор препарата вн�
   // Форматы «Карточки препаратов / Разбор препарата» объединены: один экран без
   // переключателя форматов, поэтому в разметке его быть не должно.
   assert.ok(!trainer.includes("Формат заданий"), "переключатель форматов убран");
-  assert.ok(trainer.includes("Своя тренировка по карточкам"), "карточки и диагностикум на одном экране");
+  assert.ok(trainer.includes("Практика по препаратам"), "диагностикум и карточки — один блок практики");
   const formats = await read("src/components/trainers/histologyFormat.ts");
   assert.ok(!formats.includes("TRAINING_FORMATS"), "в модуле не осталось списка форматов");
 });
@@ -206,8 +206,15 @@ test("диагностикум: электронограммы идут отде
 
 test("диагностикум: режимы экзамена и ЭМ доступны из интерфейса тренажёра", async () => {
   const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
-  assert.ok(trainer.includes('<DiagnosticumRunner mode="complex" />'), "раннер открывается с переключателем режимов");
-  assert.ok(!trainer.includes("showModeChips={false}"), "переключатель режимов не должен быть скрыт");
+  // Режимы выбираются в общем блоке практики, раннер получает уже выбранный.
+  assert.ok(trainer.includes("const PRACTICE_MODES"), "режимы практики объявлены списком");
+  for (const mode of ['id: "exam"', 'id: "electronogram"', 'id: "complex"', 'id: "cards"']) {
+    assert.ok(trainer.includes(mode), `в режимах практики нет ${mode}`);
+  }
+  assert.ok(
+    trainer.includes("<DiagnosticumRunner mode={practice} showModeChips={false} />"),
+    "раннер получает выбранный режим",
+  );
 
   const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
   assert.ok(runner.includes('STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"]'));
