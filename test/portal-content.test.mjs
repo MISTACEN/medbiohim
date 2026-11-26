@@ -24,7 +24,10 @@ const LECTURE_SETS = [
 
 test("mc-index: все банки существуют и согласованы", () => {
   const index = JSON.parse(fs.readFileSync(path.join(PORTALS, "mc-index.json"), "utf8"));
-  assert.ok(index.tests.length >= 20, `банков в индексе: ${index.tests.length}`);
+  // 17 банков химии из сборника ДВГМУ 2016 выведены из выдачи в archivedTests
+  // (коммит bd16c89d): их заменили тематические тесты chemistry_master_documents v3.
+  // Файлы сохранены для отката, поэтому порог считается по оставшимся 16 банкам.
+  assert.ok(index.tests.length >= 16, `банков в индексе: ${index.tests.length}`);
   for (const entry of index.tests) {
     const file = path.join(PORTALS, `mc-${entry.id}.json`);
     assert.ok(fs.existsSync(file), `нет файла банка: mc-${entry.id}.json`);
@@ -46,6 +49,20 @@ test("mc-index: все банки существуют и согласованы
         assert.fail(`${entry.id} №${q.id}: неизвестный kind "${kind}"`);
       }
     }
+  }
+});
+
+test("mc-index: архивные банки химии не вернулись в выдачу", () => {
+  const index = JSON.parse(fs.readFileSync(path.join(PORTALS, "mc-index.json"), "utf8"));
+  const archived = index.archivedTests ?? [];
+  assert.ok(archived.length >= 17, `архивных банков: ${archived.length}`);
+  const live = new Set(index.tests.map((entry) => entry.id));
+  for (const entry of archived) {
+    assert.ok(entry.archivedAt, `${entry.id}: нет даты архивации`);
+    assert.ok(entry.archivedReason?.trim(), `${entry.id}: нет причины архивации`);
+    assert.equal(live.has(entry.id), false, `${entry.id}: банк одновременно в выдаче и в архиве`);
+    const file = path.join(PORTALS, entry.file ?? `mc-${entry.id}.json`);
+    assert.ok(fs.existsSync(file), `${entry.id}: нет файла банка для отката`);
   }
 });
 

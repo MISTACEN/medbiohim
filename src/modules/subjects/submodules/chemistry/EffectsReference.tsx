@@ -22,11 +22,13 @@ import {
   type Reactivity,
 } from "@/lib/chemistry/effects";
 
+// Знак эффекта — смысл, а не декор: цвета берутся из семантических токенов
+// темы (--status-*), чтобы тёмная тема и проверка контраста работали одинаково.
 const EFFECT_STYLES: Record<string, string> = {
   "-I": "border-sky-200 bg-sky-50 text-sky-800",
-  "+I": "border-emerald-200 bg-emerald-50 text-emerald-800",
-  "-M": "border-rose-200 bg-rose-50 text-rose-800",
-  "+M": "border-amber-200 bg-amber-50 text-amber-900",
+  "+I": "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]",
+  "-M": "border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]",
+  "+M": "border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]",
 };
 
 const REACTIVITY_LABELS: Record<Reactivity, string> = {
