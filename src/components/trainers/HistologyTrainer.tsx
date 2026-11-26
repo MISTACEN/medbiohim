@@ -27,6 +27,7 @@ const PRACTICE_MODES = [
   { id: "exam", label: "Экзамен" },
   { id: "electronogram", label: "Электронограммы" },
   { id: "cards", label: "Своя серия" },
+  { id: "atlas", label: "Атлас" },
 ] as const;
 
 type PracticeMode = (typeof PRACTICE_MODES)[number]["id"];
@@ -59,12 +60,10 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   // Атлас и тренажёр — два режима одного экрана. Внутри тренажёра больше нет
   // «форматов»: диагностикум и тренировка по карточкам живут на одном экране,
   // разделять их переключателем значит заставлять выбирать до начала работы.
-  // Один блок практики вместо двух: режим выбирается здесь же, где настройки.
-  const [practice, setPractice] = useState<PracticeMode>("complex");
-  // По умолчанию сразу практика: атлас — отдельный режим для просмотра, а не
-  // вход на страницу.
-  const [section, setSection] = useState<"atlas" | "trainer">(
-    searchParams.get("section") === "atlas" ? "atlas" : "trainer",
+  // Один блок практики: режимы, включая атлас, выбираются в одном месте и на
+  // одном экране, без второй навигации и без отдельного входа в атлас.
+  const [practice, setPractice] = useState<PracticeMode>(
+    searchParams.get("section") === "atlas" ? "atlas" : "complex",
   );
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -155,7 +154,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
       setContentType(kindParam);
     }
     if (allParam === "1") setAllQuestions(true);
-    setSection("trainer");
+    setPractice("cards");
   }, [feedItems.length, cardsParam, topicParam, allParam, kindParam]);
 
   const start = async () => {
@@ -308,26 +307,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
           </header>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setSection("atlas")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "atlas" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Атлас</button>
-          <button type="button" onClick={() => setSection("trainer")} className={"rounded-xl border px-4 py-2 text-sm font-semibold " + (section === "trainer" ? "border-indigo-600 bg-indigo-600 text-white" : "bg-white")}>Практика</button>
-        </div>
-
-        {section === "atlas" && (
-          <HistologyAtlas
-            cards={feedItems}
-            loading={loading}
-            focusCardId={cardParam || undefined}
-            onTrain={({ ids, lesson: chosenLesson }) => {
-              setSelectedTopics(chosenLesson ? [chosenLesson] : []);
-              setSelectedCardIds(ids);
-              setSection("trainer");
-            }}
-          />
-        )}
-
-        {section === "trainer" && (
-          <div className="space-y-5">
+        <div className="space-y-5">
             <section className="card space-y-4 p-4 sm:p-5">
               <div>
                 <h2 className="font-bold">Практика по препаратам</h2>
@@ -357,7 +337,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
               {practice === "cards" ? (
                 <>
               <div>
-                <h2 className="font-bold">Тип</h2>
+                <h3 className="text-sm font-bold text-slate-900">Тип</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {([["all", "Всё"], ["preparation", "Микропрепараты"], ["electronogram", "Электронограммы"]] as [TrainingContentType, string][]).map((x) => (
                     <label key={x[0]} className={"rounded-xl border px-4 py-2 text-sm " + (contentType === x[0] ? "border-indigo-400 bg-indigo-50" : "")}>
@@ -367,7 +347,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                 </div>
               </div>
               <div>
-                <h2 className="font-bold">Режим ответа</h2>
+                <h3 className="text-sm font-bold text-slate-900">Режим ответа</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {([["without", "Варианты"], ["manual", "Ввод вручную"]] as [TrainingLabelMode, string][]).map((x) => (
                     <label key={x[0]} className={"rounded-xl border px-4 py-2 text-sm " + (labelMode === x[0] ? "border-indigo-400 bg-indigo-50" : "")}>
@@ -377,7 +357,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                 </div>
               </div>
               <div>
-                <h2 className="font-bold">Количество</h2>
+                <h3 className="text-sm font-bold text-slate-900">Количество</h3>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {["10", "20", "30", "50"].map((n) => (
                     <button key={n} type="button" onClick={() => { setCount(n); setAllQuestions(false); }} className={"rounded-xl border px-3 py-2 text-sm " + (!allQuestions && count === n ? "border-indigo-400 bg-indigo-50 font-semibold" : "")}>{n}</button>
@@ -388,7 +368,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
               </div>
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-bold">Темы занятий / выбор карточек</h2>
+                  <h3 className="text-sm font-bold text-slate-900">Темы занятий / выбор карточек</h3>
                   <button type="button" onClick={() => setPickMode(!pickMode)} className="text-sm text-indigo-600">
                     {pickMode ? "Скрыть выбор" : "Выбрать конкретные"}
                   </button>
@@ -452,10 +432,28 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                   : "Начать тренировку"}
               </button>
                 </>
+              ) : practice === "atlas" ? (
+                <p className="text-sm text-slate-500">
+                  Атлас всех препаратов курса: откройте карточку, чтобы посмотреть подписи и
+                  структуры, или вернитесь в разбор, экзамен или свою серию.
+                </p>
               ) : (
                 <DiagnosticumRunner mode={practice} showModeChips={false} />
               )}
             </section>
+
+            {practice === "atlas" && (
+              <HistologyAtlas
+                cards={feedItems}
+                loading={loading}
+                focusCardId={cardParam || undefined}
+                onTrain={({ ids, lesson: chosenLesson }) => {
+                  setSelectedTopics(chosenLesson ? [chosenLesson] : []);
+                  setSelectedCardIds(ids);
+                  setPractice("cards");
+                }}
+              />
+            )}
 
             {sessions.length > 0 && (
               <section className="card p-5">
@@ -479,8 +477,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                 )}
               </section>
             )}
-          </div>
-        )}
+        </div>
 
       </div>
     );

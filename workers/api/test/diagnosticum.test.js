@@ -208,7 +208,7 @@ test("диагностикум: режимы экзамена и ЭМ досту
   const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
   // Режимы выбираются в общем блоке практики, раннер получает уже выбранный.
   assert.ok(trainer.includes("const PRACTICE_MODES"), "режимы практики объявлены списком");
-  for (const mode of ['id: "exam"', 'id: "electronogram"', 'id: "complex"', 'id: "cards"']) {
+  for (const mode of ['id: "exam"', 'id: "electronogram"', 'id: "complex"', 'id: "cards"', 'id: "atlas"']) {
     assert.ok(trainer.includes(mode), `в режимах практики нет ${mode}`);
   }
   assert.ok(
