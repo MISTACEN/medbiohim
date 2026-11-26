@@ -388,13 +388,16 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
                 >
                   <RotateCcw className="h-4 w-4" /> Следующее задание
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setGuideOpen(true)}
-                  className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
-                >
-                  Методика поиска
-                </button>
+                {/* У электронограмм методички нет — кнопка вела бы в пустоту. */}
+                {result.guide_key ? (
+                  <button
+                    type="button"
+                    onClick={() => setGuideOpen(true)}
+                    className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    Методика поиска
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : result && mode === "exam" && exam ? (

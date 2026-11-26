@@ -245,3 +245,8 @@ test("диагностикум: у электронограмм в UI нет к�
   assert.ok(runner.includes('mode === "exam" || mode === "electronogram"'), "подсказки скрыты и в ЭМ, и в экзамене");
   assert.ok(runner.includes("Для электронограмм подсказок нет"), "в ЭМ объяснено, почему нет подсказок");
 });
+
+test("диагностикум: без ключа методички нет кнопки «Методика поиска»", async () => {
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(runner.includes("{result.guide_key ? ("), "кнопка методички рендерится только при наличии гида");
+});
