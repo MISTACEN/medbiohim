@@ -239,3 +239,9 @@ test("диагностикум: переключатель режимов реа
   );
   assert.ok(!runner.includes("controlledMode ?? localMode"), "внешний режим не должен перекрывать выбор в чипах");
 });
+
+test("диагностикум: у электронограмм в UI нет кнопки подсказки", async () => {
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(runner.includes('mode === "exam" || mode === "electronogram"'), "подсказки скрыты и в ЭМ, и в экзамене");
+  assert.ok(runner.includes("Для электронограмм подсказок нет"), "в ЭМ объяснено, почему нет подсказок");
+});

@@ -445,9 +445,11 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
               >
                 Ответить
               </button>
-              {mode === "exam" ? (
+              {mode === "exam" || mode === "electronogram" ? (
                 <span className="text-xs text-slate-500">
-                  Экзамен: подсказок нет, эталон откроется только в разборе после серии.
+                  {mode === "exam"
+                    ? "Экзамен: подсказок нет, эталон откроется только в разборе после серии."
+                    : "Для электронограмм подсказок нет: методички к ним не привязаны."}
                 </span>
               ) : (
                 <>
