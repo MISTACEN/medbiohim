@@ -129,8 +129,9 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
       setError(describeApiError(res.error));
       return;
     }
-    if (res.data.added === 0) setError("Все доступные микропрепараты уже в колоде");
     await refresh(subjectSlug || undefined, scope);
+    // Сообщение ставим после refresh: сам refresh сбрасывает прошлую ошибку.
+    if (res.data.added === 0) setError("Все доступные микропрепараты уже в колоде");
   }
 
   async function rate(r: Rating) {
