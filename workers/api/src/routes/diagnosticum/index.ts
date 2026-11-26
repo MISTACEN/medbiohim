@@ -25,7 +25,7 @@ import {
   type DiagnosticumMode,
   type Question,
 } from "./model";
-import { MODE_LABELS, isMissingTable, loadBank } from "./shared";
+import { MODE_LABELS, isConstraintViolation, isMissingTable, loadBank } from "./shared";
 import session from "./session";
 
 const diagnosticum = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -157,6 +157,16 @@ diagnosticum.post("/start", requireAuth, async (c) => {
         );
         return c.json(errorBody, status as 503);
       }
+      // 23514 = ограничение режимов ещё не расширено миграцией.
+      if (isConstraintViolation(insert.error)) {
+        const { body: errorBody, status } = fail(
+          "NOT_MIGRATED",
+          "Новый режим ещё не включён: нужна миграция режимов диагностикума",
+          503,
+          rid,
+        );
+        return c.json(errorBody, status as 503);
+      }
       console.error("[diagnosticum:start:em]", insert.error.message, rid);
       const { body: errorBody, status } = fail("DB_UNAVAILABLE", "Не удалось начать задание", 503, rid);
       return c.json(errorBody, status as 503);
@@ -240,6 +250,15 @@ diagnosticum.post("/start", requireAuth, async (c) => {
       const { body: errorBody, status } = fail(
         "NOT_MIGRATED",
         "Диагностикум ещё не подключён: нужна миграция попыток",
+        503,
+        rid,
+      );
+      return c.json(errorBody, status as 503);
+    }
+    if (isConstraintViolation(insert.error)) {
+      const { body: errorBody, status } = fail(
+        "NOT_MIGRATED",
+        "Новый режим ещё не включён: нужна миграция режимов диагностикума",
         503,
         rid,
       );

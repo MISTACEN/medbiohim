@@ -213,3 +213,20 @@ test("диагностикум: режимы экзамена и ЭМ досту
   assert.ok(runner.includes('STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"]'));
   assert.ok(runner.includes("STUDENT_MODES.includes(item.mode)"), "в переключателе только студенческие режимы");
 });
+
+test("диагностикум: миграция режимов разрешает exam и electronogram", async () => {
+  const migration = await read("database/migrations/20261126_diagnosticum_modes.sql");
+  for (const mode of ["'exam'", "'electronogram'", "'complex'", "'schema'"]) {
+    assert.ok(migration.includes(mode), `в ограничении режимов нет ${mode}`);
+  }
+  assert.ok(migration.includes("drop constraint if exists diagnosticum_attempts_mode_check"), "миграция идемпотентна");
+  assert.ok(migration.includes("add constraint diagnosticum_attempts_mode_check"), "ограничение пересоздаётся");
+
+  const shared = await read("workers/api/src/routes/diagnosticum/shared.ts");
+  assert.ok(shared.includes("isConstraintViolation"), "ошибка ограничения режимов распознаётся");
+  const route = await read(ROUTE);
+  assert.ok(
+    route.includes("Новый режим ещё не включён: нужна миграция режимов диагностикума"),
+    "503 объясняет неприменённую миграцию, а не «БД недоступна»",
+  );
+});

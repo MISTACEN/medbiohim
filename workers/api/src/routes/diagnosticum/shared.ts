@@ -31,6 +31,17 @@ export function isMissingTable(error: SupabaseError): boolean {
   );
 }
 
+/**
+ * Нарушение check-ограничения (SQLSTATE 23514). Для `diagnosticum_attempts.mode`
+ * это значит, что новая миграция режимов ещё не применена: сообщение должно
+ * говорить об этом, а не «БД недоступна».
+ */
+export function isConstraintViolation(error: SupabaseError): boolean {
+  if (!error) return false;
+  const message = String(error.message || "").toLowerCase();
+  return String(error.code || "") === "23514" || message.includes("violates check constraint");
+}
+
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type Bank = {
