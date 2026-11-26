@@ -425,7 +425,9 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
               </div>
               {error && <p className="text-sm text-[var(--status-critical-fg)]">{error}</p>}
               <button disabled={working} onClick={() => void start()} className="btn-primary">
-                {selectedCardIds.length ? `Начать (${selectedCardIds.length})` : "Начать"}
+                {selectedCardIds.length
+                  ? `Начать тренировку (${selectedCardIds.length})`
+                  : "Начать тренировку"}
               </button>
             </section>
 

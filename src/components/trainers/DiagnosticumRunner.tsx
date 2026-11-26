@@ -264,7 +264,13 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
             className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
           >
             {busy && !attempt ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            {attempt ? "Новое задание" : "Начать"}
+            {attempt
+              ? "Новое задание"
+              : mode === "exam"
+                ? "Начать экзамен"
+                : mode === "electronogram"
+                  ? "Начать электронограмму"
+                  : "Начать разбор"}
           </button>
           {overview && !overview.migrated ? (
             <span className="text-xs text-slate-500">

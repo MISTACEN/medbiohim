@@ -250,3 +250,10 @@ test("диагностикум: без ключа методички нет кн
   const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
   assert.ok(runner.includes("{result.guide_key ? ("), "кнопка методички рендерится только при наличии гида");
 });
+
+test("тренажёр: кнопки старта не дублируют друг друга", async () => {
+  const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
+  assert.ok(trainer.includes("Начать тренировку"), "своя тренировка названа явно");
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(runner.includes("Начать разбор") && runner.includes("Начать экзамен"), "режим диагностикума виден на кнопке");
+});
