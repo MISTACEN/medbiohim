@@ -444,7 +444,10 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
 
             {format !== "cards" && (
               <section className="card p-4 sm:p-5">
-                <DiagnosticumRunner mode={format} showModeChips={false} />
+                {/* Режимы диагностикума (разбор, экзамен, электронограммы)
+                    переключаются внутри раннера: снаружи он всегда стартует с
+                    разбора препарата. */}
+                <DiagnosticumRunner mode="complex" />
               </section>
             )}
 

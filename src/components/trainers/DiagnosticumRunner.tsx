@@ -36,6 +36,13 @@ type DiagnosticumRunnerProps = {
   showModeChips?: boolean;
 };
 
+/**
+ * Что показываем студенту в переключателе. Остальные режимы (`identify`,
+ * `structures`, `differential`, `schema`) остались в API ради старых попыток и
+ * ссылок, но в интерфейсе дублируют «разбор препарата».
+ */
+const STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"];
+
 export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true }: DiagnosticumRunnerProps = {}) {
   const [overview, setOverview] = useState<DiagnosticumOverview | null>(null);
   const [localMode, setLocalMode] = useState<DiagnosticumMode>("complex");
@@ -209,7 +216,7 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
       <div className="card space-y-3 p-4">
         {showModeChips ? (
         <div className="flex flex-wrap gap-2">
-          {(overview?.modes ?? []).map((item) => (
+          {(overview?.modes ?? []).filter((item) => STUDENT_MODES.includes(item.mode)).map((item) => (
             <button
               key={item.mode}
               type="button"

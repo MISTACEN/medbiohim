@@ -203,3 +203,13 @@ test("диагностикум: электронограммы идут отде
   assert.ok(session.includes("Для электронограмм подсказок нет"), "у ЭМ нет подсказок");
   assert.ok(session.includes('attempt.mode === "electronogram" ? "" : attempt.guide_key'), "ЭМ не отдаёт ключ методички");
 });
+
+test("диагностикум: режимы экзамена и ЭМ доступны из интерфейса тренажёра", async () => {
+  const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
+  assert.ok(trainer.includes('<DiagnosticumRunner mode="complex" />'), "раннер открывается с переключателем режимов");
+  assert.ok(!trainer.includes("showModeChips={false}"), "переключатель режимов не должен быть скрыт");
+
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(runner.includes('STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"]'));
+  assert.ok(runner.includes("STUDENT_MODES.includes(item.mode)"), "в переключателе только студенческие режимы");
+});
