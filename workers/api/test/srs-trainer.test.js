@@ -39,7 +39,10 @@ test("srs: конкретную ошибку можно отправить в п
 
   const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
   assert.ok(runner.includes("srsAddTrainerCard(key)"), "разбор ошибки отправляет препарат в повторение");
-  assert.ok(runner.includes("!result.correct"), "кнопка только для ошибки, а не для верного ответа");
+  // Кнопка живёт в панели разбора: интерфейс разнесён по компонентам ради
+  // бюджета 600 строк, поэтому проверяем владельца разметки, а не родителя.
+  const resultPanel = await read("src/components/trainers/DiagnosticumResultPanel.tsx");
+  assert.ok(resultPanel.includes("!result.correct"), "кнопка только для ошибки, а не для верного ответа");
 
   // Атлас/тренировка пользуются той же панелью методички — кнопка нужна там.
   const panel = await read("src/components/trainers/PreparationGuidePanel.tsx");

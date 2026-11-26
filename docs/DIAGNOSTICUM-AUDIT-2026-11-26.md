@@ -619,3 +619,43 @@ v2; чинится разделением этих файлов отдельны
 - Архив не влияет на уже сохранённые попытки и статистику — так и задумано.
 - Деплой не выполнялся: изменения не закоммичены, production по-прежнему на
   `588c7916`.
+
+## 20. Разделение файлов под архитектурный бюджет 2026-11-26
+
+После деплоя §19 архитектурный тест оставался красным на четырёх файлах. Долг
+из §13–§18 закрыт разделением по владельцам кода, без изменения поведения.
+
+| Файл | Было | Стало |
+|---|---|---|
+| `workers/api/src/routes/diagnosticum/model.ts` | 479 | 234 |
+| `workers/api/src/routes/diagnosticum/session.ts` | 438 | 355 |
+| `src/components/trainers/DiagnosticumRunner.tsx` | 728 | 566 |
+| `src/components/trainers/HistologyTrainer.tsx` | 618 | 545 |
+
+Новые файлы:
+
+- воркер: `model-base.ts` (44) — примитивы (`text`, `normalizeName`,
+  `stringList`, `guideStructures`, `shuffle`, `sample`) с реэкспортом из
+  `model.ts`, чтобы импорты соседей не менялись; `model-questions.ts` (267) —
+  сборка вопроса по режимам; `session-stats.ts` (97) — `GET /diagnosticum/stats`.
+  Порядок маршрутов сохранён: `/hint` → `/answer` → `/attempt/:id` → `/stats` →
+  `/mistakes`;
+- UI: `DiagnosticumModeChips.tsx` (42), `DiagnosticumPartsList.tsx` (63),
+  `DiagnosticumResultPanel.tsx` (116), `DiagnosticumExamPanel.tsx` (127),
+  `HistologyTrainerFilters.tsx` (163).
+
+Контрактные тесты (`diagnosticum.test.js`, `srs-trainer.test.js`) читали
+литералы из конкретных файлов; после переноса разметки они смотрят на UI
+целиком (`readUi()` по семи файлам) и на фактического владельца панели разбора,
+а не на файл-родитель. Смысл проверок не менялся.
+
+Проверки: `cd workers/api && npm run check` — typecheck 0, тесты 625/625;
+`node --test test/architecture-fitness.test.mjs` — 6/6 (LOC-бюджет,
+достижимость маршрутов, циклы импортов); `npm run typecheck` — 0, `eslint`
+по изменённым файлам — 0, `npm run build` — exit 0. `audit-loc` больше не
+показывает эти четыре файла в списке превышений.
+
+Границы: `model.ts` и `session.ts` дальше не дробятся, пока контрактные тесты
+режут исходник по маркерам (`/mistakes`, `buildElectronogramQuestion`) — их
+правка была бы отдельным решением. `DiagnosticumRunner` и `HistologyTrainer`
+остаются владельцами состояния: разделены только блоки разметки.

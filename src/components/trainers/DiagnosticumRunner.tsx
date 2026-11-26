@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, HelpCircle, Loader2, Play, RotateCcw, XCircle } from "lucide-react";
+import { HelpCircle, Loader2, Play } from "lucide-react";
 import { getTrainerImageUrl } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import {
@@ -26,6 +26,17 @@ import {
 } from "@/lib/diagnosticum-api";
 import { PreparationGuidePanel } from "@/components/trainers/PreparationGuidePanel";
 import { DiagnosticumStats } from "@/components/trainers/DiagnosticumStats";
+import { DiagnosticumModeChips } from "@/components/trainers/DiagnosticumModeChips";
+import { DiagnosticumPartsList } from "@/components/trainers/DiagnosticumPartsList";
+import {
+  DiagnosticumResultPanel,
+  type DiagnosticumRepeatState,
+} from "@/components/trainers/DiagnosticumResultPanel";
+import {
+  DiagnosticumExamProgress,
+  DiagnosticumExamResult,
+  type DiagnosticumExamState,
+} from "@/components/trainers/DiagnosticumExamPanel";
 import { srsAddTrainerCard } from "@/lib/features-api";
 
 /**
@@ -37,13 +48,6 @@ type DiagnosticumRunnerProps = {
   mode?: DiagnosticumMode;
   showModeChips?: boolean;
 };
-
-/**
- * Что показываем студенту в переключателе. Остальные режимы (`identify`,
- * `structures`, `differential`, `schema`) остались в API ради старых попыток и
- * ссылок, но в интерфейсе дублируют «разбор препарата».
- */
-const STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"];
 
 /** Ключ sessionStorage для незавершённой экзаменационной серии. */
 const EXAM_STORAGE_KEY = "mbh:diagnosticum:exam";
@@ -78,11 +82,11 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
   const [statsKey, setStatsKey] = useState(0);
   // Ошибка сразу уходит в повторение: препарат добавляется точечно по ключу
   // методички, а не пачкой из десяти случайных.
-  const [repeatState, setRepeatState] = useState<"idle" | "busy" | "saved" | "exists">("idle");
+  const [repeatState, setRepeatState] = useState<DiagnosticumRepeatState>("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Экзамен — серия вопросов без подсказок и без эталона до итога.
-  const [exam, setExam] = useState<{ total: number; index: number; scores: number[]; finished: boolean } | null>(null);
+  const [exam, setExam] = useState<DiagnosticumExamState | null>(null);
   // Длина серии и таймер на вопрос — оставшиеся требования §7.4 концепции.
   // Оба значения живут в клиенте: сервер по-прежнему хранит отдельные попытки,
   // а не сессию, поэтому миграция БД не нужна.
@@ -361,27 +365,15 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
     <div className="space-y-4">
       <div className="card space-y-3 p-4">
         {showModeChips ? (
-        <div className="flex flex-wrap gap-2">
-          {(overview?.modes ?? []).filter((item) => STUDENT_MODES.includes(item.mode)).map((item) => (
-            <button
-              key={item.mode}
-              type="button"
-              onClick={() => {
-                setLocalMode(item.mode);
-                setAttempt(null);
-                setResult(null);
-              }}
-              className={
-                "rounded-full border px-3 py-1.5 text-sm font-semibold transition " +
-                (mode === item.mode
-                  ? "border-indigo-300 bg-indigo-50 text-indigo-800"
-                  : "border-[var(--border)] bg-white text-slate-600 hover:border-indigo-200")
-              }
-            >
-              {item.title}
-            </button>
-          ))}
-        </div>
+          <DiagnosticumModeChips
+            modes={overview?.modes}
+            mode={mode}
+            onSelect={(next) => {
+              setLocalMode(next);
+              setAttempt(null);
+              setResult(null);
+            }}
+          />
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -455,29 +447,13 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
         <div className="card space-y-4 p-4">
           <p className="text-sm font-semibold text-slate-700">{attempt.question.prompt}</p>
           {mode === "exam" && exam ? (
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
-                  Экзамен · вопрос {Math.min(exam.index, exam.total)} из {exam.total}
-                </p>
-                {resumedNote ? (
-                  <p className="text-[11px] text-slate-500">Серия продолжена с того же вопроса.</p>
-                ) : null}
-              </div>
-              {examTime && !exam.finished && !result ? (
-                <span
-                  className={
-                    "rounded-full px-2.5 py-1 text-xs font-bold tabular-nums " +
-                    (timeLeft <= 10
-                      ? "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]"
-                      : "bg-slate-100 text-slate-700")
-                  }
-                  aria-label="Осталось времени на вопрос"
-                >
-                  {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
-                </span>
-              ) : null}
-            </div>
+            <DiagnosticumExamProgress
+              exam={exam}
+              resumedNote={resumedNote}
+              examTime={examTime}
+              timeLeft={timeLeft}
+              result={result}
+            />
           ) : null}
           <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-slate-50">
             {imageUrl ? (
@@ -494,45 +470,12 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
             )}
           </div>
 
-          {attempt.question.parts.map((part) => (
-            <div key={part.id} className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-slate-900">{part.title}</h3>
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  {part.kind === "single" ? "один ответ" : "несколько ответов"}
-                </span>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {part.options.map((option) => {
-                  const active = (selected[part.id] ?? []).includes(option.id);
-                  const feedback = result?.parts?.find((item) => item.part_id === part.id);
-                  const isCorrect = feedback ? !feedback.extra.includes(option.id) : false;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => toggle(part.id, option.id, part.kind)}
-                      aria-pressed={active}
-                      className={
-                        "rounded-xl border px-3 py-2 text-left text-sm transition " +
-                        (active
-                          ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-900"
-                          : "border-[var(--border)] bg-white text-slate-700 hover:border-indigo-200")
-                      }
-                    >
-                      {option.label}
-                      {result && active && isCorrect ? (
-                        <CheckCircle2 className="ml-1 inline h-4 w-4 text-[var(--status-ok-fg)]" />
-                      ) : null}
-                      {result && active && !isCorrect ? (
-                        <XCircle className="ml-1 inline h-4 w-4 text-[var(--status-critical-fg)]" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <DiagnosticumPartsList
+            parts={attempt.question.parts}
+            selected={selected}
+            result={result}
+            onToggle={toggle}
+          />
 
           {hints.length ? (
             <ul className="space-y-1.5 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
@@ -545,128 +488,23 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
           ) : null}
 
           {result && mode !== "exam" ? (
-            <div className="space-y-2 rounded-xl border border-[var(--border)] p-3">
-              <p
-                className={
-                  "flex items-center gap-2 text-sm font-bold " +
-                  (result.correct ? "text-[var(--status-ok-fg)]" : "text-[var(--status-critical-fg)]")
-                }
-              >
-                {result.correct ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-                {result.correct ? "Верно" : "Есть ошибки"} · {result.score} баллов
-                {result.hints_used ? ` · подсказок: ${result.hints_used}` : ""}
-              </p>
-              {(result.parts ?? []).map((part) => {
-                const partTitle =
-                  attempt.question.parts.find((item) => item.id === part.part_id)?.title ?? part.part_id;
-                return (
-                <div key={part.part_id} className="text-sm text-slate-600">
-                  <p
-                    className={
-                      "flex items-center gap-1.5 font-semibold " +
-                      (part.correct ? "text-[var(--status-ok-fg)]" : "text-slate-900")
-                    }
-                  >
-                    {part.correct ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-[var(--status-critical-fg)]" />
-                    )}
-                    {partTitle}
-                  </p>
-                  {part.missing.length ? (
-                    <p>
-                      Не отмечено: {part.missing.map((id) => label(part.part_id, id)).join(", ")}.
-                    </p>
-                  ) : null}
-                  {part.extra.length ? (
-                    <p>
-                      Лишнее: {part.extra.map((id) => label(part.part_id, id)).join(", ")}.
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-slate-500">{part.explanation}</p>
-                </div>
-                );
-              })}
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => void start()}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                >
-                  <RotateCcw className="h-4 w-4" /> Следующее задание
-                </button>
-                {/* У электронограмм методички нет — кнопка вела бы в пустоту. */}
-                {result.guide_key ? (
-                  <button
-                    type="button"
-                    onClick={() => setGuideOpen(true)}
-                    className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
-                  >
-                    Методика поиска
-                  </button>
-                ) : null}
-                {result.guide_key && !result.correct ? (
-                  <button
-                    type="button"
-                    onClick={() => void addToRepeat()}
-                    disabled={repeatState !== "idle"}
-                    className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-200 disabled:opacity-60"
-                  >
-                    {repeatState === "busy"
-                      ? "Добавляю…"
-                      : repeatState === "saved"
-                        ? "В повторении"
-                        : repeatState === "exists"
-                          ? "Уже в колоде"
-                          : "В повторение"}
-                  </button>
-                ) : null}
-              </div>
-            </div>
+            <DiagnosticumResultPanel
+              result={result}
+              parts={attempt.question.parts}
+              label={label}
+              repeatState={repeatState}
+              onRestart={() => void start()}
+              onOpenGuide={() => setGuideOpen(true)}
+              onAddToRepeat={() => void addToRepeat()}
+            />
           ) : result && mode === "exam" && exam ? (
-            <div className="space-y-2 rounded-xl border border-[var(--border)] p-3">
-              {exam.finished ? (
-                <>
-                  <p className="text-sm font-bold text-slate-900">
-                    Экзамен завершён: без ошибок {exam.scores.filter((score) => score >= 100).length} из {exam.total}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    Средний балл: {exam.scores.length ? Math.round(exam.scores.reduce((sum, score) => sum + score, 0) / exam.scores.length) : 0}
-                    {" · "}лучший: {exam.scores.length ? Math.max(...exam.scores) : 0}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Ошибки уже в очереди повторения, разбор и эталоны — в режиме тренировки.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void start()}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                  >
-                    <RotateCcw className="h-4 w-4" /> Новый экзамен
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-bold text-slate-900">Ответ принят · {result.score} баллов</p>
-                  {timedOut ? (
-                    <p className="text-xs font-semibold text-[var(--status-warn-fg)]">
-                      Время на вопрос вышло — ответ отправлен автоматически.
-                    </p>
-                  ) : null}
-                  <p className="text-xs text-slate-500">
-                    Вопрос {exam.index} из {exam.total}. Разбор и эталон — только после последнего вопроса.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void nextExamQuestion()}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                  >
-                    {exam.index >= exam.total ? "Показать итог" : "Следующий вопрос"}
-                  </button>
-                </>
-              )}
-            </div>
+            <DiagnosticumExamResult
+              exam={exam}
+              result={result}
+              timedOut={timedOut}
+              onRestart={() => void start()}
+              onNext={() => void nextExamQuestion()}
+            />
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <button

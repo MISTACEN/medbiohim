@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import type { Env } from "../env";
 import { ok, requestId } from "../lib/response";
 import { gigachatConfigured, gigachatTransport } from "../lib/gigachat";
@@ -7,7 +7,7 @@ import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
 const health = new Hono<{ Bindings: Env }>();
 
 /** Маркер сборки: по нему видно, доехал ли конкретный коммит до прода. */
-export const API_REVISION = "2026-11-26-trainer-card-v2";
+export const API_REVISION = "2026-11-26-split";
 
 function payload(env: Env) {
   const rid = requestId();

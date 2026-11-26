@@ -18,6 +18,19 @@ const SESSION = "workers/api/src/routes/diagnosticum/session.ts";
 const MODEL = "workers/api/src/routes/diagnosticum/model.ts";
 const MIGRATION = "database/migrations/20261120_diagnosticum.sql";
 
+// Интерфейс диагностикума разнесён по компонентам (бюджет 600 строк на файл),
+// поэтому текстовые проверки читают UI целиком, а не только файл-родитель.
+const UI_FILES = [
+  "src/components/trainers/DiagnosticumRunner.tsx",
+  "src/components/trainers/DiagnosticumModeChips.tsx",
+  "src/components/trainers/DiagnosticumPartsList.tsx",
+  "src/components/trainers/DiagnosticumResultPanel.tsx",
+  "src/components/trainers/DiagnosticumExamPanel.tsx",
+  "src/components/trainers/HistologyTrainer.tsx",
+  "src/components/trainers/HistologyTrainerFilters.tsx",
+];
+const readUi = async () => (await Promise.all(UI_FILES.map((file) => read(file)))).join("\n");
+
 test("диагностикум: маршруты режимов, подсказок, ответа и статистики", async () => {
   const source = await read(ROUTE);
   for (const marker of [
@@ -187,7 +200,8 @@ test("диагностикум: ЭМ отделены от препаратов,
   const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
   assert.ok(runner.includes("total: examLength"), "экзамен идёт серией вопросов настраиваемой длины");
   assert.ok(runner.includes("setTimeLeft(examTime)"), "у каждого вопроса серии свой таймер");
-  assert.ok(runner.includes("Экзамен завершён"), "серия заканчивается итогом");
+  const ui = await readUi();
+  assert.ok(ui.includes("Экзамен завершён"), "серия заканчивается итогом");
 });
 
 test("диагностикум: электронограммы идут отдельным режимом по карточкам банка", async () => {
@@ -217,9 +231,9 @@ test("диагностикум: режимы экзамена и ЭМ досту
     "раннер получает выбранный режим",
   );
 
-  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
-  assert.ok(runner.includes('STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"]'));
-  assert.ok(runner.includes("STUDENT_MODES.includes(item.mode)"), "в переключателе только студенческие режимы");
+  const ui = await readUi();
+  assert.ok(ui.includes('STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"]'));
+  assert.ok(ui.includes("STUDENT_MODES.includes(item.mode)"), "в переключателе только студенческие режимы");
 });
 
 test("диагностикум: миграция режимов разрешает exam и electronogram", async () => {
@@ -255,13 +269,13 @@ test("диагностикум: у электронограмм в UI нет к�
 });
 
 test("диагностикум: без ключа методички нет кнопки «Методика поиска»", async () => {
-  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
-  assert.ok(runner.includes("{result.guide_key ? ("), "кнопка методички рендерится только при наличии гида");
+  const ui = await readUi();
+  assert.ok(ui.includes("result.guide_key ?"), "кнопка методички рендерится только при наличии гида");
 });
 
 test("тренажёр: кнопки старта не дублируют друг друга", async () => {
-  const trainer = await read("src/components/trainers/HistologyTrainer.tsx");
-  assert.ok(trainer.includes("Начать тренировку"), "своя тренировка названа явно");
+  const ui = await readUi();
+  assert.ok(ui.includes("Начать тренировку"), "своя тренировка названа явно");
   const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
   assert.ok(runner.includes("Начать разбор") && runner.includes("Начать экзамен"), "режим диагностикума виден на кнопке");
 });
