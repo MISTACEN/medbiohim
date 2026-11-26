@@ -38,6 +38,10 @@ const testsSource = await readTestsDomain();
 const ticketsSource = await readFile(new URL("../src/routes/tickets.ts", import.meta.url), "utf8");
 const subjectsRouteSource = await readFile(new URL("../src/routes/subjects.ts", import.meta.url), "utf8");
 const subjectPageSource = readPageWithDomain("app/subjects/[id]/page.tsx");
+// Учебный план грузится хуком через относительный импорт, который обход
+// page-source не видит, поэтому файл читаем напрямую.
+const subjectLoadersSource = await readFile(new URL("../../../src/components/subjects/subject-loaders.ts", import.meta.url), "utf8");
+const subjectPanelsSource = await readFile(new URL("../../../src/components/subjects/SubjectPracticePanels.tsx", import.meta.url), "utf8");
 const ticketGeneratorSource = await readFile(new URL("../../../src/components/subjects/TicketGenerator.tsx", import.meta.url), "utf8");
 const subjectTestsPageSource = await readFile(new URL("../../../src/app/subjects/[id]/tests/page.tsx", import.meta.url), "utf8");
 const testsHubSource = await readFile(new URL("../../../src/components/tests/TestsHub.tsx", import.meta.url), "utf8");
@@ -250,8 +254,10 @@ test("student subject plans use the narrow RPC without loosening site_content RL
   assert.ok(studentSubjectPlanMigration.includes("GRANT EXECUTE ON FUNCTION public.medbiohim_get_student_subject_plan(text, integer, integer) TO authenticated"));
   assert.ok(studentSubjectPlanMigration.includes("active MBH membership required"));
   assert.ok(!/DISABLE ROW LEVEL SECURITY|CREATE POLICY.*site_content/is.test(studentSubjectPlanMigration));
-  assert.ok(subjectPageSource.includes("planSubjectFields"));
-  assert.ok(subjectPageSource.includes('title="Микропрепараты"'));
+  assert.ok(subjectLoadersSource.includes("planSubjectFields"));
+  // «Микропрепараты» больше не отдельная вкладка: практика гистологии живёт в
+  // общем экране тренажёров, и он должен открываться из карточки предмета.
+  assert.ok(subjectPanelsSource.includes("<SubjectTrainersHub"), "тренажёры гистологии открываются из карточки предмета");
 });
 
 test("test details preserve the PHP envelope and keep answer keys out of normal attempts", () => {
