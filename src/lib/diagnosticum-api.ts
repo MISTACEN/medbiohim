@@ -14,7 +14,8 @@ export type DiagnosticumMode =
   | "differential"
   | "complex"
   | "schema"
-  | "exam";
+  | "exam"
+  | "electronogram";
 
 export type DiagnosticumSection = {
   section: string;

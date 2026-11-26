@@ -17,11 +17,12 @@ import type { Env } from "../../env";
 import {
   DIAGNOSTICUM_MODES,
   MAX_HINTS,
+  buildElectronogramQuestion,
   buildQuestion,
   normalizeName,
   shuffle,
+  type AnswerKey,
   type DiagnosticumMode,
-  type GuideRow,
   type Question,
 } from "./model";
 import { MODE_LABELS, isMissingTable, loadBank } from "./shared";
@@ -116,6 +117,67 @@ diagnosticum.post("/start", requireAuth, async (c) => {
     ? bank.guides.filter((guide) => normalizeName(guide.section) === normalizeName(section))
     : bank.guides;
 
+  // Электронограммы — отдельный банк без методичек, поэтому раздел препаратов
+  // к ним не применяется.
+  if (body.mode === "electronogram") {
+    const em = buildElectronogramQuestion(bank.cards);
+    if (!em) {
+      const { body: errorBody, status } = fail(
+        "NOT_FOUND",
+        "Для электронограмм не хватает карточек с изображениями",
+        404,
+        rid,
+      );
+      return c.json(errorBody, status as 404);
+    }
+
+    const user = c.get("user");
+    const insert = await c
+      .get("supabase")
+      .from("diagnosticum_attempts")
+      .insert({
+        user_id: user.id,
+        mode: body.mode,
+        section: em.section,
+        guide_key: em.guideKey,
+        card_id: em.question.image_card_id,
+        question: em.question,
+        answers: em.answers,
+      })
+      .select("id,created_at")
+      .single();
+
+    if (insert.error) {
+      if (isMissingTable(insert.error)) {
+        const { body: errorBody, status } = fail(
+          "NOT_MIGRATED",
+          "Диагностикум ещё не подключён: нужна миграция попыток",
+          503,
+          rid,
+        );
+        return c.json(errorBody, status as 503);
+      }
+      console.error("[diagnosticum:start:em]", insert.error.message, rid);
+      const { body: errorBody, status } = fail("DB_UNAVAILABLE", "Не удалось начать задание", 503, rid);
+      return c.json(errorBody, status as 503);
+    }
+
+    return c.json(
+      ok(
+        {
+          attempt_id: insert.data?.id,
+          mode: body.mode,
+          section: em.section,
+          question: em.question,
+          hints_total: MAX_HINTS,
+          hints_used: 0,
+          created_at: insert.data?.created_at,
+        },
+        rid,
+      ),
+    );
+  }
+
   if (!pool.length) {
     const { body: errorBody, status } = fail(
       "NOT_FOUND",
@@ -127,7 +189,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
   }
 
   // Препарат без карточки с изображением пропускаем: диагностировать нечего.
-  let built: { guide: GuideRow; question: Question; answers: Record<string, unknown> } | null = null;
+  let built: { section: string; guideKey: string; question: Question; answers: AnswerKey } | null = null;
   for (const guide of shuffle(pool, Math.random)) {
     const result = buildQuestion({
       guide,
@@ -137,7 +199,12 @@ diagnosticum.post("/start", requireAuth, async (c) => {
       structureTitles: bank.structureTitles,
     });
     if (result) {
-      built = { guide, question: result.question, answers: result.answers };
+      built = {
+        section: String(guide.section || ""),
+        guideKey: guide.key,
+        question: result.question,
+        answers: result.answers,
+      };
       break;
     }
   }
@@ -159,8 +226,8 @@ diagnosticum.post("/start", requireAuth, async (c) => {
     .insert({
       user_id: user.id,
       mode: body.mode,
-      section: String(built.guide.section || ""),
-      guide_key: built.guide.key,
+      section: built.section,
+      guide_key: built.guideKey,
       card_id: built.question.image_card_id,
       question: built.question,
       answers: built.answers,
@@ -188,7 +255,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
       {
         attempt_id: insert.data?.id,
         mode: body.mode,
-        section: String(built.guide.section || ""),
+        section: built.section,
         question: built.question,
         hints_total: MAX_HINTS,
         hints_used: 0,

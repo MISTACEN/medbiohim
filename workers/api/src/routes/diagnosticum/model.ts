@@ -29,7 +29,8 @@ export type DiagnosticumMode =
   | "differential"
   | "complex"
   | "schema"
-  | "exam";
+  | "exam"
+  | "electronogram";
 
 /**
  * `complex` — единый разбор препарата: в одном задании препарат, его структуры
@@ -43,6 +44,7 @@ export const DIAGNOSTICUM_MODES: DiagnosticumMode[] = [
   "differential",
   "schema",
   "exam",
+  "electronogram",
 ];
 
 /** Сколько подсказок доступно и сколько стоит каждая (в баллах из 100). */
@@ -130,6 +132,68 @@ export function pickImageCard(
       usable.some((name) => preparationContains(name, card?.preparation?.name)),
     ) ?? null
   );
+}
+
+/**
+ * Электронограммы — отдельный банк без методичек: вопрос строится прямо по
+ * карточкам `mode_set = electronogram`, варианты берутся из названий других
+ * электронограмм. Ключ ответа — id карточки, подпись — название структуры.
+ */
+export function buildElectronogramQuestion(
+  cards: CardRow[],
+  random: () => number = Math.random,
+): { question: Question; answers: AnswerKey; section: string; guideKey: string } | null {
+  const byName = new Map<string, CardRow>();
+  for (const card of cards) {
+    if (card.mode_set !== "electronogram" || !card.id || !hasImage(card)) continue;
+    const name = text(card.preparation?.name);
+    if (!name) continue;
+    // Одно название — один вариант: дубли-карточки не должны давать два
+    // одинаковых ответа в одной строке.
+    const key = normalizeName(name);
+    if (!byName.has(key)) byName.set(key, card);
+  }
+  const unique = [...byName.values()];
+  if (unique.length < 4) return null;
+
+  const target = sample(unique, 1, random)[0];
+  const distractors = sample(
+    unique.filter((card) => card !== target),
+    3,
+    random,
+  );
+
+  return {
+    question: {
+      prompt: "Что это за структура на электронограмме?",
+      image_card_id: String(target.id),
+      parts: [
+        {
+          id: "preparation",
+          kind: "single",
+          title: "Название структуры",
+          options: shuffle(
+            [target, ...distractors].map((card) => ({
+              id: String(card.id),
+              label: text(card.preparation?.name),
+            })),
+            random,
+          ),
+        },
+      ],
+    },
+    answers: {
+      parts: {
+        preparation: {
+          correct: [String(target.id)],
+          explanation: text(target.preparation?.name),
+        },
+      },
+    },
+    section: "Электронограммы",
+    // Префикс отделяет попытки ЭМ от методичек препаратов в одной таблице.
+    guideKey: `em:${String(target.id)}`,
+  };
 }
 
 export function shuffle<T>(items: T[], random: () => number): T[] {

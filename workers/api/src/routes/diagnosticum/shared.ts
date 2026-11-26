@@ -14,6 +14,7 @@ export const MODE_LABELS: Record<DiagnosticumMode, string> = {
   complex: "Разбор препарата",
   schema: "Схема препарата",
   exam: "Экзамен",
+  electronogram: "Электронограмма",
 };
 
 export type SupabaseError = { code?: string; message?: string } | null;

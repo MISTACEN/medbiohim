@@ -188,3 +188,18 @@ test("диагностикум: ЭМ отделены от препаратов,
   assert.ok(runner.includes("EXAM_TOTAL"), "экзамен идёт серией вопросов");
   assert.ok(runner.includes("Экзамен завершён"), "серия заканчивается итогом");
 });
+
+test("диагностикум: электронограммы идут отдельным режимом по карточкам банка", async () => {
+  const model = await read(MODEL);
+  assert.ok(model.includes("buildElectronogramQuestion"), "есть отдельный построитель ЭМ-вопроса");
+  assert.ok(model.includes('card.mode_set !== "electronogram" || !card.id'), "в банк ЭМ попадают только ЭМ-карточки с картинкой");
+  assert.ok(model.includes("em:${"), "попытки ЭМ помечены префиксом");
+
+  const route = await read(ROUTE);
+  assert.ok(route.includes('body.mode === "electronogram"'), "старт ЭМ не зависит от раздела препаратов");
+  assert.ok(route.includes("buildElectronogramQuestion(bank.cards)"), "вопрос ЭМ строится по карточкам");
+
+  const session = await read(SESSION);
+  assert.ok(session.includes("Для электронограмм подсказок нет"), "у ЭМ нет подсказок");
+  assert.ok(session.includes('attempt.mode === "electronogram" ? "" : attempt.guide_key'), "ЭМ не отдаёт ключ методички");
+});

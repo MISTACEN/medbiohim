@@ -71,11 +71,14 @@ session.post("/hint", requireAuth, async (c) => {
     return c.json(errorBody, status as 409);
   }
 
-  // В экзаменационном режиме подсказок нет: это контролируемое определение.
-  if (attempt.mode === "exam") {
+  // В экзамене подсказок нет: это контролируемое определение. У электронограмм
+  // нет методички, из которой строятся уровни подсказок, — поэтому тоже нет.
+  if (attempt.mode === "exam" || attempt.mode === "electronogram") {
     const { body: errorBody, status } = fail(
       "CONFLICT",
-      "В экзамене подсказки недоступны",
+      attempt.mode === "exam"
+        ? "В экзамене подсказки недоступны"
+        : "Для электронограмм подсказок нет",
       409,
       rid,
     );
@@ -227,7 +230,8 @@ session.post("/answer", requireAuth, async (c) => {
         score: result.score,
         hints_used: Number(attempt.hints_used || 0),
         parts: result.parts,
-        guide_key: attempt.guide_key,
+        // У электронограммы нет методички — пустой ключ, чтобы клиент не звал панель.
+        guide_key: attempt.mode === "electronogram" ? "" : attempt.guide_key,
         section: attempt.section || "",
       },
       rid,
