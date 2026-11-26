@@ -186,6 +186,10 @@ export async function srsListCards(limit = 100, subject_id?: string, subject_slu
 export async function srsAddCard(payload: { front: string; back?: string; subject_id?: string; subject_slug?: string; topic?: string }) {
   return api<{ card: SrsCard }>("/srs/cards", { method: "POST", body: JSON.stringify(payload) });
 }
+/** Добавить микропрепараты в повторение (карточки строятся из методичек). */
+export async function srsAddTrainerCards(count = 10) {
+  return api<{ added: number }>("/srs/trainer", { method: "POST", body: JSON.stringify({ count }) });
+}
 export async function srsDeleteCard(id: string) {
   return api<{ deleted: boolean }>(`/srs/cards/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

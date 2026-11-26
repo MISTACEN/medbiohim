@@ -37,7 +37,12 @@ export function formatCard(row: SrsRow, subjectNames: Map<string, string>, now: 
     subject: subjectName || subjectSlug,
     subject_slug: subjectSlug,
     topic: String(row.topic || ""),
-    source: row.source_type === "personal" ? "personal" : "question",
+    source:
+      row.source_type === "personal"
+        ? "personal"
+        : row.source_type === "trainer_card"
+          ? "trainer"
+          : "question",
     ease: Number(row.ease ?? 2.5),
     interval: Number(row.interval ?? 0),
     reps: Number(row.reps ?? 0),
@@ -85,7 +90,8 @@ export function filterCards(
   const scope = String(options.scope || "");
   return rows.filter((row) => {
     const source = row.source_type === "personal" ? "personal" : "question";
-    if (scope === "shared" && source !== "question") return false;
+    // «Общая колода» — вопросы и микропрепараты; личные карточки в неё не попадают.
+    if (scope === "shared" && source === "personal") return false;
     if (scope === "personal" && source !== "personal") return false;
     if (subjectId) return String(row.subject_id || "") === subjectId;
     if (subjectSlug) return String(row.subject_slug || "") === subjectSlug;

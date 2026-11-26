@@ -12,6 +12,7 @@ import {
   srsReview,
   srsEnsure,
   srsAddCard,
+  srsAddTrainerCards,
   type SrsCard,
   type SrsSummary,
 } from "@/lib/features-api";
@@ -119,6 +120,19 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
     await refresh(subjectSlug || undefined, scope);
   }
 
+  async function addTrainerCards() {
+    if (busy) return;
+    setBusy(true);
+    const res = await srsAddTrainerCards(10);
+    setBusy(false);
+    if (!res.ok) {
+      setError(describeApiError(res.error));
+      return;
+    }
+    if (res.data.added === 0) setError("Все доступные микропрепараты уже в колоде");
+    await refresh(subjectSlug || undefined, scope);
+  }
+
   async function rate(r: Rating) {
     if (!card || busy) return;
     setBusy(true);
@@ -217,6 +231,7 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
         {scope === "personal" ? (
           <button type="button" onClick={() => setFront("") } className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm">Новая личная карточка</button>
         ) : (
+        <>
         <button
           type="button"
           onClick={() => void loadMore()}
@@ -225,6 +240,16 @@ function readStreak(): { streak: number; doneToday: number; day: string } {
         >
           +20 новых в колоду
         </button>
+        <button
+          type="button"
+          onClick={() => void addTrainerCards()}
+          disabled={busy}
+          className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--primary-soft)] disabled:opacity-40"
+          title="Карточки из методичек: признаки → название препарата"
+        >
+          +10 микропрепаратов
+        </button>
+        </>
         )}
       </div>
 

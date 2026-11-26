@@ -83,4 +83,76 @@ srs.post("/cards", requireAuth, async (c) => {
     return c.json(body, status as 503);
   }
 });
+
+/**
+ * POST /srs/trainer — добавить микропрепараты в повторение.
+ *
+ * Карточка строится из методички: на лицевой стороне диагностические признаки,
+ * на обороте — название препарата и структуры. Ключ идемпотентности — `key`
+ * гида в `source_key`: повторный вызов не создаёт дублей.
+ */
+srs.post("/trainer", requireAuth, async (c) => {
+  const rid = requestId();
+  const user = c.get("user");
+  const supabase = c.get("supabase");
+  let payload: any = {};
+  try {
+    payload = await c.req.json();
+  } catch {}
+  const count = Math.max(1, Math.min(50, Number(payload?.count ?? 10) || 10));
+  try {
+    const { data: guides, error: guidesError } = await supabase
+      .from("preparation_guides")
+      .select("key,name,section,features,structures")
+      .order("section", { ascending: true })
+      .limit(500);
+    if (guidesError) throw guidesError;
+
+    const { data: existing, error: existingError } = await supabase
+      .from("srs_cards")
+      .select("source_key")
+      .eq("user_id", user.id)
+      .eq("source_type", "trainer_card");
+    if (existingError) throw existingError;
+    const covered = new Set((existing || []).map((row: any) => String(row.source_key || "")));
+
+    const rows: Record<string, unknown>[] = [];
+    for (const guide of (guides || []) as any[]) {
+      if (rows.length >= count) break;
+      const key = String(guide.key || "");
+      const name = String(guide.name || "").trim();
+      const features = Array.isArray(guide.features)
+        ? guide.features.map((item: unknown) => String(item || "").trim()).filter(Boolean)
+        : [];
+      // Без признаков лицевая сторона бессмысленна: это была бы угадайка по названию.
+      if (!key || !name || !features.length || covered.has(key)) continue;
+      covered.add(key);
+      const structures = Array.isArray(guide.structures)
+        ? guide.structures.map((item: unknown) => String(item || "").trim()).filter(Boolean)
+        : [];
+      rows.push({
+        user_id: user.id,
+        source_type: "trainer_card",
+        source_key: key,
+        front: `Определи препарат: ${features.slice(0, 2).join("; ")}`,
+        back: structures.length ? `${name} · структуры: ${structures.join(", ")}` : name,
+        subject_slug: "histology",
+        topic: String(guide.section || "").trim() || null,
+        ease: 2.5,
+        interval: 0,
+        reps: 0,
+        due_at: new Date().toISOString(),
+      });
+    }
+
+    if (!rows.length) return c.json(ok({ added: 0 }, rid));
+    const { error: insertError } = await supabase.from("srs_cards").insert(rows);
+    if (insertError) throw insertError;
+    return c.json(ok({ added: rows.length }, rid));
+  } catch (error) {
+    console.error("[srs:trainer]", error);
+    const { body, status } = fail("DB_UNAVAILABLE", "Не удалось добавить микропрепараты", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
 }
