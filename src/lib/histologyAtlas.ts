@@ -20,6 +20,10 @@ export type AtlasCard = {
   mode_set?: unknown;
   plan_topic_title?: unknown;
   plan_module_title?: unknown;
+  /** Указатели основной картинки (trainer_feed_cards.hotspots). */
+  hotspots?: unknown;
+  /** Дополнительные снимки препарата (trainer_card_images). */
+  images?: unknown;
   preparation?: {
     name?: unknown;
     captions?: unknown;
@@ -308,4 +312,56 @@ export function difficultyLabel(level: number | null | undefined): string {
   if (level === 2) return "Средний";
   if (level === 3) return "Продвинутый";
   return "Без уровня";
+}
+
+export type AtlasHotspot = { x: number; y: number; label: string; structure?: string };
+
+/**
+ * Указатели основной картинки. Сервер уже нормализует их к долям 0–1, но
+ * карточка могла прийти из старого кэша, поэтому координаты перепроверяются —
+ * метка за пределами изображения не должна рисоваться.
+ */
+export function atlasHotspots(card: AtlasCard): AtlasHotspot[] {
+  if (!Array.isArray(card.hotspots)) return [];
+  return card.hotspots
+    .map((raw) => raw as { x?: unknown; y?: unknown; label?: unknown; structure?: unknown })
+    .map((raw) => ({
+      x: Number(raw.x),
+      y: Number(raw.y),
+      label: String(raw.label ?? ""),
+      structure: raw.structure ? String(raw.structure) : undefined,
+    }))
+    .filter(
+      (spot) =>
+        spot.label &&
+        Number.isFinite(spot.x) &&
+        Number.isFinite(spot.y) &&
+        spot.x >= 0 &&
+        spot.x <= 1 &&
+        spot.y >= 0 &&
+        spot.y <= 1,
+    );
+}
+
+/** Дополнительные снимки препарата для галереи атласа. */
+export function atlasImages(card: AtlasCard): { id: string; caption: string; hotspots: AtlasHotspot[] }[] {
+  if (!Array.isArray(card.images)) return [];
+  return card.images
+    .map((raw) => raw as { id?: unknown; caption?: unknown; hotspots?: unknown })
+    .filter((raw) => String(raw.id || ""))
+    .map((raw) => ({
+      id: String(raw.id),
+      caption: String(raw.caption ?? ""),
+      hotspots: Array.isArray(raw.hotspots)
+        ? raw.hotspots
+            .map((spot) => spot as { x?: unknown; y?: unknown; label?: unknown; structure?: unknown })
+            .map((spot) => ({
+              x: Number(spot.x),
+              y: Number(spot.y),
+              label: String(spot.label ?? ""),
+              structure: spot.structure ? String(spot.structure) : undefined,
+            }))
+            .filter((spot) => spot.label && Number.isFinite(spot.x) && Number.isFinite(spot.y))
+        : [],
+    }));
 }

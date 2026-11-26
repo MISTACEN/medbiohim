@@ -1,10 +1,13 @@
 import { fail, requestId } from "../../lib/response";
 import { createAnonClient, createServiceClient } from "../../lib/supabase";
 import { BlobError } from "@upstash/blob";
-import { getBlobBucket, trainerImageCandidateKeys, findHistologyDriveItem, imageContentType } from "./shared";
+import { getBlobBucket, trainerImageCandidateKeys, findHistologyDriveItem, imageContentType, safeObjectKey } from "./shared";
 
 import type { TrainersRouter } from "./types";
 import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
+
+const CARD_IMAGE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CARD_MEDIA_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400";
 
 export function registerImageRoutes(trainers: TrainersRouter) {
 trainers.get("/feed/:id/image", async (c) => {
@@ -242,6 +245,135 @@ trainers.get("/feed/:id/image", async (c) => {
   } catch (error) {
     console.error("[trainer-image]", error);
     const { body, status } = fail("MEDIA_URL_UNAVAILABLE", "Не удалось получить изображение из хранилища", 503, rid);
+    return c.json(body, status as 503);
+  }
+});
+
+/**
+ * Дополнительные изображения карточки (таблица trainer_card_images).
+ *
+ * Публичный маршрут без сессии: байты отдаются только для опубликованной и
+ * неархивной карточки, к которой изображение действительно привязано. Внешние
+ * https-ссылки проксируются, а не редиректятся, чтобы клиент не зависел от
+ * того, отдаёт ли сторонний хостинг CORS и свою авторизацию.
+ */
+trainers.get("/feed/:id/images/:imageId", async (c) => {
+  const rid = requestId();
+  const cardId = c.req.param("id");
+  const imageId = c.req.param("imageId");
+  if (!CARD_IMAGE_ID.test(imageId)) {
+    const { body, status } = fail("NOT_FOUND", "Изображение не найдено", 404, rid);
+    return c.json(body, status as 404);
+  }
+
+  const supabase = createServiceClient(c.env) || createAnonClient(c.env);
+  try {
+    const { data: card, error: cardError } = await supabase
+      .from("trainer_feed_cards")
+      .select("id,is_published,is_archived")
+      .eq("id", cardId)
+      .eq("is_published", true)
+      .eq("is_archived", false)
+      .maybeSingle();
+    if (cardError) {
+      console.error("[trainer-card-image:card]", cardError.message);
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось получить карточку изображения", 503, rid);
+      return c.json(body, status as 503);
+    }
+    if (!card) {
+      const { body, status } = fail("NOT_FOUND", "Карточка не найдена", 404, rid);
+      return c.json(body, status as 404);
+    }
+
+    const { data: image, error: imageError } = await supabase
+      .from("trainer_card_images")
+      .select("id,card_id,object_key,external_url")
+      .eq("id", imageId)
+      .eq("card_id", cardId)
+      .maybeSingle();
+    if (imageError) {
+      console.error("[trainer-card-image:row]", imageError.message);
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось получить изображение", 503, rid);
+      return c.json(body, status as 503);
+    }
+    if (!image) {
+      const { body, status } = fail("NOT_FOUND", "Изображение не найдено", 404, rid);
+      return c.json(body, status as 404);
+    }
+
+    const externalUrl = typeof image.external_url === "string" ? image.external_url.trim() : "";
+    if (/^https:\/\//i.test(externalUrl)) {
+      const upstream = await fetchWithTimeout(externalUrl, { redirect: "follow" });
+      const upstreamType = upstream.headers.get("content-type") || "";
+      if (upstream.ok && upstream.body && upstreamType.toLowerCase().startsWith("image/")) {
+        return new Response(upstream.body, {
+          headers: {
+            "content-type": upstreamType,
+            "cache-control": CARD_MEDIA_CACHE,
+            "x-content-type-options": "nosniff",
+            "x-request-id": rid,
+            "x-mbh-image-resolver": "external-url",
+          },
+        });
+      }
+      console.warn("[trainer-card-image:external]", { cardId, imageId, status: upstream.status, contentType: upstreamType });
+    }
+
+    const objectKey = safeObjectKey(String(image.object_key || ""));
+    if (objectKey) {
+      const publicBlobBase = (c.env.UPSTASH_BLOB_PUBLIC_BASE_URL || "https://b8a4f9f853fa.blob.upstash.io").trim().replace(/\/+$/, "");
+      const publicUrl = `${publicBlobBase}/${objectKey.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
+      try {
+        const upstream = await fetchWithTimeout(publicUrl, { redirect: "follow" });
+        if (upstream.ok && upstream.body) {
+          return new Response(upstream.body, {
+            headers: {
+              "content-type": upstream.headers.get("content-type") || imageContentType(objectKey),
+              "cache-control": CARD_MEDIA_CACHE,
+              "x-content-type-options": "nosniff",
+              "x-request-id": rid,
+              "x-mbh-image-resolver": "public-blob",
+            },
+          });
+        }
+      } catch (publicError) {
+        console.warn("[trainer-card-image:public]", {
+          cardId,
+          imageId,
+          error: publicError instanceof Error ? publicError.message : String(publicError),
+        });
+      }
+
+      const bucket = getBlobBucket(c.env);
+      if (bucket) {
+        try {
+          const object = await bucket.get(objectKey);
+          if (object) {
+            return new Response(object.body, {
+              headers: {
+                "content-type": object.contentType || imageContentType(objectKey),
+                "cache-control": CARD_MEDIA_CACHE,
+                "x-content-type-options": "nosniff",
+                "x-request-id": rid,
+                "x-mbh-image-resolver": "blob-sdk",
+              },
+            });
+          }
+        } catch (bucketError) {
+          console.warn("[trainer-card-image:sdk]", {
+            cardId,
+            imageId,
+            error: bucketError instanceof Error ? bucketError.message : String(bucketError),
+          });
+        }
+      }
+    }
+
+    const { body, status } = fail("MEDIA_NOT_FOUND", "Файл изображения отсутствует", 404, rid);
+    return c.json(body, status as 404);
+  } catch (error) {
+    console.error("[trainer-card-image]", error);
+    const { body, status } = fail("MEDIA_URL_UNAVAILABLE", "Не удалось получить изображение", 503, rid);
     return c.json(body, status as 503);
   }
 });

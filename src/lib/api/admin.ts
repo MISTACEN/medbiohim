@@ -106,6 +106,13 @@ export async function adminValidateContent(): Promise<any> { return api(endpoint
 /** Методические карточки препаратов: список и сохранение по ключу. */
 export async function adminListPreparationGuides(): Promise<any> { return api(endpoints.admin.preparationGuides()) as any; }
 export async function adminSavePreparationGuide(key: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.preparationGuide(key), { method: "PUT", body: JSON.stringify(payload) }) as any; }
+/** Карточка препарата v2: архив, изображения, подписи и указатели. */
+export async function adminListTrainerCards(query?: string): Promise<any> { return api(endpoints.admin.trainerCards(query)) as any; }
+export async function adminGetTrainerCard(id: string): Promise<any> { return api(endpoints.admin.trainerCard(id)) as any; }
+export async function adminUpdateTrainerCard(id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.trainerCard(id), { method: "PATCH", body: JSON.stringify(payload) }) as any; }
+export async function adminAddTrainerCardImage(id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.trainerCardImages(id), { method: "POST", body: JSON.stringify(payload) }) as any; }
+export async function adminUpdateTrainerCardImage(id: string, imageId: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.trainerCardImage(id, imageId), { method: "PATCH", body: JSON.stringify(payload) }) as any; }
+export async function adminDeleteTrainerCardImage(id: string, imageId: string): Promise<any> { return api(endpoints.admin.trainerCardImage(id, imageId), { method: "DELETE" }) as any; }
 export async function adminCreateAnnouncement(title: string, body: string, pinned = false): Promise<any> { return api(endpoints.admin.announcements(), { method: "POST", body: JSON.stringify({ title, body, pinned }) }) as any; }
 export async function adminListAnnouncements(): Promise<any> { return api(endpoints.admin.announcements()) as any; }
 export async function adminUpdateAnnouncement(id: string, patch: { title?: string; body?: string; pinned?: boolean }): Promise<any> { return api(endpoints.admin.announcement(id), { method: "PATCH", body: JSON.stringify(patch) }) as any; }

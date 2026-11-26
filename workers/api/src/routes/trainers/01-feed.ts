@@ -16,9 +16,9 @@ trainers.get("/feed", requireAuth, async (c) => {
   const specialty = c.req.query("specialty");
   const topic = c.req.query("topic");
   try {
-    const select = "id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,created_at,plan_module_id,plan_topic_id,plan_status,modules(title),topics(title)";
+    const select = "id,subject_slug,specialty_slug,mode_set,source_key,preparation,hotspots,question,tags,difficulty,is_published,is_archived,created_at,plan_module_id,plan_topic_id,plan_status,trainer_card_images(id,object_key,external_url,caption,hotspots,sort_order),modules(title),topics(title)";
     const applyFilters = (query: any) => {
-      let next = query.eq("is_published", true);
+      let next = query.eq("is_published", true).eq("is_archived", false);
       if (subject) next = next.eq("subject_slug", subject);
       if (specialty) next = next.eq("specialty_slug", specialty);
       if (topic) next = next.contains("tags", [topic]);
@@ -55,9 +55,10 @@ trainers.get("/feed/:id{[0-9a-fA-F-]{36}}", requireAuth, async (c) => {
   try {
     const { data, error } = await supabase
       .from("trainer_feed_cards")
-      .select("id,subject_slug,specialty_slug,mode_set,source_key,preparation,question,tags,difficulty,is_published,plan_module_id,plan_topic_id,plan_status,modules(title),topics(title)")
+      .select("id,subject_slug,specialty_slug,mode_set,source_key,preparation,hotspots,question,tags,difficulty,is_published,is_archived,plan_module_id,plan_topic_id,plan_status,trainer_card_images(id,object_key,external_url,caption,hotspots,sort_order),modules(title),topics(title)")
       .eq("id", c.req.param("id"))
       .eq("is_published", true)
+      .eq("is_archived", false)
       .maybeSingle();
     if (error || !data) {
       const { body, status } = fail("NOT_FOUND", "Карточка не найдена", 404, rid);

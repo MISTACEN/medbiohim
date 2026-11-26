@@ -55,6 +55,10 @@ const STRUCTURES = [
   ["zona-pellucida", "Блестящая зона", "layer"],
   ["spermatozoa", "Сперматозоиды", "cell"],
   ["acrosome", "Акросома", "structure"],
+  // Осевые органы: добавлены вместе с 19-й методичкой первой диагностики.
+  ["neural-tube", "Нервная трубка", "structure"],
+  ["notochord", "Хорда", "structure"],
+  ["somites", "Сомиты", "structure"],
 ];
 
 const q = (value) => "'" + String(value ?? "").replace(/'/g, "''") + "'";

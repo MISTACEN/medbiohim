@@ -16,6 +16,7 @@ import { registerSchedule } from "./schedule";
 import { registerAnnouncements } from "./announcements";
 import { registerPresence } from "./presence";
 import { registerPreparationGuides } from "./preparation-guides";
+import { registerTrainerCards } from "./trainer-cards";
 
 /**
  * Админ-консоль платформы.
@@ -38,6 +39,7 @@ registerSchedule(admin);
 registerAnnouncements(admin);
 registerPresence(admin);
 registerPreparationGuides(admin);
+registerTrainerCards(admin);
 
 admin.route("/database", dbAdmin);
 admin.route("/", adminParity);

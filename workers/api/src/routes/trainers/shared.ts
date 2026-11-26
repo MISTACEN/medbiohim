@@ -8,6 +8,15 @@ export function getBlobBucket(env: Env): Bucket | null {
   return token ? new Bucket({ token, enableTelemetry: false, cache: "no-store" }) : null;
 }
 
+export type TrainerCardImageRow = {
+  id: string;
+  object_key?: string | null;
+  external_url?: string | null;
+  caption?: string | null;
+  hotspots?: unknown;
+  sort_order?: number | null;
+};
+
 export type TrainerRow = {
   id: string;
   subject_slug?: string | null;
@@ -16,6 +25,7 @@ export type TrainerRow = {
   source_key?: string | null;
   preparation?: Record<string, unknown> | null;
   question?: Record<string, unknown> | null;
+  hotspots?: unknown;
   tags?: string[] | null;
   difficulty?: number | null;
   plan_module_id?: string | null;
@@ -24,7 +34,41 @@ export type TrainerRow = {
   modules?: { title?: string | null } | Array<{ title?: string | null }> | null;
   topics?: { title?: string | null } | Array<{ title?: string | null }> | null;
   is_published?: boolean;
+  is_archived?: boolean | null;
+  trainer_card_images?: TrainerCardImageRow[] | null;
 };
+
+/** Указатель на изображении: доли 0..1, подпись и (необязательно) структура. */
+export type Hotspot = { x: number; y: number; label: string; structure: string };
+
+export const HOTSPOT_LIMIT = 60;
+const HOTSPOT_LABEL_LIMIT = 120;
+const HOTSPOT_STRUCTURE_LIMIT = 80;
+
+/**
+ * Приводит hotspots к безопасному виду. Мусор отбрасывается, а не роняет запрос:
+ * координаты клика приходят из браузера и доверять им нельзя.
+ */
+export function normalizeHotspots(value: unknown): Hotspot[] {
+  if (!Array.isArray(value)) return [];
+  const out: Hotspot[] = [];
+  for (const raw of value.slice(0, HOTSPOT_LIMIT)) {
+    const item = (raw || {}) as { x?: unknown; y?: unknown; label?: unknown; structure?: unknown };
+    const x = Number(item.x);
+    const y = Number(item.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) continue;
+    const label = String(item.label ?? "").trim().slice(0, HOTSPOT_LABEL_LIMIT);
+    if (!label) continue;
+    const structure = String(item.structure ?? "").trim().slice(0, HOTSPOT_STRUCTURE_LIMIT);
+    out.push({
+      x: Math.round(x * 10000) / 10000,
+      y: Math.round(y * 10000) / 10000,
+      label,
+      structure,
+    });
+  }
+  return out;
+}
 
 export function cleanLegacyPath(value: string): string {
   return String(value || "")
@@ -127,6 +171,17 @@ export function mapTrainerCard(row: TrainerRow, orderIndex: number) {
     : [];
   const moduleRow = Array.isArray(row.modules) ? row.modules[0] : row.modules;
   const topicRow = Array.isArray(row.topics) ? row.topics[0] : row.topics;
+  // Дополнительные изображения: порядок задаёт админ, id — стабильный ключ
+  // для маршрута /feed/:id/images/:imageId. Ключи хранилища клиенту не нужны.
+  const images = (Array.isArray(row.trainer_card_images) ? row.trainer_card_images : [])
+    .slice()
+    .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+    .map((image) => ({
+      id: String(image.id),
+      caption: String(image.caption ?? ""),
+      sort_order: Number(image.sort_order ?? 0),
+      hotspots: normalizeHotspots(image.hotspots),
+    }));
   return {
     id: row.id,
     plan_module_id: row.plan_module_id || null,
@@ -142,6 +197,9 @@ export function mapTrainerCard(row: TrainerRow, orderIndex: number) {
     prompt: String(question.prompt || ""),
     options,
     preparation,
+    hotspots: normalizeHotspots(row.hotspots),
+    images,
+    archived: row.is_archived === true,
     tags: row.tags || [],
     difficulty: row.difficulty ?? null,
   };

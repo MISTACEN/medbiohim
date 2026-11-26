@@ -21,6 +21,7 @@ export const ADMIN_SOURCE_FILES = [
   "announcements.ts",
   "presence.ts",
   "preparation-guides.ts",
+  "trainer-cards.ts",
   "index.ts",
 ];
 

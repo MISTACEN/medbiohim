@@ -11,6 +11,10 @@ async function source(relative) {
 
 // test/ → workers/api → workers → корень репозитория
 const MIGRATION = "../../../database/migrations/20261120_preparation_guides.sql";
+// 19-я методичка «Осевые органы» добавлена отдельной сид-миграцией: базовые 18
+// генерируются из сида целиком, а одна позиция — точечно, чтобы не перезаписать
+// контент, уже отредактированный в админке.
+const AXIAL_MIGRATION = "../../../database/migrations/20261126_axial_organs_guide.sql";
 
 test("гиды и словарь структур закрыты авторизацией и не отдают 503 до миграции", async () => {
   const route = await source("../src/routes/preparations.ts");
@@ -36,29 +40,38 @@ test("миграция идемпотентна и закрывает табли
   assert.match(sql, /on conflict \(key\) do update/, "повторный прогон обновляет контент, а не падает");
 });
 
-test("сид покрывает все 18 препаратов первого диагностикума", async () => {
-  const [sql, seed] = await Promise.all([
+test("сид покрывает все 19 препаратов первой диагностики", async () => {
+  const [sql, axialSql, seed] = await Promise.all([
     source(MIGRATION),
+    source(AXIAL_MIGRATION),
     source("../../../src/data/histology-preparations.json"),
   ]);
   const preparats = JSON.parse(seed);
-  assert.equal(preparats.length, 18, "первый диагностикум — 18 препаратов");
+  // 18 генерируемых позиций + «Осевые органы» (2.3), которая раньше стояла в
+  // наборе как missing: см. docs/DIAGNOSTICUM-AUDIT-2026-11-26.md §19.
+  assert.equal(preparats.length, 19, "первая диагностика — 18 позиций плюс осевые органы");
 
   for (const item of preparats) {
-    assert.ok(sql.includes(`('${item.id}'`), `гид ${item.id} отсутствует в миграции`);
+    assert.ok(
+      sql.includes(`('${item.id}'`) || axialSql.includes(`'${item.id}'`),
+      `гид ${item.id} отсутствует в миграциях`,
+    );
     assert.ok(Array.isArray(item.steps) && item.steps.length >= 4, `у ${item.id} нет шагов поиска`);
     assert.ok(Array.isArray(item.structures) && item.structures.length > 0, `у ${item.id} нет структур`);
   }
 });
 
 test("все структуры препаратов есть в словаре", async () => {
-  const [sql, seed] = await Promise.all([
+  const [sql, axialSql, seed] = await Promise.all([
     source(MIGRATION),
+    source(AXIAL_MIGRATION),
     source("../../../src/data/histology-preparations.json"),
   ]);
   const dictionary = new Set();
-  for (const match of sql.matchAll(/^\s*\('([a-z0-9-]+)', '[^']*', '(?:cell|structure|inclusion|layer)', \d+\),?$/gm)) {
-    dictionary.add(match[1]);
+  for (const part of [sql, axialSql]) {
+    for (const match of part.matchAll(/^\s*\('([a-z0-9-]+)', '[^']*', '(?:cell|structure|inclusion|layer)', \d+\),?$/gm)) {
+      dictionary.add(match[1]);
+    }
   }
   assert.ok(dictionary.size >= 30, `словарь структур слишком мал: ${dictionary.size}`);
 

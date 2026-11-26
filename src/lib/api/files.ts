@@ -134,6 +134,34 @@ export async function getTrainerImageUrl(id: string, variant?: string): Promise<
   return promise;
 }
 
+/**
+ * Дополнительное изображение карточки (trainer_card_images): тот же приём, что
+ * у основной картинки — блоб с Bearer-токеном и object URL на время вкладки.
+ */
+const trainerCardImageCache = new Map<string, string>();
+export async function getTrainerCardImageUrl(cardId: string, imageId: string): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const cacheKey = `${String(cardId)}|${String(imageId)}`;
+  const cached = trainerCardImageCache.get(cacheKey);
+  if (cached) return cached;
+  const token = getAccessToken();
+  try {
+    const res = await fetch(`${API_URL}${endpoints.content.trainerFeedImageItem(String(cardId), String(imageId))}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: "default",
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (!blob.size) return null;
+    const url = URL.createObjectURL(blob);
+    trainerCardImageCache.set(cacheKey, url);
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 export async function retryTrainerImage(id: string, variant?: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const idKey = String(id);

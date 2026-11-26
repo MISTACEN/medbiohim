@@ -16,6 +16,8 @@ import { PreparationGuidePanel } from "@/components/trainers/PreparationGuidePan
 import { lessonKeyOf } from "@/lib/histologyOrder";
 import {
   atlasCardName,
+  atlasHotspots,
+  atlasImages,
   atlasStats,
   difficultyLabel,
   flattenAtlasGroups,
@@ -526,6 +528,8 @@ export function HistologyAtlas({
           title={atlasCardName(viewerCard)}
           lesson={topicLabel(lessonKeyOf(viewerCard as never))}
           captions={captionsOf(viewerCard)}
+          hotspots={atlasHotspots(viewerCard)}
+          images={atlasImages(viewerCard)}
           onClose={() => setViewerId(null)}
           onPrev={visible.length > 1 ? () => step(-1) : undefined}
           onNext={visible.length > 1 ? () => step(1) : undefined}

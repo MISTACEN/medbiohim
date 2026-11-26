@@ -18,6 +18,7 @@ import {
   FileSpreadsheet,
   FileUp,
   Flag,
+  Image as ImageIcon,
   GraduationCap,
   History,
   LayoutDashboard,
@@ -71,6 +72,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     items: [
       { href: "/admin/users", label: "Пользователи и роли", icon: Users, short: "Пользователи", strictAdmin: true, desc: "Роли, группа, курс и семестр для каждого студента." },
       { href: "/admin/preparation-guides", label: "Методички препаратов", icon: Library, short: "Методички", strictAdmin: true, desc: "Признаки, структуры и шаги поиска для атласа и диагностикума." },
+      { href: "/admin/trainer-cards", label: "Карточки препаратов", icon: ImageIcon, short: "Карточки", strictAdmin: true, desc: "Изображения препарата, подписи к структурам и архив вместо удаления." },
       { href: "/admin/access", label: "Доступы к разделам", icon: Lock, short: "Доступы", strictAdmin: true, desc: "Разделы open/restricted, разрешения пользователям и группам, журнал доступа." },
       { href: "/admin/announcements", label: "Объявления и сайт", icon: Megaphone, short: "Объявления", desc: "Новости и тексты главной страницы." },
       { href: "/admin/workshop", label: "Мастерская", icon: Layers, desc: "Очередь публикаций, жалобы и режим публикации." },
