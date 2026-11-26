@@ -45,8 +45,10 @@ const STUDENT_MODES: DiagnosticumMode[] = ["complex", "exam", "electronogram"];
 
 export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true }: DiagnosticumRunnerProps = {}) {
   const [overview, setOverview] = useState<DiagnosticumOverview | null>(null);
-  const [localMode, setLocalMode] = useState<DiagnosticumMode>("complex");
-  const mode = controlledMode ?? localMode;
+  // `mode` — только стартовое значение: переключатель внутри раннера должен
+  // реально менять режим, даже если родитель передал свой (иначе «Экзамен» и
+  // «Электронограмма» оставались бы кнопками ни о чём).
+  const [mode, setLocalMode] = useState<DiagnosticumMode>(controlledMode ?? "complex");
   const [section, setSection] = useState("");
   const [attempt, setAttempt] = useState<DiagnosticumAttempt | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -77,6 +79,10 @@ export function DiagnosticumRunner({ mode: controlledMode, showModeChips = true 
 
   // Смена режима снаружи должна сбросить текущее задание, иначе останется
   // картинка и вопрос предыдущего формата.
+  useEffect(() => {
+    if (controlledMode) setLocalMode(controlledMode);
+  }, [controlledMode]);
+
   useEffect(() => {
     setAttempt(null);
     setResult(null);

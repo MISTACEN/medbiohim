@@ -230,3 +230,12 @@ test("диагностикум: миграция режимов разрешае
     "503 объясняет неприменённую миграцию, а не «БД недоступна»",
   );
 });
+
+test("диагностикум: переключатель режимов реально меняет режим", async () => {
+  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
+  assert.ok(
+    runner.includes('useState<DiagnosticumMode>(controlledMode ?? "complex")'),
+    "внешний режим — только стартовое значение",
+  );
+  assert.ok(!runner.includes("controlledMode ?? localMode"), "внешний режим не должен перекрывать выбор в чипах");
+});
