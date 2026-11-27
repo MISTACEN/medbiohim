@@ -68,6 +68,8 @@ export type Env = {
   OPENROUTER_MODEL?: string;
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
+  /** `off` отключает ИИ-проверку свободного ответа, оставляя правила. */
+  AI_TEXT_GRADING?: string;
   GIGACHAT_CREDENTIALS?: string;
   GIGACHAT_AUTH_KEY?: string;
   GIGACHAT_ACCESS_TOKEN?: string;

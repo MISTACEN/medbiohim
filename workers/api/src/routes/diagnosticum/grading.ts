@@ -22,9 +22,26 @@ export type { PartFeedback, GradeResult } from "./model";
 /**
  * Проверка ответа. Часть считается верной только при точном совпадении набора:
  * недобор и лишние варианты одинаково ломают диагноз.
+ *
+ * `textVerdicts` — вердикты по частям, отвеченным словами (см. `text-answers.ts`):
+ * там сравнивать наборы нечего, верность уже решили правила или ИИ.
  */
-export function gradeAnswer(answers: AnswerKey, submitted: Submitted, hintsUsed = 0): GradeResult {
+export function gradeAnswer(
+  answers: AnswerKey,
+  submitted: Submitted,
+  hintsUsed = 0,
+  textVerdicts: Record<string, boolean> = {},
+): GradeResult {
   const parts: PartFeedback[] = Object.entries(answers.parts).map(([partId, key]) => {
+    if (Object.prototype.hasOwnProperty.call(textVerdicts, partId)) {
+      return {
+        part_id: partId,
+        correct: textVerdicts[partId] === true,
+        missing: [],
+        extra: [],
+        explanation: key.explanation,
+      };
+    }
     const selected = new Set(
       (submitted[partId] ?? []).map((value) => String(value).trim()).filter(Boolean),
     );

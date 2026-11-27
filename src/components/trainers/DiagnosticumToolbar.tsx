@@ -29,6 +29,9 @@ type DiagnosticumToolbarProps = {
   onExamTimeChange: (value: number) => void;
   busy: boolean;
   attemptActive: boolean;
+  /** Свободный ввод: студент отвечает словами, а не выбирает варианты. */
+  textMode: boolean;
+  onTextModeChange: (value: boolean) => void;
   /** Сколько препаратов выбрано в тренажёре: серия пойдёт ровно по ним. */
   selectedCount?: number;
   onStart: () => void;
@@ -47,6 +50,8 @@ export function DiagnosticumToolbar({
   onExamTimeChange,
   busy,
   attemptActive,
+  textMode,
+  onTextModeChange,
   selectedCount = 0,
   onStart,
 }: DiagnosticumToolbarProps) {
@@ -96,6 +101,20 @@ export function DiagnosticumToolbar({
             </select>
           </>
         ) : null}
+        <button
+          type="button"
+          onClick={() => onTextModeChange(!textMode)}
+          aria-pressed={textMode}
+          disabled={busy}
+          className={
+            "min-h-10 rounded-xl border px-3 text-sm font-semibold transition disabled:opacity-60 " +
+            (textMode
+              ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+              : "border-[var(--border)] bg-white text-slate-600 hover:border-indigo-200")
+          }
+        >
+          {textMode ? "Ответ: текстом" : "Ответ: варианты"}
+        </button>
         <button
           type="button"
           onClick={onStart}

@@ -37,8 +37,8 @@ test("srs: конкретную ошибку можно отправить в п
   const api = await read("src/lib/features-api.ts");
   assert.ok(api.includes("srsAddTrainerCard"), "у клиента есть точечное добавление");
 
-  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
-  assert.ok(runner.includes("srsAddTrainerCard(key)"), "разбор ошибки отправляет препарат в повторение");
+  const runner = await read("src/components/trainers/use-diagnosticum-actions.ts");
+  assert.ok(runner.includes("srsAddTrainerCard(guideKey)"), "разбор ошибки отправляет препарат в повторение");
   // Кнопка живёт в панели разбора: интерфейс разнесён по компонентам ради
   // бюджета 600 строк, поэтому проверяем владельца разметки, а не родителя.
   const resultPanel = await read("src/components/trainers/DiagnosticumResultPanel.tsx");

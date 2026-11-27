@@ -14,13 +14,23 @@ type DiagnosticumPartsListProps = {
   parts: DiagnosticumPart[];
   selected: Record<string, string[]>;
   result: DiagnosticumResult | null;
+  /** Части, которые сейчас отвечаются текстом: их варианты не показываем. */
+  hiddenParts?: string[];
   onToggle: (partId: string, optionId: string, kind: "single" | "multi") => void;
 };
 
-export function DiagnosticumPartsList({ parts, selected, result, onToggle }: DiagnosticumPartsListProps) {
+export function DiagnosticumPartsList({
+  parts,
+  selected,
+  result,
+  hiddenParts = [],
+  onToggle,
+}: DiagnosticumPartsListProps) {
   return (
     <>
-      {parts.map((part) => (
+      {parts
+        .filter((part) => !hiddenParts.includes(part.id))
+        .map((part) => (
         <div key={part.id} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">{part.title}</h3>
