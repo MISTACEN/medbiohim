@@ -92,6 +92,14 @@ trainers.get("/feed/:id/image", async (c) => {
     // для атласа и объяснения после ответа.
     const wantsClean = c.req.query("variant") === "clean";
     const prep = (card.preparation as Record<string, any> | null) || null;
+
+    // Бонус-снимки лежат на статике сайта (`preparation.imageStatic`), а не в
+    // Blob. Отдаём редирект: файл уже кэшируется CDN, проксировать бинарник
+    // через воркер незачем. Раньше такие карточки получали 404.
+    const staticImage = typeof prep?.imageStatic === "string" ? prep.imageStatic.trim() : "";
+    if (/^\/library\/[A-Za-z0-9._~/-]+$/.test(staticImage)) {
+      return c.redirect(new URL(staticImage, new URL(c.req.url).origin).toString(), 302);
+    }
     if (wantsClean && prep?.imageCleanUrl) {
       // Чистая версия лежит на Vercel-статике — redirect дешевле, чем
       // проксировать бинарник через воркер.

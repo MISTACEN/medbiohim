@@ -143,8 +143,10 @@ export function trainerImageCandidateKeys(card: {
   const preparation = card.preparation && typeof card.preparation === "object" ? card.preparation : {};
   const imagePath = cleanLegacyPath(String(preparation.imagePath || ""));
   const imageUrl = cleanLegacyPath(String(preparation.imageUrl || ""));
+  const imageStatic = cleanLegacyPath(String(preparation.imageStatic || ""));
   add(imagePath);
   add(imageUrl);
+  add(imageStatic);
 
   const base = (imagePath || imageUrl).split("/").pop() || "";
   if (base && !base.includes("..")) {
@@ -202,7 +204,8 @@ export function mapTrainerCard(row: TrainerRow, orderIndex: number) {
     topic: Array.isArray(row.tags) ? String(row.tags[0] || row.subject_slug || "histology") : (row.subject_slug || "histology"),
     kind: row.mode_set || String(question.mode || "identify"),
     order_index: orderIndex,
-    has_image: Boolean(preparation.imageUrl || preparation.imagePath),
+    // `imageStatic` — снимок на статике сайта (бонус-наборы): он тоже изображение.
+    has_image: Boolean(preparation.imageUrl || preparation.imagePath || preparation.imageStatic),
     prompt: String(question.prompt || ""),
     options,
     preparation,

@@ -91,7 +91,11 @@ import { buildModeQuestion } from "./model-questions";
 /** Карточка с изображением: без картинки диагностировать нечего. */
 export function hasImage(card: CardRow): boolean {
   const preparation = card?.preparation ?? null;
-  return Boolean(text(preparation?.imagePath) || text(preparation?.imageUrl));
+  // `imageStatic` — путь на статике сайта (бонус-снимки): без него карточка
+  // считалась «без изображения», хотя файл существует.
+  return Boolean(
+    text(preparation?.imagePath) || text(preparation?.imageUrl) || text(preparation?.imageStatic),
+  );
 }
 
 /**

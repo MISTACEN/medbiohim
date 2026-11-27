@@ -29,6 +29,8 @@ export type CardRow = {
     name?: string | null;
     imagePath?: string | null;
     imageUrl?: string | null;
+    /** Путь на статике сайта: так хранятся снимки бонус-наборов. */
+    imageStatic?: string | null;
   } | null;
   mode_set?: string | null;
 };

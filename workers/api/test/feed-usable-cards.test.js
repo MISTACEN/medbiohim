@@ -16,6 +16,19 @@ test("лента тренажёра не отдаёт нерешаемые ка�
   assert.match(feed, /total: all\.length/);
 });
 
+test("снимок на статике сайта считается изображением карточки", async () => {
+  const shared = await source("../src/routes/trainers/shared.ts");
+  assert.match(shared, /preparation\.imageUrl \|\| preparation\.imagePath \|\| preparation\.imageStatic/);
+  assert.match(shared, /const imageStatic = cleanLegacyPath/);
+
+  const image = await source("../src/routes/trainers/03-image.ts");
+  assert.match(image, /prep\.imageStatic/);
+  assert.match(image, /c\.redirect\(new URL\(staticImage, new URL\(c\.req\.url\)\.origin\)\.toString\(\), 302\)/);
+
+  const model = await source("../src/routes/diagnosticum/model.ts");
+  assert.match(model, /text\(preparation\?\.imagePath\) \|\| text\(preparation\?\.imageUrl\) \|\| text\(preparation\?\.imageStatic\)/);
+});
+
 test("серия собирается только из карточек со снимком и вариантами ответа", async () => {
   const sql = await source("../../../database/migrations/20261127_histology_training_usable_cards.sql");
   assert.match(sql, /create or replace function public\.histology_training_create/i);
