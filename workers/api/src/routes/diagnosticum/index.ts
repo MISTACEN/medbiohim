@@ -28,6 +28,7 @@ import {
 import { MODE_LABELS, isConstraintViolation, isMissingTable, loadBank } from "./shared";
 import { FIRST_DIAGNOSTICUM, isSetSection, setGuides } from "./sets";
 import session from "./session";
+import sessions from "./sessions";
 
 const diagnosticum = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -304,6 +305,9 @@ diagnosticum.post("/start", requireAuth, async (c) => {
   );
 });
 
+// Серии монтируются раньше одиночных маршрутов: пути `/sessions*` не должны
+// перехватываться обработчиками попыток.
+diagnosticum.route("/", sessions);
 diagnosticum.route("/", session);
 
 export default diagnosticum;

@@ -8,7 +8,25 @@
  */
 
 import { RotateCcw } from "lucide-react";
-import type { DiagnosticumResult } from "@/lib/diagnosticum-api";
+import type {
+  DiagnosticumResult,
+  DiagnosticumSessionItem,
+  DiagnosticumSessionReview,
+} from "@/lib/diagnosticum-api";
+
+/** Подписи верных вариантов: эталон приходит только в разборе серии. */
+function answerLabels(item: DiagnosticumSessionItem): string[] {
+  const labels = new Map<string, string>();
+  for (const part of item.question.parts ?? []) {
+    for (const option of part.options) labels.set(`${part.id}:${option.id}`, option.label);
+  }
+  const out: string[] = [];
+  for (const [partId, key] of Object.entries(item.answers ?? {})) {
+    const names = (key.correct ?? []).map((id) => labels.get(`${partId}:${id}`) ?? id);
+    if (names.length) out.push(names.join(", "));
+  }
+  return out;
+}
 
 /**
  * Ход серии. Длина, номер вопроса и баллы живут в клиенте: сервер по-прежнему
@@ -68,6 +86,8 @@ export function DiagnosticumExamProgress({
 type DiagnosticumExamResultProps = {
   exam: DiagnosticumExamState;
   result: DiagnosticumResult;
+  /** Разбор всей серии: приходит с сервера после `finish`. */
+  review?: DiagnosticumSessionReview | null;
   /** Вопрос закрылся по таймеру — ответ ушёл сам. */
   timedOut: boolean;
   onRestart: () => void;
@@ -77,6 +97,7 @@ type DiagnosticumExamResultProps = {
 export function DiagnosticumExamResult({
   exam,
   result,
+  review,
   timedOut,
   onRestart,
   onNext,
@@ -92,9 +113,39 @@ export function DiagnosticumExamResult({
             Средний балл: {exam.scores.length ? Math.round(exam.scores.reduce((sum, score) => sum + score, 0) / exam.scores.length) : 0}
             {" · "}лучший: {exam.scores.length ? Math.max(...exam.scores) : 0}
           </p>
-          <p className="text-xs text-slate-500">
-            Ошибки уже в очереди повторения, разбор и эталоны — в режиме тренировки.
-          </p>
+          {review ? (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Разбор серии
+              </p>
+              <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                {review.items.map((item) => {
+                  const correct = answerLabels(item);
+                  return (
+                    <li
+                      key={item.attempt_id}
+                      className="rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"
+                    >
+                      <span className="font-semibold text-slate-800">
+                        {item.index + 1}.{" "}
+                        {item.correct ? "верно" : item.answered ? "ошибка" : "пропуск"} · {item.score} б.
+                      </span>
+                      {!item.correct && correct.length ? (
+                        <span className="block text-slate-600">Верно: {correct.join(" · ")}</span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-xs text-slate-500">
+                Ошибки уже в очереди повторения: их можно разобрать в режиме тренировки.
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Ошибки уже в очереди повторения, разбор и эталоны — в режиме тренировки.
+            </p>
+          )}
           <button
             type="button"
             onClick={onRestart}

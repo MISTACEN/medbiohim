@@ -113,6 +113,19 @@ export function DiagnosticumStats({ refreshKey = 0 }: { refreshKey?: number }) {
         ))}
       </div>
 
+      {stats.by_mode.length ? (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {stats.by_mode.map((item) => (
+            <span
+              key={item.mode}
+              className="rounded-full border border-[var(--border)] px-2.5 py-1 text-slate-600"
+            >
+              {item.title}: {item.correct}/{item.total}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
       {stats.weak_sections.length ? (
         <p className="rounded-xl bg-[var(--status-warn-bg)] px-3 py-2 text-xs text-[var(--status-warn-fg)]">
           Стоит повторить: {stats.weak_sections.join(", ")}. Выберите раздел выше и начните задание.

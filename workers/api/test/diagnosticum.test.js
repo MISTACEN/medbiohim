@@ -227,8 +227,12 @@ test("диагностикум: режимы экзамена и ЭМ досту
     assert.ok(trainer.includes(mode), `в режимах практики нет ${mode}`);
   }
   assert.ok(
-    trainer.includes("<DiagnosticumRunner mode={practice} showModeChips={false} />"),
+    /<DiagnosticumRunner[\s\S]{0,200}?mode=\{practice\}/.test(trainer),
     "раннер получает выбранный режим",
+  );
+  assert.ok(
+    trainer.includes("cardIds={selectedCardIds.slice(0, 30)}"),
+    "выбранные карточки передаются в серию",
   );
 
   const ui = await readUi();
@@ -263,9 +267,10 @@ test("диагностикум: переключатель режимов реа
 });
 
 test("диагностикум: у электронограмм в UI нет кнопки подсказки", async () => {
-  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
-  assert.ok(runner.includes('mode === "exam" || mode === "electronogram"'), "подсказки скрыты и в ЭМ, и в экзамене");
-  assert.ok(runner.includes("Для электронограмм подсказок нет"), "в ЭМ объяснено, почему нет подсказок");
+  // Кнопки ответа и подсказки вынесены в отдельный компонент.
+  const actions = await read("src/components/trainers/DiagnosticumAnswerActions.tsx");
+  assert.ok(actions.includes('mode === "exam" || mode === "electronogram"'), "подсказки скрыты и в ЭМ, и в экзамене");
+  assert.ok(actions.includes("Для электронограмм подсказок нет"), "в ЭМ объяснено, почему нет подсказок");
 });
 
 test("диагностикум: без ключа методички нет кнопки «Методика поиска»", async () => {
@@ -276,8 +281,8 @@ test("диагностикум: без ключа методички нет кн
 test("тренажёр: кнопки старта не дублируют друг друга", async () => {
   const ui = await readUi();
   assert.ok(ui.includes("Начать тренировку"), "своя тренировка названа явно");
-  const runner = await read("src/components/trainers/DiagnosticumRunner.tsx");
-  assert.ok(runner.includes("Начать разбор") && runner.includes("Начать экзамен"), "режим диагностикума виден на кнопке");
+  const toolbar = await read("src/components/trainers/DiagnosticumToolbar.tsx");
+  assert.ok(toolbar.includes("Начать разбор") && toolbar.includes("Начать экзамен"), "режим диагностикума виден на кнопке");
 });
 
 test("набор первой диагностики: 19 позиций и честный пропуск", async () => {

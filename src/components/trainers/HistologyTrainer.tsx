@@ -365,6 +365,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                   error={error}
                   working={working}
                   onStart={start}
+                  onExamSelected={() => setPractice("exam")}
                 />
               ) : practice === "atlas" ? (
                 <p className="text-sm text-slate-500">
@@ -372,7 +373,12 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
                   структуры, или вернитесь в разбор, экзамен или свою серию.
                 </p>
               ) : (
-                <DiagnosticumRunner mode={practice} showModeChips={false} />
+                <DiagnosticumRunner
+                  mode={practice}
+                  showModeChips={false}
+                  // Сервер принимает не больше 30 карточек в серии.
+                  cardIds={selectedCardIds.slice(0, 30)}
+                />
               )}
             </section>
 

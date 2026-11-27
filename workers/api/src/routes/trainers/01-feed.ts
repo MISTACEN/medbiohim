@@ -1,10 +1,14 @@
 import { ok, fail, requestId } from "../../lib/response";
 import { requireAuth } from "../../middleware/auth";
 import { createServiceClient } from "../../lib/supabase";
-import { mapTrainerCard } from "./shared";
+import { isTrainableCard, mapTrainerCard } from "./shared";
 import type { TrainerRow } from "./shared";
 
 import type { TrainersRouter } from "./types";
+
+/** Размер страницы чтения из БД: лента маленькая (сотни строк), читаем целиком. */
+const FEED_PAGE = 200;
+const FEED_MAX_ROWS = 2000;
 
 export function registerFeedRoutes(trainers: TrainersRouter) {
 trainers.get("/feed", requireAuth, async (c) => {
@@ -17,31 +21,41 @@ trainers.get("/feed", requireAuth, async (c) => {
   const topic = c.req.query("topic");
   try {
     const select = "id,subject_slug,specialty_slug,mode_set,source_key,preparation,hotspots,question,tags,difficulty,is_published,is_archived,created_at,plan_module_id,plan_topic_id,plan_status,trainer_card_images(id,object_key,external_url,caption,hotspots,sort_order),modules(title),topics(title)";
-    const applyFilters = (query: any) => {
-      let next = query.eq("is_published", true).eq("is_archived", false);
+    const buildQuery = (client: any) => {
+      let next = client.from("trainer_feed_cards").select(select).eq("is_published", true).eq("is_archived", false);
       if (subject) next = next.eq("subject_slug", subject);
       if (specialty) next = next.eq("specialty_slug", specialty);
       if (topic) next = next.contains("tags", [topic]);
-      return next.order("created_at", { ascending: true }).range(offset, offset + limit - 1);
+      return next.order("created_at", { ascending: true });
     };
-    let { data, error } = await applyFilters(supabase.from("trainer_feed_cards").select(select));
-    if (error) {
-      console.warn("[trainers:feed] user-scoped query failed; trying published-only service query", error.message);
-      const { createServiceClient } = await import("../../lib/supabase");
-      const service = createServiceClient(c.env);
-      if (service) {
-        const fallback = await applyFilters(service.from("trainer_feed_cards").select(select));
-        data = fallback.data;
-        error = fallback.error;
+    // Пагинация считается по пригодным карточкам, поэтому читаем все строки
+    // страницами, отбрасываем нерешаемые и только потом режем offset/limit.
+    const loadAll = async (client: any) => {
+      const rows: TrainerRow[] = [];
+      for (let start = 0; start < FEED_MAX_ROWS; start += FEED_PAGE) {
+        const { data, error } = await buildQuery(client).range(start, start + FEED_PAGE - 1);
+        if (error) return { rows, error };
+        const batch = (data || []) as TrainerRow[];
+        rows.push(...batch);
+        if (batch.length < FEED_PAGE) break;
       }
+      return { rows, error: null };
+    };
+
+    let loaded = await loadAll(supabase);
+    if (loaded.error) {
+      console.warn("[trainers:feed] user-scoped query failed; trying published-only service query", loaded.error.message);
+      const service = createServiceClient(c.env);
+      if (service) loaded = await loadAll(service);
     }
-    if (error) {
-      console.error("[trainers:feed]", error.message);
+    if (loaded.error) {
+      console.error("[trainers:feed]", loaded.error.message);
       const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);
       return c.json(body, status as 503);
     }
-    const items = ((data || []) as TrainerRow[]).map((row, index) => mapTrainerCard(row, offset + index));
-    return c.json(ok({ items, limit, offset, source: "supabase" }, rid));
+    const all = loaded.rows.map((row, index) => mapTrainerCard(row, index)).filter(isTrainableCard);
+    const items = all.slice(offset, offset + limit).map((card, index) => ({ ...card, order_index: offset + index }));
+    return c.json(ok({ items, limit, offset, total: all.length, source: "supabase" }, rid));
   } catch (error) {
     console.error("[trainers:feed]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);

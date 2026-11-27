@@ -126,6 +126,70 @@ export function submitDiagnosticumAnswer(
   });
 }
 
+/** Вопрос серверной серии: без ответа — только задание, с разбором — эталон. */
+export type DiagnosticumSessionItem = {
+  attempt_id: string;
+  index: number;
+  section: string;
+  guide_key: string;
+  question: DiagnosticumQuestion;
+  answered: boolean;
+  hints_total: number;
+  correct?: boolean;
+  score?: number;
+  parts?: DiagnosticumPartFeedback[];
+  answers?: Record<string, { correct: string[]; explanation?: string }>;
+};
+
+export type DiagnosticumSession = {
+  session_id: string;
+  mode: DiagnosticumMode;
+  section: string;
+  timer_sec: number | null;
+  status: "in_progress" | "finished" | "abandoned";
+  total: number;
+  score?: number | null;
+  correct_count?: number | null;
+  finished_at?: string | null;
+  items: DiagnosticumSessionItem[];
+};
+
+export type DiagnosticumSessionReview = {
+  session_id: string;
+  status: "finished";
+  total: number;
+  answered: number;
+  skipped: number;
+  correct_count: number;
+  score: number;
+  items: DiagnosticumSessionItem[];
+};
+
+/** Серия на сервере: состав и порядок не теряются при перезагрузке. */
+export function startDiagnosticumSession(input: {
+  mode: DiagnosticumMode;
+  section?: string;
+  length?: number;
+  timer_sec?: number | null;
+  /** «Своя серия»: разбор ровно этих карточек банка. */
+  card_ids?: string[];
+}) {
+  return api<DiagnosticumSession>(endpoints.diagnosticum.sessions(), {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function getDiagnosticumSession(sessionId: string) {
+  return api<DiagnosticumSession>(endpoints.diagnosticum.session(sessionId));
+}
+
+export function finishDiagnosticumSession(sessionId: string) {
+  return api<DiagnosticumSessionReview>(endpoints.diagnosticum.sessionFinish(sessionId), {
+    method: "POST",
+  });
+}
+
 /** Текущее задание попытки — восстановление экзамена после перезагрузки. */
 export function getDiagnosticumAttempt(attemptId: string) {
   return api<DiagnosticumAttempt>(endpoints.diagnosticum.attempt(attemptId));

@@ -8,6 +8,15 @@ export function getBlobBucket(env: Env): Bucket | null {
   return token ? new Bucket({ token, enableTelemetry: false, cache: "no-store" }) : null;
 }
 
+/**
+ * Пригодна ли карточка для тренировки: нужны и изображение, и варианты ответа.
+ * Бонус-карточки без снимка отдавали 404 на `/feed/:id/image`, а задание по ним
+ * нерешаемо, поэтому в ленту (атлас, серии, «все вопросы») они не попадают.
+ */
+export function isTrainableCard(card: { has_image?: boolean; options?: unknown[] | null }): boolean {
+  return card.has_image === true && Array.isArray(card.options) && card.options.length > 0;
+}
+
 export type TrainerCardImageRow = {
   id: string;
   object_key?: string | null;

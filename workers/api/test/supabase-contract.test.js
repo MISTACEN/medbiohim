@@ -126,7 +126,10 @@ test("trainer feed returns plan mappings used by histology material filtering", 
   assert.ok(trainersSource.includes("plan_topic_title: topicRow?.title || null"));
   assert.ok(trainersSource.includes("modules(title),topics(title)"));
   assert.ok(trainersSource.includes('Math.min(Math.max(Number(c.req.query("limit") || 30), 1), 250)'));
-  assert.ok(trainersSource.includes(".range(offset, offset + limit - 1)"));
+  // Лента читает таблицу страницами, а offset/limit применяет уже к пригодным
+  // карточкам: иначе нерешаемые сдвигали бы страницы.
+  assert.ok(trainersSource.includes(".range(start, start + FEED_PAGE - 1)"));
+  assert.ok(trainersSource.includes("all.slice(offset, offset + limit)"));
 });
 
 test("curriculum API and page use canonical active curriculum data and persist per-student progress", () => {

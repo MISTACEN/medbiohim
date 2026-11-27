@@ -381,6 +381,10 @@ export const endpoints = {
     answer: (): string => "/diagnosticum/answer",
     /** Текущее задание попытки без ключа ответа — восстановление серии. */
     attempt: (id: string): string => `/diagnosticum/attempt/${enc(id)}`,
+    /** Серверная серия: старт, восстановление и завершение с разбором. */
+    sessions: (): string => "/diagnosticum/sessions",
+    session: (id: string): string => `/diagnosticum/sessions/${enc(id)}`,
+    sessionFinish: (id: string): string => `/diagnosticum/sessions/${enc(id)}/finish`,
     stats: (): string => "/diagnosticum/stats",
     mistakes: (): string => "/diagnosticum/mistakes",
   },

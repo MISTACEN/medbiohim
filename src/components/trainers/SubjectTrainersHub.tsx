@@ -69,7 +69,10 @@ function SrsPanel() {
     setError(null);
     const [sumRes, dueRes] = await Promise.all([
       srsSummary(),
-      srsDue(25, "histology", selectedScope),
+      // Сигнатура: srsDue(limit, subject_id, subject_slug, scope). Слаг
+      // гистологии — не UUID, поэтому он идёт в третий слот, а не во второй:
+      // иначе запрос уходил с subject_id="histology" и очередь была пуста.
+      srsDue(25, undefined, "histology", selectedScope),
     ]);
     setLoading(false);
     if (!sumRes.ok) {

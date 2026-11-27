@@ -117,8 +117,9 @@ session.post("/hint", requireAuth, async (c) => {
   }
 
   const levels = Array.from(new Set([...used, requested])).sort((a, b) => a - b);
-  const update = await c
-    .get("supabase")
+  // Запись — только серверным клиентом: грант update у authenticated отозван,
+  // иначе студент мог бы сам выставить себе балл в обход проверки.
+  const update = await service
     .from("diagnosticum_attempts")
     .update({ hints: levels, hints_used: levels.length })
     .eq("id", attempt.id);
@@ -189,8 +190,7 @@ session.post("/answer", requireAuth, async (c) => {
   const result = gradeAnswer(answerKey, submitted, Number(attempt.hints_used || 0));
   const feedback = { parts: result.parts, guide_key: attempt.guide_key };
 
-  const update = await c
-    .get("supabase")
+  const update = await service
     .from("diagnosticum_attempts")
     .update({
       correct: result.correct,

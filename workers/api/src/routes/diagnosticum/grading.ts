@@ -61,7 +61,9 @@ export function hintFor(
     return system ? `Это препарат системы: ${system}.` : null;
   }
   if (level === 2) {
-    const labels = guideStructures(guide).slice(0, 3).map(title);
+    // Все структуры препарата: раньше срез 3 из 4 прятал последнюю и подсказка
+    // становилась неполной (DIA: «Ищи характерные структуры» без одной из них).
+    const labels = guideStructures(guide).map(title);
     return labels.length ? `Ищи характерные структуры: ${labels.join(", ")}.` : null;
   }
   if (level === 3) {

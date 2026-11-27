@@ -203,10 +203,15 @@ export function buildQuestion(input: {
   bank?: "preparation" | "electronogram";
   structureTitles?: Record<string, string>;
   random?: () => number;
+  /**
+   * Конкретная карточка: нужна «своей серии», где студент выбрал препараты сам.
+   * Без неё карточка подбирается по названию гида.
+   */
+  card?: CardRow;
 }): { question: Question; answers: AnswerKey } | null {
   const random = input.random ?? Math.random;
   const { guide, mode } = input;
-  const card = pickImageCard(guide, input.cards, input.bank ?? "preparation");
+  const card = input.card ?? pickImageCard(guide, input.cards, input.bank ?? "preparation");
   if (!card?.id) return null;
 
   const title = (slug: string) => input.structureTitles?.[slug] || slug.replace(/-/g, " ");

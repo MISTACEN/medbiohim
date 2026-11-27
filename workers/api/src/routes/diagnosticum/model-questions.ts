@@ -35,7 +35,16 @@ export function buildModeQuestion(input: {
   const { base, distractorPool, guide, mode, others, random, sameSection, title } = input;
 
   const namePart = (count: number): QuestionPart => {
-    const distractors = sample(distractorPool, count, random).map((item) => ({
+    // Обманки без повторов и без самого препарата: иначе в задании оказывались
+    // два одинаковых варианта и число вариантов «плавало» (4 или 5).
+    const seen = new Set<string>([guide.name.trim()]);
+    const candidates = distractorPool.filter((item) => {
+      const name = String(item.name || "").trim();
+      if (!name || seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    });
+    const distractors = sample(candidates, count, random).map((item) => ({
       id: item.key,
       label: item.name,
     }));

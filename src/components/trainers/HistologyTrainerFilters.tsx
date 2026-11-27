@@ -37,6 +37,8 @@ type HistologyTrainerFiltersProps = {
   error: string | null;
   working: boolean;
   onStart: () => void;
+  /** Перейти к экзамену по уже выбранным карточкам (без второй серии). */
+  onExamSelected?: () => void;
 };
 
 export function HistologyTrainerFilters({
@@ -61,6 +63,7 @@ export function HistologyTrainerFilters({
   error,
   working,
   onStart,
+  onExamSelected,
 }: HistologyTrainerFiltersProps) {
   return (
     <>
@@ -154,11 +157,23 @@ export function HistologyTrainerFilters({
         )}
       </div>
       {error && <p className="text-sm text-[var(--status-critical-fg)]">{error}</p>}
-      <button disabled={working} onClick={() => void onStart()} className="btn-primary">
-        {selectedCardIds.length
-          ? `Начать тренировку (${selectedCardIds.length})`
-          : "Начать тренировку"}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button disabled={working} onClick={() => void onStart()} className="btn-primary">
+          {selectedCardIds.length
+            ? `Начать тренировку (${selectedCardIds.length})`
+            : "Начать тренировку"}
+        </button>
+        {selectedCardIds.length > 0 && onExamSelected ? (
+          <button
+            type="button"
+            disabled={working}
+            onClick={onExamSelected}
+            className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+          >
+            Экзамен по выбранным ({selectedCardIds.length})
+          </button>
+        ) : null}
+      </div>
     </>
   );
 }
