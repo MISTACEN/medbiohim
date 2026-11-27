@@ -7,6 +7,7 @@
  */
 import type { Context } from "hono";
 import { ok, fail, requestId } from "../../lib/response";
+import { createServiceClient } from "../../lib/supabase";
 import type { AuthVariables } from "../../middleware/auth";
 import type { Env } from "../../env";
 import type { DiagnosticumMode } from "./model";
@@ -36,8 +37,13 @@ type LegacyRow = {
  * статистику: блок просто помечается недоступным.
  */
 async function legacySummary(c: Context<{ Bindings: Env; Variables: AuthVariables }>) {
-  const { data, error } = await c
-    .get("supabase")
+  // Сервис-клиент с явным user_id: у `trainings` колоночные гранты и RLS завязаны
+  // на RPC карточного движка, поэтому пользовательский клиент здесь не читает
+  // таблицу. Владение проверяем сами — как в `/sessions/:id`.
+  const service = createServiceClient(c.env);
+  if (!service) return { available: false, total: 0, completed: 0, avg_percent: 0 };
+
+  const { data, error } = await service
     .from("trainings")
     .select("status,score,total_questions,content_type")
     .eq("user_id", c.get("user").id)
