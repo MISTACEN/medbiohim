@@ -122,6 +122,30 @@ describe("judgeTextAnswers", () => {
     });
     expect(run).not.toHaveBeenCalled();
   });
+
+  it("понимает односложный ответ маленькой модели: «ДА»", async () => {
+    const run = vi.fn(async () => ({ response: "ДА" }));
+    const result = await judgeTextAnswers({
+      question,
+      answers,
+      submittedText: { preparation: "деление с хромосомами" },
+      env: { AI: { run } },
+    });
+    expect(result.verdicts).toEqual({ preparation: true });
+    expect(result.outcomes.preparation.source).toBe("ai");
+  });
+
+  it("понимает «НЕТ» и не зачитывает чужой объект", async () => {
+    const run = vi.fn(async () => ({ response: "НЕТ" }));
+    const result = await judgeTextAnswers({
+      question,
+      answers,
+      submittedText: { preparation: "сухожилие" },
+      env: { AI: { run } },
+    });
+    expect(result.verdicts).toEqual({ preparation: false });
+    expect(result.outcomes.preparation.source).toBe("ai");
+  });
 });
 
 describe("gradeAnswer с текстовыми вердиктами", () => {
