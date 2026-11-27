@@ -32,6 +32,9 @@ type DiagnosticumToolbarProps = {
   /** Свободный ввод: студент отвечает словами, а не выбирает варианты. */
   textMode: boolean;
   onTextModeChange: (value: boolean) => void;
+  /** Оси «Разбора»: структуры и утверждения можно выключить. */
+  parts?: Array<"structures" | "statements">;
+  onTogglePart?: (part: "structures" | "statements") => void;
   /** Сколько препаратов выбрано в тренажёре: серия пойдёт ровно по ним. */
   selectedCount?: number;
   onStart: () => void;
@@ -52,6 +55,8 @@ export function DiagnosticumToolbar({
   attemptActive,
   textMode,
   onTextModeChange,
+  parts = [],
+  onTogglePart,
   selectedCount = 0,
   onStart,
 }: DiagnosticumToolbarProps) {
@@ -59,6 +64,35 @@ export function DiagnosticumToolbar({
     <div className="card space-y-3 p-4">
       {showModeChips ? (
         <DiagnosticumModeChips modes={overview?.modes} mode={mode} onSelect={onSelectMode} />
+      ) : null}
+      {mode === "complex" && onTogglePart ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-500">Задание:</span>
+          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-semibold text-indigo-800">
+            препарат
+          </span>
+          {(
+            [
+              ["structures", "структуры"],
+              ["statements", "утверждения"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onTogglePart(id)}
+              aria-pressed={parts.includes(id)}
+              className={
+                "rounded-full border px-2.5 py-1 font-semibold transition " +
+                (parts.includes(id)
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+                  : "border-[var(--border)] bg-white text-slate-500")
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <select
