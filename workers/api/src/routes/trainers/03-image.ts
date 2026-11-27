@@ -1,5 +1,6 @@
 import { fail, requestId } from "../../lib/response";
 import { createAnonClient, createServiceClient } from "../../lib/supabase";
+import { userPreparationImageResponse } from "./user-image";
 import { BlobError } from "@upstash/blob";
 import { getBlobBucket, trainerImageCandidateKeys, findHistologyDriveItem, imageContentType, safeObjectKey } from "./shared";
 
@@ -99,6 +100,14 @@ trainers.get("/feed/:id/image", async (c) => {
     const staticImage = typeof prep?.imageStatic === "string" ? prep.imageStatic.trim() : "";
     if (/^\/library\/[A-Za-z0-9._~/-]+$/.test(staticImage)) {
       return c.redirect(new URL(staticImage, new URL(c.req.url).origin).toString(), 302);
+    }
+
+    // Снимок, добавленный студентом и одобренный в атлас: файл лежит в B2
+    // (`files.object_key`), а карточка хранит только `preparation.fileId`.
+    const userFileId = typeof prep?.fileId === "string" ? prep.fileId.trim() : "";
+    if (userFileId) {
+      const userImage = await userPreparationImageResponse(c, userFileId, rid);
+      if (userImage) return userImage;
     }
     if (wantsClean && prep?.imageCleanUrl) {
       // Чистая версия лежит на Vercel-статике — redirect дешевле, чем

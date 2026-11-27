@@ -11,7 +11,9 @@ test("лента тренажёра не отдаёт нерешаемые ка�
 
   const feed = await source("../src/routes/trainers/01-feed.ts");
   // Фильтр применяется до нарезки offset/limit, иначе страницы «переезжают».
-  assert.match(feed, /\.filter\(isTrainableCard\)/);
+  // Каталог атласа (`catalog=1`) приходит без фильтра, но с флагом trainable.
+  assert.match(feed, /mapped\.filter\(\(card\) => card\.trainable\)/);
+  assert.match(feed, /\.map\(\(card\) => \(\{ \.\.\.card, trainable: isTrainableCard\(card\) \}\)\)/);
   assert.match(feed, /all\.slice\(offset, offset \+ limit\)/);
   assert.match(feed, /total: all\.length/);
 });

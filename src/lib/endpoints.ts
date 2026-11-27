@@ -171,6 +171,8 @@ export const endpoints = {
     /** Свои препараты студента (личные, только владелец; не кэшируются). */
     trainersMyPreparations: (query?: string): string => withQuery("/trainers/feed/mine", query),
     trainersMyPreparation: (id: string): string => `/trainers/feed/mine/${enc(id)}`,
+    /** Отправить свою карточку в общий атлас (модерация админом). */
+    trainersMyPreparationSubmit: (id: string): string => `/trainers/feed/mine/${enc(id)}/submit`,
     attestations: (query?: string): string => withQuery("/attestations", query),
     attestation: (subjectSlug: string, slug: string): string => `/attestations/${enc(subjectSlug)}/${enc(slug)}`,
     lessonPlan: (query?: string): string => withQuery("/lesson-plan", query),
@@ -319,6 +321,12 @@ export const endpoints = {
     trainerCard: (id: string): string => `/admin/trainer-cards/${enc(id)}`,
     trainerCardImages: (id: string): string => `/admin/trainer-cards/${enc(id)}/images`,
     trainerCardImage: (id: string, imageId: string): string => `/admin/trainer-cards/${enc(id)}/images/${enc(imageId)}`,
+    /** Очередь «Свои препараты → атлас»: заявки студентов и решение админа. */
+    preparationSubmissions: (query?: string): string => withQuery("/admin/preparation-submissions", query),
+    preparationSubmissionApprove: (id: string): string =>
+      `/admin/preparation-submissions/${enc(id)}/approve`,
+    preparationSubmissionReject: (id: string): string =>
+      `/admin/preparation-submissions/${enc(id)}/reject`,
     contentPackageImport: (): string => "/admin/content/package/import",
     contentValidate: (): string => "/admin/content/validate",
     announcements: (): string => "/admin/announcements",

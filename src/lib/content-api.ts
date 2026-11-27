@@ -123,6 +123,29 @@ export async function listTrainerFeed(
   );
 }
 
+/**
+ * Атлас: как лента, но с карточками без вариантов ответа (например,
+ * одобренные снимки студентов). Тренажёрные серии по-прежнему берут только
+ * решаемые карточки.
+ */
+export async function listTrainerCatalog(
+  subject = "histology",
+  specialty = "mbh",
+  limit = 500,
+  offset = 0,
+) {
+  const q = new URLSearchParams({
+    subject,
+    specialty,
+    limit: String(limit),
+    offset: String(offset),
+    catalog: "1",
+  });
+  return apiCached<{ items: TrainerCard[]; limit: number; offset: number; total: number; source: string }>(
+    `/trainers/feed?${q.toString()}`,
+  );
+}
+
 export type TrainingLayout = "sidebar" | "list" | "top";
 export type TrainingLabelMode = "with" | "without" | "manual";
 export type TrainingContentType = "all" | "preparation" | "electronogram";
@@ -266,6 +289,8 @@ export async function listPreparationStructures() {
 // Личные карточки владельца (`public.user_preparations` под RLS). Кэш здесь не
 // используется: список меняется сразу после добавления или удаления.
 
+export type MyPreparationStatus = "draft" | "pending" | "approved" | "rejected";
+
 export type MyPreparation = {
   id: string;
   subject_slug: string;
@@ -277,6 +302,10 @@ export type MyPreparation = {
   image: string | null;
   image_expires_at: string | null;
   created_at: string;
+  /** Статус предложения в общий атлас: личная, на проверке, в атласе, отклонена. */
+  submission_status: MyPreparationStatus;
+  moderation_note: string | null;
+  published_card_id: string | null;
 };
 
 export async function listMyPreparations(subjectSlug = "histology") {
@@ -304,5 +333,72 @@ export async function createMyPreparation(payload: {
 export async function deleteMyPreparation(id: string) {
   return api<{ deleted: boolean }>(endpoints.content.trainersMyPreparation(id), {
     method: "DELETE",
+  });
+}
+
+export async function updateMyPreparation(
+  id: string,
+  payload: {
+    name?: string;
+    organ?: string;
+    stain?: string;
+    description?: string;
+    image_url?: string;
+    file_id?: string | null;
+  },
+) {
+  return api<{ item: MyPreparation }>(endpoints.content.trainersMyPreparation(id), {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Отправить карточку в общий атлас: дальше её смотрит админ. */
+export async function submitMyPreparation(id: string) {
+  return api<{ item: MyPreparation }>(endpoints.content.trainersMyPreparationSubmit(id), {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+// --- Очередь «Свои препараты → атлас» (админ) --------------------------------
+
+export type PreparationSubmission = {
+  id: string;
+  subject_slug: string;
+  name: string;
+  organ: string | null;
+  stain: string | null;
+  description: string | null;
+  image: string | null;
+  submission_status: MyPreparationStatus;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  moderation_note: string | null;
+  published_card_id: string | null;
+  created_at: string;
+  author: { name: string | null; email: string | null };
+};
+
+export async function listPreparationSubmissions(status: MyPreparationStatus | "all" = "pending") {
+  return api<{ items: PreparationSubmission[]; count: number; status: string }>(
+    endpoints.admin.preparationSubmissions(`status=${encodeURIComponent(status)}`),
+  );
+}
+
+export async function approvePreparationSubmission(
+  id: string,
+  payload: { name?: string; organ?: string; stain?: string; description?: string; note?: string } = {},
+) {
+  return api<{ item: PreparationSubmission; card_id: string }>(
+    endpoints.admin.preparationSubmissionApprove(id),
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export async function rejectPreparationSubmission(id: string, note: string) {
+  return api<{ item: PreparationSubmission }>(endpoints.admin.preparationSubmissionReject(id), {
+    method: "POST",
+    body: JSON.stringify({ note }),
   });
 }

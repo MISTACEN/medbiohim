@@ -6,7 +6,7 @@ import { GraduationCap, Maximize2, Microscope, Search, X } from "lucide-react";
 import {
   listPreparationGuides,
   listPreparationStructures,
-  listTrainerFeed,
+  listTrainerCatalog,
 } from "@/lib/content-api";
 import { describeApiError } from "@/lib/errors";
 import { SkeletonCards } from "@/components/ui/Skeleton";
@@ -92,7 +92,7 @@ export function HistologyAtlas({
     if (cards !== undefined) return;
     let alive = true;
     setFetching(true);
-    listTrainerFeed("histology", "mbh", 500)
+    listTrainerCatalog("histology", "mbh", 500)
       .then((result) => {
         if (!alive) return;
         if (result.ok) setFetched(result.data.items || []);

@@ -7,7 +7,7 @@ import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Menu, Microscope } f
 import { getAccountSettings } from "@/lib/settings-api";
 import {
   answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
-  getTraining, listPreparationGuides, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
+  getTraining, listPreparationGuides, listTrainerCatalog, listTrainerFeed, listTrainings, type Training, type TrainingContentType,
   type TrainingLabelMode, type TrainingLayout,
 } from "@/lib/content-api";
 import { compareLessons, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
@@ -47,6 +47,9 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const searchParams = useSearchParams();
   const [topics, setTopics] = useState<string[]>([]);
   const [feedItems, setFeedItems] = useState<any[]>([]);
+  // Каталог для атласа: включает и карточки без вариантов ответа (снимки
+  // студентов, одобренные в атлас). Серии и тренажёр берут только feedItems.
+  const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Training[]>([]);
   const [training, setTraining] = useState<Training | null>(null);
   const [answers, setAnswers] = useState<AnswerRow[]>([]);
@@ -116,6 +119,14 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
       }
     });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    listTrainerCatalog("histology", "mbh", 500)
+      .then((result) => { if (alive && result.ok) setCatalogItems(result.data.items || []); })
+      .catch(() => undefined);
+    return () => { alive = false; };
   }, []);
 
   const loadSession = async (id: string, showResult = false) => {
@@ -384,7 +395,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
 
             {practice === "atlas" && (
               <HistologyAtlas
-                cards={feedItems}
+                cards={catalogItems.length ? catalogItems : feedItems}
                 loading={loading}
                 focusCardId={cardParam || undefined}
                 onTrain={({ ids, lesson: chosenLesson }) => {
@@ -529,7 +540,7 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
               </Link>
             </div>
             <HistologyAtlas
-              cards={feedItems}
+              cards={catalogItems.length ? catalogItems : feedItems}
               compact
               initialLesson={currentLesson}
               onClose={() => setAtlasOpen(false)}

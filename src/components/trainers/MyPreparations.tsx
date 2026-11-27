@@ -11,14 +11,17 @@
  */
 /* eslint-disable @next/next/no-img-element -- фото приходят по подписанным ссылкам без известных размеров */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Eye, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
+import { Eye, ImagePlus, Loader2, Pencil, Plus, Send, Trash2, X } from "lucide-react";
 import { uploadFile } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import {
   createMyPreparation,
   deleteMyPreparation,
   listMyPreparations,
+  submitMyPreparation,
+  updateMyPreparation,
   type MyPreparation,
+  type MyPreparationStatus,
 } from "@/lib/content-api";
 
 const MAX_BYTES = 12 * 1024 * 1024;
@@ -27,6 +30,14 @@ const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif
 type Draft = { name: string; organ: string; stain: string; description: string; image_url: string };
 
 const EMPTY: Draft = { name: "", organ: "", stain: "", description: "", image_url: "" };
+
+/** Понятный статус вместо кода из базы. */
+const STATUS: Record<MyPreparationStatus, { label: string; className: string }> = {
+  draft: { label: "Личный", className: "bg-slate-100 text-slate-600" },
+  pending: { label: "На проверке", className: "bg-[var(--status-warn-bg)] text-[var(--status-warn-fg)]" },
+  approved: { label: "В атласе", className: "bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]" },
+  rejected: { label: "Нужно исправить", className: "bg-[var(--status-critical-bg)] text-[var(--status-critical-fg)]" },
+};
 
 export default function MyPreparations({ subjectSlug = "histology" }: { subjectSlug?: string }) {
   const [items, setItems] = useState<MyPreparation[]>([]);
@@ -37,6 +48,7 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [study, setStudy] = useState<{ queue: string[]; index: number; open: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -90,25 +102,71 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
       fileId = String(created.id);
     }
 
-    const result = await createMyPreparation({
+    const payload = {
       name,
       organ: draft.organ,
       stain: draft.stain,
       description: draft.description,
       image_url: draft.image_url,
       file_id: fileId,
-      subject_slug: subjectSlug,
-    });
+    };
+    const result = editId
+      ? await updateMyPreparation(editId, payload)
+      : await createMyPreparation({ ...payload, subject_slug: subjectSlug });
     setSaving(false);
     if (!result.ok) {
       setError(describeApiError(result.error));
       return;
     }
     setDraft(EMPTY);
+    setEditId(null);
     if (fileRef.current) fileRef.current.value = "";
     setFormOpen(false);
-    setNotice("Препарат сохранён — он ниже, в вашем списке.");
+    setNotice(editId ? "Изменения сохранены." : "Препарат сохранён — он ниже, в вашем списке.");
     await load();
+  }
+
+  function startEdit(item: MyPreparation) {
+    setDraft({
+      name: item.name,
+      organ: item.organ || "",
+      stain: item.stain || "",
+      description: item.description || "",
+      image_url: item.image && /^https?:/.test(item.image) ? item.image : "",
+    });
+    setEditId(item.id);
+    setFormOpen(true);
+    setError(null);
+    setNotice(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  /** Отправка в общий атлас: админ увидит заявку в очереди и решит. */
+  async function submit(item: MyPreparation) {
+    setBusyId(item.id);
+    setError(null);
+    setNotice(null);
+    const result = await submitMyPreparation(item.id);
+    setBusyId(null);
+    if (!result.ok) {
+      setError(describeApiError(result.error));
+      return;
+    }
+    // Ссылка на фото в ответе не подписывается (это дорого) — берём только
+    // статус, иначе у карточки в списке пропадал бы снимок.
+    setItems((current) =>
+      current.map((row) =>
+        row.id === item.id
+          ? {
+              ...row,
+              submission_status: result.data.item.submission_status,
+              moderation_note: result.data.item.moderation_note,
+              published_card_id: result.data.item.published_card_id,
+            }
+          : row,
+      ),
+    );
+    setNotice(`«${item.name}» отправлен в атлас — админ проверит снимок.`);
   }
 
   async function remove(item: MyPreparation) {
@@ -143,8 +201,9 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
             <ImagePlus className="h-4 w-4 text-indigo-600" /> Свои препараты
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Добавьте свои снимки с микроскопа: название, орган, окраска, описание. Они хранятся только у вас и
-            не попадают в общий атлас.
+            Добавьте свои снимки с микроскопа: название, орган, окраска, описание. По умолчанию карточка
+            личная; кнопка «В атлас» отправляет её на проверку админу — одобренный снимок появится в общем
+            атласе гистологии.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -153,7 +212,19 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
               <Eye className="h-4 w-4" /> Тренировка ({items.length})
             </button>
           ) : null}
-          <button type="button" onClick={() => setFormOpen((open) => !open)} className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white">
+          <button
+            type="button"
+            onClick={() => {
+              if (formOpen) {
+                setFormOpen(false);
+                setEditId(null);
+                setDraft(EMPTY);
+              } else {
+                setFormOpen(true);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white"
+          >
             {formOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {formOpen ? "Свернуть" : "Добавить"}
           </button>
         </div>
@@ -164,6 +235,11 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
 
       {formOpen ? (
         <div className="grid gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:grid-cols-2">
+          {editId ? (
+            <p className="text-xs font-semibold text-indigo-700 sm:col-span-2">
+              Редактируем карточку. После правок отправьте её в атлас ещё раз.
+            </p>
+          ) : null}
           <input value={draft.name} onChange={(e) => patch({ name: e.target.value })} placeholder="Название препарата *" className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm" />
           <input value={draft.organ} onChange={(e) => patch({ organ: e.target.value })} placeholder="Орган или ткань" className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm" />
           <input value={draft.stain} onChange={(e) => patch({ stain: e.target.value })} placeholder="Окраска (гематоксилин-эозин…)" className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm" />
@@ -174,7 +250,8 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
             <p className="mt-1 text-[11px] text-[var(--muted)]">Фото до 12 МБ. Можно указать ссылку вместо загрузки.</p>
           </div>
           <button type="button" onClick={() => void add()} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 sm:col-span-2">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {saving ? "Сохраняем…" : "Сохранить препарат"}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{" "}
+            {saving ? "Сохраняем…" : editId ? "Сохранить изменения" : "Сохранить препарат"}
           </button>
         </div>
       ) : null}
@@ -212,12 +289,45 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
               <div className="space-y-1 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-bold">{item.name}</p>
-                  <button type="button" onClick={() => void remove(item)} disabled={busyId === item.id} aria-label={`Удалить ${item.name}`} className="rounded-lg border border-[var(--border)] p-1.5 text-[var(--muted)] hover:border-red-300 hover:text-red-600 disabled:opacity-40">
-                    {busyId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button type="button" onClick={() => startEdit(item)} aria-label={`Изменить ${item.name}`} className="rounded-lg border border-[var(--border)] p-1.5 text-[var(--muted)] hover:text-indigo-600">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" onClick={() => void remove(item)} disabled={busyId === item.id} aria-label={`Удалить ${item.name}`} className="rounded-lg border border-[var(--border)] p-1.5 text-[var(--muted)] hover:border-red-300 hover:text-red-600 disabled:opacity-40">
+                      {busyId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-xs text-[var(--muted)]">{[item.organ, item.stain].filter(Boolean).join(" · ") || "—"}</p>
                 {item.description ? <p className="line-clamp-3 text-xs leading-5 text-slate-600">{item.description}</p> : null}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span
+                    className={
+                      "rounded-full px-2 py-0.5 text-[11px] font-bold " +
+                      (STATUS[item.submission_status] || STATUS.draft).className
+                    }
+                  >
+                    {(STATUS[item.submission_status] || STATUS.draft).label}
+                  </span>
+                  {item.submission_status === "draft" || item.submission_status === "rejected" ? (
+                    <button
+                      type="button"
+                      onClick={() => void submit(item)}
+                      disabled={busyId === item.id}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2 py-0.5 text-[11px] font-semibold hover:text-indigo-600 disabled:opacity-40"
+                    >
+                      <Send className="h-3 w-3" /> В атлас
+                    </button>
+                  ) : null}
+                  {item.submission_status === "approved" && item.published_card_id ? (
+                    <a href={`/subjects/histology?tab=trainer&card=${encodeURIComponent(item.published_card_id)}`} className="text-[11px] font-semibold text-indigo-600">
+                      Открыть в атласе →
+                    </a>
+                  ) : null}
+                </div>
+                {item.moderation_note ? (
+                  <p className="rounded-lg bg-[var(--status-critical-bg)] px-2 py-1.5 text-[11px] leading-4 text-[var(--status-critical-fg)]">{item.moderation_note}</p>
+                ) : null}
               </div>
             </li>
           ))}

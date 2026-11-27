@@ -53,9 +53,16 @@ trainers.get("/feed", requireAuth, async (c) => {
       const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);
       return c.json(body, status as 503);
     }
-    const all = loaded.rows.map((row, index) => mapTrainerCard(row, index)).filter(isTrainableCard);
+    // `catalog=1` — атлас: в него входят и карточки без вариантов ответа
+    // (например, одобренный снимок студента), иначе они были бы невидимы
+    // везде. Тренажёр и серии остаются на решаемых карточках.
+    const catalog = c.req.query("catalog") === "1";
+    const mapped = loaded.rows
+      .map((row, index) => mapTrainerCard(row, index))
+      .map((card) => ({ ...card, trainable: isTrainableCard(card) }));
+    const all = catalog ? mapped : mapped.filter((card) => card.trainable);
     const items = all.slice(offset, offset + limit).map((card, index) => ({ ...card, order_index: offset + index }));
-    return c.json(ok({ items, limit, offset, total: all.length, source: "supabase" }, rid));
+    return c.json(ok({ items, limit, offset, total: all.length, source: "supabase", catalog }, rid));
   } catch (error) {
     console.error("[trainers:feed]", error);
     const { body, status } = fail("DB_UNAVAILABLE", "Лента тренажёра недоступна", 503, rid);

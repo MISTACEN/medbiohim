@@ -1,0 +1,53 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const source = async (path) => readFile(new URL(path, import.meta.url), "utf8");
+
+test("свои препараты можно править и отправить в атлас", async () => {
+  const mine = await source("../src/routes/trainers/04-mine.ts");
+  assert.match(mine, /trainers\.patch\("\/feed\/mine/);
+  assert.match(mine, /trainers\.post\("\/feed\/mine\/:id\{\[0-9a-fA-F-\]\{36\}\}\/submit"/);
+  // Статус модерации пишет service-клиент: у пользователя такого права нет.
+  assert.match(mine, /submission_status: "pending"/);
+  assert.match(mine, /Сначала добавьте фото препарата/);
+  assert.match(mine, /submission_status,moderation_note,published_card_id/);
+});
+
+test("заявки в атлас решает только админ, публикуя обычную карточку", async () => {
+  const admin = await source("../src/routes/admin/preparation-submissions.ts");
+  assert.match(admin, /admin\.get\("\/preparation-submissions"/);
+  assert.match(admin, /admin\.post\("\/preparation-submissions\/:id\/approve"/);
+  assert.match(admin, /admin\.post\("\/preparation-submissions\/:id\/reject"/);
+  assert.match(admin, /gate\(c, MANAGERS\)/);
+  assert.match(admin, /gate\(c, STRICT_ADMINS\)/);
+  assert.match(admin, /from\("trainer_feed_cards"\)\.insert/);
+  assert.match(admin, /from\("trainer_card_images"\)\.insert/);
+  assert.match(admin, /contributor: "student"/);
+  assert.match(admin, /submission_status: "rejected"/);
+
+  const index = await source("../src/routes/admin/index.ts");
+  assert.match(index, /registerPreparationSubmissions\(admin\)/);
+});
+
+test("статус модерации не подделывается из клиента", async () => {
+  const migration = await source(
+    "../../../database/migrations/20261127140000_user_preparation_submissions.sql",
+  );
+  assert.match(migration, /submission_status text NOT NULL DEFAULT 'draft'/);
+  assert.match(migration, /NEW\.submission_status := OLD\.submission_status/);
+  assert.match(migration, /coalesce\(auth\.role\(\), 'anon'\) <> 'service_role'/);
+  assert.match(migration, /CREATE TRIGGER user_preparations_guard_submission/);
+});
+
+test("атлас видит карточки без вариантов ответа, тренажёр — нет", async () => {
+  const feed = await source("../src/routes/trainers/01-feed.ts");
+  assert.match(feed, /c\.req\.query\("catalog"\) === "1"/);
+  assert.match(feed, /catalog \? mapped : mapped\.filter\(\(card\) => card\.trainable\)/);
+
+  const image = await source("../src/routes/trainers/user-image.ts");
+  assert.match(image, /getStorageBackend/);
+  assert.match(image, /x-mbh-image-resolver": "user-file"/);
+  const route = await source("../src/routes/trainers/03-image.ts");
+  assert.match(route, /userPreparationImageResponse\(c, userFileId, rid\)/);
+});

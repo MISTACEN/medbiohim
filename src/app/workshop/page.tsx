@@ -8,7 +8,7 @@
  * PDF с вопросами разбирается на отдельные вопросы на сервере.
  */
 import Link from "next/link";
-import { BookOpen, Check, History, Layers, Plus, Search, ShieldCheck, X } from "lucide-react";
+import { BookOpen, Check, History, Layers, Microscope, Plus, Search, ShieldCheck, X } from "lucide-react";
 import LectureStudio from "@/components/workshop/LectureStudio";
 import MyLibrary from "@/components/workshop/MyLibrary";
 import QuestionBank from "@/components/workshop/QuestionBank";
@@ -47,6 +47,11 @@ export default function WorkshopPage() {
               чтобы не дублировать список в двух местах. */}
           <Link href="/cards?tab=workshop" className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)]">
             <Layers className="h-3.5 w-3.5" /> Карточки-паки в мастерской →
+          </Link>
+          {/* Свои снимки с микроскопа живут в практике предмета: здесь только
+              вход, чтобы не дублировать загрузку и модерацию в двух местах. */}
+          <Link href="/subjects/histology?tab=mine" className="ml-3 mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)]">
+            <Microscope className="h-3.5 w-3.5" /> Свои препараты → атлас
           </Link>
         </div>
         <div className="flex flex-wrap items-center gap-2">

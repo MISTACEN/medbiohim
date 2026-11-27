@@ -15,7 +15,7 @@ import type { TrainersRouter } from "./types";
  */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SUBJECT_SLUG = /^[a-z0-9_-]{1,64}$/;
-const FIELDS = "id,subject_slug,name,organ,stain,description,image_url,file_id,created_at";
+const FIELDS = "id,subject_slug,name,organ,stain,description,image_url,file_id,created_at,submission_status,moderation_note,published_card_id";
 
 /** Сколько карточек подписываем за один запрос: подпись B2 не бесплатная. */
 const MAX_SIGNED = 60;
@@ -49,7 +49,29 @@ type MineRow = {
   image_url: string | null;
   file_id: string | null;
   created_at: string;
+  submission_status: string | null;
+  moderation_note: string | null;
+  published_card_id: string | null;
 };
+
+/** Своя карточка глазами владельца: статус предложения в атлас и пояснение админа. */
+function mineCard(row: MineRow, image: string | null, expiresAt: string | null) {
+  const status = String(row.submission_status || "draft");
+  return {
+    id: row.id,
+    subject_slug: row.subject_slug,
+    name: row.name,
+    organ: row.organ,
+    stain: row.stain,
+    description: row.description,
+    image,
+    image_expires_at: expiresAt,
+    created_at: row.created_at,
+    submission_status: status as "draft" | "pending" | "approved" | "rejected",
+    moderation_note: row.moderation_note,
+    published_card_id: row.published_card_id,
+  };
+}
 
 export function registerMineRoutes(trainers: TrainersRouter) {
   trainers.get("/feed/mine", requireAuth, async (c) => {
@@ -101,17 +123,7 @@ export function registerMineRoutes(trainers: TrainersRouter) {
             console.warn("[trainers:mine:sign]", String(signError));
           }
         }
-        return {
-          id: row.id,
-          subject_slug: row.subject_slug,
-          name: row.name,
-          organ: row.organ,
-          stain: row.stain,
-          description: row.description,
-          image,
-          image_expires_at: expiresAt,
-          created_at: row.created_at,
-        };
+        return mineCard(row, image, expiresAt);
       }));
 
       return c.json(ok({ items, count: items.length }, rid));
@@ -213,6 +225,145 @@ export function registerMineRoutes(trainers: TrainersRouter) {
     } catch (error) {
       console.error("[trainers:mine:delete]", error);
       const { body, status } = fail("DB_UNAVAILABLE", "Не удалось удалить препарат", 503, rid);
+      return c.json(body, status as 503);
+    }
+  });
+
+  /**
+   * Правка своей карточки. Статус модерации здесь не меняется: его держит
+   * триггер `user_preparations_guard_submission`, поэтому подставить
+   * `approved` из браузера нельзя.
+   */
+  trainers.patch("/feed/mine/:id{[0-9a-fA-F-]{36}}", requireAuth, async (c) => {
+    const rid = requestId();
+    const user = c.get("user");
+    const supabase = c.get("supabase");
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = await c.req.json();
+    } catch {
+      const { body, status } = fail("VALIDATION", "Некорректный JSON", 400, rid);
+      return c.json(body, status as 400);
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (payload.name !== undefined) {
+      const name = text(payload.name, 160);
+      if (!name || name.length < 2) {
+        const { body, status } = fail("VALIDATION_ERROR", "Укажите название препарата", 422, rid);
+        return c.json(body, status as 422);
+      }
+      patch.name = name;
+    }
+    if (payload.organ !== undefined) patch.organ = text(payload.organ, 160);
+    if (payload.stain !== undefined) patch.stain = text(payload.stain, 160);
+    if (payload.description !== undefined) patch.description = longText(payload.description);
+    if (payload.image_url !== undefined) patch.image_url = imageUrl(payload.image_url);
+    if (payload.file_id !== undefined) {
+      const fileId = text(payload.file_id, 64);
+      if (!fileId) {
+        patch.file_id = null;
+      } else {
+        if (!UUID.test(fileId)) {
+          const { body, status } = fail("VALIDATION_ERROR", "Некорректный file_id", 422, rid);
+          return c.json(body, status as 422);
+        }
+        const service = createServiceClient(c.env);
+        if (!service) {
+          const { body, status } = fail("DB_UNAVAILABLE", "Хранилище недоступно", 503, rid);
+          return c.json(body, status as 503);
+        }
+        const { data: file, error: fileError } = await service
+          .from("files")
+          .select("id,uploaded_by,mime_type,status")
+          .eq("id", fileId)
+          .eq("uploaded_by", user.id)
+          .maybeSingle();
+        if (fileError || !file || file.status !== "active" || !String(file.mime_type || "").startsWith("image/")) {
+          const { body, status } = fail("VALIDATION_ERROR", "Фото не найдено в ваших файлах", 422, rid);
+          return c.json(body, status as 422);
+        }
+        patch.file_id = fileId;
+      }
+    }
+    if (!Object.keys(patch).length) {
+      const { body, status } = fail("VALIDATION_ERROR", "Нет полей для обновления", 422, rid);
+      return c.json(body, status as 422);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("user_preparations")
+        .update(patch)
+        .eq("id", c.req.param("id"))
+        .eq("user_id", user.id)
+        .select(FIELDS)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        const { body, status } = fail("NOT_FOUND", "Препарат не найден", 404, rid);
+        return c.json(body, status as 404);
+      }
+      return c.json(ok({ item: mineCard(data as MineRow, null, null) }, rid));
+    } catch (error) {
+      console.error("[trainers:mine:update]", error);
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось сохранить изменения", 503, rid);
+      return c.json(body, status as 503);
+    }
+  });
+
+  /**
+   * Отправить свою карточку в общий атлас. Пишет статус service-клиент: у
+   * пользователя нет права менять `submission_status` (триггер откатывает).
+   */
+  trainers.post("/feed/mine/:id{[0-9a-fA-F-]{36}}/submit", requireAuth, async (c) => {
+    const rid = requestId();
+    const user = c.get("user");
+    const service = createServiceClient(c.env);
+    if (!service) {
+      const { body, status } = fail("DB_UNAVAILABLE", "База недоступна", 503, rid);
+      return c.json(body, status as 503);
+    }
+    try {
+      const { data: row, error: readError } = await service
+        .from("user_preparations")
+        .select("id,user_id,image_url,file_id,submission_status")
+        .eq("id", c.req.param("id"))
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (readError) throw readError;
+      if (!row) {
+        const { body, status } = fail("NOT_FOUND", "Препарат не найден", 404, rid);
+        return c.json(body, status as 404);
+      }
+      if (row.submission_status === "approved") {
+        const { body, status } = fail("CONFLICT", "Препарат уже опубликован в атласе", 409, rid);
+        return c.json(body, status as 409);
+      }
+      // Без снимка в атласе нечего показывать — проверяем и здесь, а не только в UI.
+      if (!row.file_id && !imageUrl(row.image_url)) {
+        const { body, status } = fail("VALIDATION_ERROR", "Сначала добавьте фото препарата", 422, rid);
+        return c.json(body, status as 422);
+      }
+
+      const { data, error } = await service
+        .from("user_preparations")
+        .update({
+          submission_status: "pending",
+          submitted_at: new Date().toISOString(),
+          moderation_note: null,
+          reviewed_at: null,
+          reviewed_by: null,
+        })
+        .eq("id", row.id)
+        .eq("user_id", user.id)
+        .select(FIELDS)
+        .single();
+      if (error) throw error;
+      return c.json(ok({ item: mineCard(data as MineRow, null, null) }, rid));
+    } catch (error) {
+      console.error("[trainers:mine:submit]", error);
+      const { body, status } = fail("DB_UNAVAILABLE", "Не удалось отправить препарат в атлас", 503, rid);
       return c.json(body, status as 503);
     }
   });
