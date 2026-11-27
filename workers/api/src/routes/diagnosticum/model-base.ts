@@ -42,3 +42,21 @@ export function shuffle<T>(items: T[], random: () => number): T[] {
 export function sample<T>(items: T[], count: number, random: () => number): T[] {
   return shuffle(items, random).slice(0, Math.max(0, count));
 }
+
+/**
+ * Закрывает варианты ответа: id — только позиция после перемешивания (`a1…aN`).
+ *
+ * Раньше id был ключом методички (`ct-hyaline-cartilage`), а у утверждений —
+ * префиксом правильности (`f0…` — верные, `x0…` — обманки). По такой разметке
+ * ответ угадывался без изображения и без чтения вопроса. Позиционный id не
+ * сообщает ничего: правильность остаётся только в ключе на сервере.
+ */
+export function sealOptions(
+  candidates: Array<{ label: string; correct: boolean }>,
+  random: () => number,
+): { options: Array<{ id: string; label: string }>; correct: string[] } {
+  const ordered = shuffle(candidates, random);
+  const options = ordered.map((item, index) => ({ id: `a${index + 1}`, label: item.label }));
+  const correct = ordered.flatMap((item, index) => (item.correct ? [options[index].id] : []));
+  return { options, correct };
+}

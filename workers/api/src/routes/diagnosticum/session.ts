@@ -312,6 +312,10 @@ session.get("/mistakes", requireAuth, async (c) => {
     .from("diagnosticum_attempts")
     .select("card_id,guide_key,section,score,created_at")
     .eq("correct", false)
+    // Электронограммы к методичкам не привязаны: в серию по `card_ids` они не
+    // попадают (`buildCardSeries` их отбрасывает), поэтому и в очередь повтора
+    // им нельзя — иначе «Повторить ошибки» вёл в тупик.
+    .neq("mode", "electronogram")
     .not("card_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(60);

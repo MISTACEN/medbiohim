@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildElectronogramQuestion,
   buildQuestion,
   pickImageCard,
   type GuideRow,
@@ -122,15 +123,22 @@ describe("разбор препарата", () => {
 });
 
 describe("buildQuestion", () => {
-  it("«определи препарат»: вариант с ответом и отвлекающие, ключ только на сервере", () => {
+  it("«определи препарат»: варианты с позиционными id, ключ только на сервере", () => {
     const built = build("identify")!;
     const part = built.question.parts[0];
     expect(part.kind).toBe("single");
     // В фикстуре всего три препарата — вариантов столько, сколько есть.
     expect(part.options.length).toBeGreaterThanOrEqual(3);
     expect(part.options.length).toBeLessThanOrEqual(4);
-    expect(part.options.map((option) => option.id)).toContain("cytology-mitosis");
-    expect(built.answers.parts.preparation.correct).toEqual(["cytology-mitosis"]);
+    // id — только позиция после перемешивания: по разметке нельзя понять,
+    // какой вариант верный (раньше id был ключом методички).
+    expect(part.options.map((option) => option.id)).toEqual(
+      part.options.map((_, index) => `a${index + 1}`),
+    );
+    expect(part.options.map((option) => option.label)).toContain("Митоз");
+    const correct = built.answers.parts.preparation.correct;
+    expect(correct).toHaveLength(1);
+    expect(part.options.find((option) => option.id === correct[0])?.label).toBe("Митоз");
     // Вопрос для клиента не содержит правильного ответа.
     expect(JSON.stringify(built.question)).not.toContain("correct");
   });
@@ -139,18 +147,26 @@ describe("buildQuestion", () => {
     const built = build("structures")!;
     const part = built.question.parts[0];
     expect(part.kind).toBe("multi");
-    const ids = part.options.map((option) => option.id);
-    expect(ids).toEqual(expect.arrayContaining(["chromosomes", "spindle"]));
-    expect(ids.length).toBeGreaterThan(2);
-    expect(built.answers.parts.structures.correct).toEqual(["chromosomes", "spindle"]);
-    expect(part.options.find((option) => option.id === "chromosomes")?.label).toBe("Хромосомы");
+    expect(part.options.map((option) => option.label)).toEqual(
+      expect.arrayContaining(["Хромосомы", "Веретено деления"]),
+    );
+    expect(part.options.length).toBeGreaterThan(2);
+    const correctLabels = built.answers.parts.structures.correct.map(
+      (id) => part.options.find((option) => option.id === id)?.label,
+    );
+    expect(correctLabels).toEqual(expect.arrayContaining(["Хромосомы", "Веретено деления"]));
+    // Ключ ссылается на позиционные id, а не на слаги структур.
+    expect(built.answers.parts.structures.correct).not.toContain("chromosomes");
   });
 
   it("«отличи похожие»: ровно два варианта и ссылка на дифференциал", () => {
     const built = build("differential")!;
     const part = built.question.parts[0];
     expect(part.options).toHaveLength(2);
-    expect(part.options.map((option) => option.id)).toContain("cytology-mitosis");
+    expect(part.options.map((option) => option.label)).toContain("Митоз");
+    expect(part.options.map((option) => option.label)).not.toEqual(["Митоз", "Митоз"]);
+    const correct = built.answers.parts.preparation.correct;
+    expect(part.options.find((option) => option.id === correct[0])?.label).toBe("Митоз");
     expect(built.answers.parts.preparation.explanation).toContain("амитоз");
   });
 
@@ -160,7 +176,6 @@ describe("buildQuestion", () => {
 
     const statements = built.question.parts[0];
     expect(statements.kind).toBe("multi");
-    expect(built.answers.parts.statements.correct).toEqual(["f0", "f1"]);
 
     // Верные утверждения — из методички препарата, остальные — чужие признаки.
     const chosen = built.answers.parts.statements.correct.map(
@@ -168,7 +183,9 @@ describe("buildQuestion", () => {
     );
     expect(chosen).toEqual(["хромосомы", "веретено деления"]);
     expect(statements.options.length).toBe(4);
-    expect(built.answers.parts.preparation.correct).toEqual(["cytology-mitosis"]);
+    // Ни «f», ни «x» в id: иначе правильные утверждения видны без чтения.
+    expect(statements.options.every((option) => /^a\d+$/.test(option.id))).toBe(true);
+    expect(built.answers.parts.preparation.correct).toHaveLength(1);
     expect(JSON.stringify(built.question)).not.toContain("correct");
   });
 
@@ -289,5 +306,29 @@ describe("hintFor", () => {
     expect(hintFor(empty, 2)).toBeNull();
     expect(hintFor(empty, 3)).toBeNull();
     expect(hintFor(empty, 4)).toBeNull();
+  });
+});
+
+describe("электронограммы", () => {
+  const emCards = ["Апоптоз", "Митохондрии", "Ресничка", "Сперматозоид"].map((name, index) => ({
+    id: `em-card-${index}`,
+    mode_set: "electronogram",
+    preparation: { name, imagePath: `em/${index}.jpg` },
+  }));
+
+  it("варианты закрыты позиционными id, ключ — по названию структуры", () => {
+    const built = buildElectronogramQuestion(emCards as never, () => 0.3)!;
+    const part = built.question.parts[0];
+    expect(part.options).toHaveLength(4);
+    expect(part.options.map((option) => option.id)).toEqual(["a1", "a2", "a3", "a4"]);
+
+    const correct = built.answers.parts.preparation.correct;
+    expect(correct).toHaveLength(1);
+    const label = part.options.find((option) => option.id === correct[0])?.label;
+    expect(["Апоптоз", "Митохондрии", "Ресничка", "Сперматозоид"]).toContain(label);
+
+    // guide_key по-прежнему отличает ЭМ от методичек, но в вариантах его нет.
+    expect(built.guideKey).toBe(`em:${built.question.image_card_id}`);
+    expect(part.options.map((option) => option.id)).not.toContain(built.question.image_card_id);
   });
 });

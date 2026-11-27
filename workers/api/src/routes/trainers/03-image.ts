@@ -97,9 +97,14 @@ trainers.get("/feed/:id/image", async (c) => {
     // Бонус-снимки лежат на статике сайта (`preparation.imageStatic`), а не в
     // Blob. Отдаём редирект: файл уже кэшируется CDN, проксировать бинарник
     // через воркер незачем. Раньше такие карточки получали 404.
+    //
+    // Origin берём сайта, а не `c.req.url`: запрос приходит на домен воркера
+    // (`medbiohim-api.*.workers.dev`), где `/library/...` не существует. Из-за
+    // этого бонус-препараты показывали «Изображение недоступно».
     const staticImage = typeof prep?.imageStatic === "string" ? prep.imageStatic.trim() : "";
     if (/^\/library\/[A-Za-z0-9._~/-]+$/.test(staticImage)) {
-      return c.redirect(new URL(staticImage, new URL(c.req.url).origin).toString(), 302);
+      const siteOrigin = String(c.env.APP_ORIGIN || "https://medbiohim.vercel.app").replace(/\/+$/, "");
+      return c.redirect(new URL(staticImage, `${siteOrigin}/`).toString(), 302);
     }
 
     // Снимок, добавленный студентом и одобренный в атлас: файл лежит в B2

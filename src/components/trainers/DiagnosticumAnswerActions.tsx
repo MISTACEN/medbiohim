@@ -51,7 +51,9 @@ export function DiagnosticumAnswerActions({
             className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:border-indigo-200 disabled:opacity-60"
           >
             <HelpCircle className="h-4 w-4" />
-            Подсказка {hintsUsed + 1}/{hintsTotal}
+            {hintsUsed >= hintsTotal
+              ? "Все подсказки использованы"
+              : `Подсказка ${hintsUsed + 1}/${hintsTotal}`}
           </button>
           <span className="text-xs text-slate-400">Каждая подсказка снижает балл на 10.</span>
         </>
