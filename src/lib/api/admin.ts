@@ -109,6 +109,7 @@ export async function adminSavePreparationGuide(key: string, payload: Record<str
 /** Карточка препарата v2: архив, изображения, подписи и указатели. */
 export async function adminListTrainerCards(query?: string): Promise<any> { return api(endpoints.admin.trainerCards(query)) as any; }
 export async function adminGetTrainerCard(id: string): Promise<any> { return api(endpoints.admin.trainerCard(id)) as any; }
+export async function adminCreateTrainerCard(payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.trainerCardCreate(), { method: "POST", body: JSON.stringify(payload) }) as any; }
 export async function adminUpdateTrainerCard(id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.trainerCard(id), { method: "PATCH", body: JSON.stringify(payload) }) as any; }
 export async function adminAddTrainerCardImage(id: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.trainerCardImages(id), { method: "POST", body: JSON.stringify(payload) }) as any; }
 export async function adminUpdateTrainerCardImage(id: string, imageId: string, payload: Record<string, unknown>): Promise<any> { return api(endpoints.admin.trainerCardImage(id, imageId), { method: "PATCH", body: JSON.stringify(payload) }) as any; }

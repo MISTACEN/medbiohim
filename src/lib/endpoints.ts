@@ -318,6 +318,8 @@ export const endpoints = {
     preparationGuide: (key: string): string => `/admin/preparation-guides/${enc(key)}`,
     /** Карточки препаратов v2: архив, изображения, подписи. */
     trainerCards: (query?: string): string => withQuery("/admin/trainer-cards", query),
+    /** Создание карточки препарата (POST на тот же путь, что и список). */
+    trainerCardCreate: (): string => "/admin/trainer-cards",
     trainerCard: (id: string): string => `/admin/trainer-cards/${enc(id)}`,
     trainerCardImages: (id: string): string => `/admin/trainer-cards/${enc(id)}/images`,
     trainerCardImage: (id: string, imageId: string): string => `/admin/trainer-cards/${enc(id)}/images/${enc(imageId)}`,

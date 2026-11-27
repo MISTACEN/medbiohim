@@ -58,6 +58,18 @@ test("с методичкой одобренная карточка станов
   assert.match(publication, /submission_status: "draft"/);
 });
 
+test("админ может создать карточку препарата из интерфейса", async () => {
+  const create = await source("../src/routes/admin/trainer-card-create.ts");
+  assert.match(create, /admin\.post\("\/trainer-cards"/);
+  assert.match(create, /gate\(c, STRICT_ADMINS\)/);
+  assert.match(create, /buildIdentifyQuestion\(service, guideKey\)/);
+  assert.match(create, /contributor: "admin"/);
+  assert.match(create, /from\("trainer_feed_cards"\)\s*\.insert/);
+
+  const index = await source("../src/routes/admin/index.ts");
+  assert.match(index, /registerTrainerCardCreate\(admin\)/);
+});
+
 test("health показывает, настроено ли хранилище снимков", async () => {
   const health = await source("../src/routes/health.ts");
   assert.match(health, /storageProvider: storageProviderName\(env\)/);
