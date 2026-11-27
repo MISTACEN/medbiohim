@@ -17,6 +17,7 @@ import {
 } from "./model";
 import { gradeAnswer, hintFor } from "./grading";
 import { judgeTextAnswers, type TextOutcome } from "./text-answers";
+import type { AiDebug } from "./ai-grade";
 import {
   UUID_PATTERN,
   isMissingTable,
@@ -207,7 +208,7 @@ session.post("/answer", requireAuth, async (c) => {
         submittedText,
         env: c.env,
       })
-    : { verdicts: {} as Record<string, boolean>, outcomes: {} as Record<string, TextOutcome> };
+    : { verdicts: {} as Record<string, boolean>, outcomes: {} as Record<string, TextOutcome>, debug: {} as Record<string, AiDebug> };
   const result = gradeAnswer(answerKey, submitted, Number(attempt.hints_used || 0), text.verdicts);
   const feedback = {
     parts: result.parts,
@@ -258,6 +259,9 @@ session.post("/answer", requireAuth, async (c) => {
         section: attempt.section || "",
         // Как проверяли свободный ввод: точное совпадение, правило или ИИ.
         ...(Object.keys(text.outcomes).length ? { text: text.outcomes } : {}),
+        // Диагностика ИИ-вызова: провайдер, удалось ли разобрать ответ, сырой
+        // ответ модели. Нужна, чтобы «правила вместо ИИ» не были догадкой.
+        ...(Object.keys(text.debug).length ? { ai: text.debug } : {}),
       },
       rid,
     ),

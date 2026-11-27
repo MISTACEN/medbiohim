@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { compareAnswer, normalizeAnswer, wordOverlap } from "../../../workers/api/src/routes/diagnosticum/grading-text";
+import { parseVerdict } from "../../../workers/api/src/routes/diagnosticum/ai-grade";
 import { judgeTextAnswers } from "../../../workers/api/src/routes/diagnosticum/text-answers";
 import { gradeAnswer } from "../../../workers/api/src/routes/diagnosticum/grading";
 import type { AnswerKey, Question } from "../../../workers/api/src/routes/diagnosticum/types";
@@ -65,6 +66,15 @@ describe("compareAnswer", () => {
 
   it("пустой ответ — не верный и без обращения к ИИ", () => {
     expect(compareAnswer("   ", ["Митоз"]).verdict).toBe("incorrect");
+  });
+});
+
+describe("parseVerdict", () => {
+  it("разбирает ответ модели с прозой вокруг слова", () => {
+    expect(parseVerdict("Ответ: ДА.")).toMatchObject({ verdict: "correct" });
+    expect(parseVerdict("НЕТ, это другой препарат")).toMatchObject({ verdict: "incorrect" });
+    expect(parseVerdict("НЕ ЗНАЮ")).toMatchObject({ verdict: "unsure" });
+    expect(parseVerdict("коричневый")).toBeNull();
   });
 });
 

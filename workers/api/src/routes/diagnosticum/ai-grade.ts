@@ -1,14 +1,14 @@
 /**
  * ИИ-проверка свободного ответа.
  *
- * Правило из концепции (§12) и реестра требований (CHEM-10): ИИ помогает
- * разобрать формулировку, но не заменяет точную проверку и не выдаёт ложную
- * точность. Задача узкая — «ответ и эталон называют один объект?» — с ответом
- * в JSON и уверенностью; вызывается только когда правила уже сказали «не совпало».
+ * Правило из концепции (§12) и реестра требований (CHEM-10): ИИ помогает разобрать
+ * формулировку, но не заменяет точную проверку и не выдаёт ложную точность.
  *
- * Порядок провайдеров: сначала Workers AI (работает внутри Cloudflare, без
- * внешнего egress и ключей), затем Gemini — и только если регион не RU, иначе
- * запрос к Google блокируется и время тратится зря.
+ * Провайдеры: сначала Workers AI (внутри Cloudflare, без egress и ключей), затем
+ * Gemini — и только если регион не RU, иначе запрос к Google блокируется.
+ *
+ * Ответ модели разбирается терпимо: маленькие модели добавляют «Ответ:» и точки,
+ * поэтому ищем слово ДА/НЕТ/НЕЗНАЮ в любом месте, а JSON поддерживаем отдельно.
  */
 import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
@@ -28,6 +28,17 @@ export type AiTextGrade = {
   reason: string;
 };
 
+/** Диагностика одного вызова: нужна, чтобы отличить «нет ИИ» от «не разобрали ответ». */
+export type AiDebug = {
+  provider: "workers-ai" | "gemini" | "none";
+  ok: boolean;
+  /** Сырой ответ модели (обрезан): только про ответ студента, без секретов. */
+  raw?: string;
+  error?: string;
+};
+
+export type AiResult = { grade: AiTextGrade | null; debug: AiDebug };
+
 /** Флаг окружения: `off` отключает ИИ, не трогая остальную проверку. */
 export function aiGradingEnabled(env: AiEnv): boolean {
   const flag = String(env.AI_TEXT_GRADING ?? "on").trim().toLowerCase();
@@ -45,29 +56,6 @@ const SYSTEM = [
   "НЕТ — другой препарат, другая ткань или пустой ответ;",
   "НЕЗНАЮ — если сомневаешься.",
 ].join(" ");
-
-/** Маленькие модели надёжнее отвечают одним словом, чем JSON: сначала слово. */
-function parseVerdict(raw: string): AiTextGrade | null {
-  const asJson = parseJson(raw);
-  if (asJson) return asJson;
-  const word = String(raw || "")
-    .toUpperCase()
-    .replace(/[^А-ЯЁA-Z\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!word) return null;
-  // Границы слов: `\b` не работает для кириллицы (в JS \w — только латиница).
-  if (/^ДА(?![А-ЯЁ])|^YES(?![A-Z])/.test(word)) {
-    return { verdict: "correct", confidence: 0.8, reason: "ИИ: тот же объект другими словами" };
-  }
-  if (/^НЕ\s*ЗНА/.test(word) || /^UNSURE(?![A-Z])/.test(word)) {
-    return { verdict: "unsure", confidence: 0.5, reason: "ИИ: нужна ручная проверка" };
-  }
-  if (/^НЕТ(?![А-ЯЁ])|^NO(?![A-Z])/.test(word)) {
-    return { verdict: "incorrect", confidence: 0.8, reason: "ИИ: назван другой объект" };
-  }
-  return null;
-}
 
 function parseJson(raw: string): AiTextGrade | null {
   const cleaned = String(raw || "").replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -89,19 +77,52 @@ function parseJson(raw: string): AiTextGrade | null {
   }
 }
 
+/**
+ * Разбор ответа модели. Порядок важен: «НЕ ЗНАЮ» содержит «ЗНАЮ», а «НЕТ» —
+ * короткое слово, которое легко встретить в пояснении, поэтому смотрим на первое
+ * смысловое слово, а при прозе вокруг — на маркер в начале строки.
+ */
+export function parseVerdict(raw: string): AiTextGrade | null {
+  const asJson = parseJson(raw);
+  if (asJson) return asJson;
+
+  const word = String(raw || "")
+    .toUpperCase()
+    .replace(/[^А-ЯЁA-Z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!word) return null;
+
+  // Берём первые три слова: «ОТВЕТ ДА», «ДА ЭТО МИТОЗ» тоже должны сработать.
+  const head = word.split(" ").slice(0, 3).join(" ");
+  if (/^НЕ\s*ЗНА|^UNSURE|НЕ\s*ЗНА/.test(head)) {
+    return { verdict: "unsure", confidence: 0.5, reason: "ИИ: нужна ручная проверка" };
+  }
+  if (/(^|\s)ДА(\s|$)|(^|\s)YES(\s|$)/.test(head)) {
+    return { verdict: "correct", confidence: 0.8, reason: "ИИ: тот же объект другими словами" };
+  }
+  if (/(^|\s)НЕТ(\s|$)|(^|\s)NO(\s|$)/.test(head)) {
+    return { verdict: "incorrect", confidence: 0.8, reason: "ИИ: назван другой объект" };
+  }
+  return null;
+}
+
 function userPrompt(input: { answer: string; target: string; prompt: string }): string {
   return [`Задание: ${input.prompt}`, `Эталон: ${input.target}`, `Ответ студента: ${input.answer}`].join("\n");
 }
 
-/**
- * Workers AI напрямую через биндинг: без импорта `lib/workers-ai`, чтобы этот
- * модуль оставался чистым (его импортируют и тесты, которым не нужен Env).
- */
-async function viaWorkersAi(input: { answer: string; target: string; prompt: string; env: AiEnv }) {
+async function viaWorkersAi(input: {
+  answer: string;
+  target: string;
+  prompt: string;
+  env: AiEnv;
+}): Promise<AiResult> {
   const ai = input.env.AI as
     | { run?: (model: string, payload: unknown) => Promise<unknown> }
     | undefined;
-  if (!ai || typeof ai.run !== "function") return null;
+  if (!ai || typeof ai.run !== "function") {
+    return { grade: null, debug: { provider: "none", ok: false, error: "AI binding missing" } };
+  }
   const model = String(input.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct-fp8").trim();
   try {
     const request = ai.run(model, {
@@ -110,7 +131,7 @@ async function viaWorkersAi(input: { answer: string; target: string; prompt: str
         { role: "user", content: userPrompt(input) },
       ],
       temperature: 0,
-      max_tokens: 16,
+      max_tokens: 32,
       stream: false,
     });
     const timeout = new Promise<never>((_, reject) =>
@@ -121,15 +142,36 @@ async function viaWorkersAi(input: { answer: string; target: string; prompt: str
       | { response?: string }
       | null;
     const content = typeof response === "string" ? response : String(response?.response || "");
-    return parseVerdict(content);
-  } catch {
-    return null;
+    const grade = parseVerdict(content);
+    return {
+      grade,
+      debug: {
+        provider: "workers-ai",
+        ok: Boolean(grade),
+        raw: content.slice(0, 160),
+        ...(grade ? {} : { error: "unparsed" }),
+      },
+    };
+  } catch (error) {
+    return {
+      grade: null,
+      debug: {
+        provider: "workers-ai",
+        ok: false,
+        error: error instanceof Error ? error.message.slice(0, 120) : "run failed",
+      },
+    };
   }
 }
 
-async function viaGemini(input: { answer: string; target: string; prompt: string; env: AiEnv }) {
+async function viaGemini(input: {
+  answer: string;
+  target: string;
+  prompt: string;
+  env: AiEnv;
+}): Promise<AiResult> {
   const key = String(input.env.GEMINI_API_KEY || "").trim();
-  if (!key) return null;
+  if (!key) return { grade: null, debug: { provider: "none", ok: false, error: "no key" } };
   const model = String(input.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   try {
@@ -139,34 +181,56 @@ async function viaGemini(input: { answer: string; target: string; prompt: string
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         contents: [{ role: "user", parts: [{ text: userPrompt(input) }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 16 },
+        generationConfig: { temperature: 0, maxOutputTokens: 32 },
       }),
       timeoutMs: 8000,
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return { grade: null, debug: { provider: "gemini", ok: false, error: `http ${response.status}` } };
+    }
     const payload = (await response.json()) as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
     const text = payload.candidates?.[0]?.content?.parts?.map((part) => String(part.text || "")).join("") || "";
-    return parseVerdict(text);
-  } catch {
-    return null;
+    const grade = parseVerdict(text);
+    return {
+      grade,
+      debug: {
+        provider: "gemini",
+        ok: Boolean(grade),
+        raw: text.slice(0, 160),
+        ...(grade ? {} : { error: "unparsed" }),
+      },
+    };
+  } catch (error) {
+    return {
+      grade: null,
+      debug: {
+        provider: "gemini",
+        ok: false,
+        error: error instanceof Error ? error.message.slice(0, 120) : "fetch failed",
+      },
+    };
   }
 }
 
-/** `null` — ИИ недоступен или ответил мусором; вызывающий код остаётся при правилах. */
+/** `grade: null` — ИИ недоступен или не разобрали ответ; правила остаются в силе. */
 export async function aiCompareAnswer(input: {
   answer: string;
   target: string;
   prompt: string;
   env: AiEnv;
-}): Promise<AiTextGrade | null> {
-  if (!aiGradingEnabled(input.env)) return null;
+}): Promise<AiResult> {
+  if (!aiGradingEnabled(input.env)) {
+    return { grade: null, debug: { provider: "none", ok: false, error: "disabled" } };
+  }
 
   const workers = await viaWorkersAi(input);
-  if (workers) return workers;
+  if (workers.grade) return workers;
 
   const region = String(input.env.AI_BACKEND_REGION || "ru").trim().toLowerCase();
-  if (region === "ru" && !input.env.GEMINI_VERCEL_PROXY_URL) return null;
+  if (region === "ru" && !input.env.GEMINI_VERCEL_PROXY_URL) {
+    return workers.debug.provider === "none" ? workers : { grade: null, debug: workers.debug };
+  }
   return viaGemini(input);
 }
