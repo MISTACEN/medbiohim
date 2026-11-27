@@ -97,43 +97,30 @@ describe("judgeTextAnswers", () => {
   });
 
   it("ИИ подключается только когда правила не совпали, и один раз", async () => {
-    const call = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [{ text: '{"verdict":"correct","confidence":0.9,"reason":"тот же объект"}' }],
-              },
-            },
-          ],
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      ),
-    );
-    vi.stubGlobal("fetch", call);
+    const run = vi.fn(async () => ({
+      response: '{"verdict":"correct","confidence":0.9,"reason":"тот же объект"}',
+    }));
 
     const result = await judgeTextAnswers({
       question,
       answers,
       submittedText: { preparation: "деление клетки с хромосомами" },
-      env: { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "gemini-2.0-flash" },
+      env: { AI: { run } },
     });
     expect(result.verdicts).toEqual({ preparation: true });
     expect(result.outcomes.preparation.source).toBe("ai");
-    expect(call).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledTimes(1);
   });
 
   it("точное совпадение не тратит вызов ИИ", async () => {
-    const call = vi.fn();
-    vi.stubGlobal("fetch", call);
+    const run = vi.fn();
     await judgeTextAnswers({
       question,
       answers,
       submittedText: { preparation: "митоз" },
-      env: { GEMINI_API_KEY: "test-key" },
+      env: { AI: { run } },
     });
-    expect(call).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
   });
 });
 

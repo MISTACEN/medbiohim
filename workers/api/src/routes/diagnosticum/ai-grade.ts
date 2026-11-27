@@ -1,17 +1,24 @@
 /**
- * ИИ-проверка свободного ответа (Gemini, бесплатный тариф).
+ * ИИ-проверка свободного ответа.
  *
  * Правило из концепции (§12) и реестра требований (CHEM-10): ИИ помогает
  * разобрать формулировку, но не заменяет точную проверку и не выдаёт ложную
- * точность. Поэтому здесь только узкая задача «ответ и эталон — одно и то же?»
- * с обязательным JSON-ответом и уверенностью; вызывается лишь когда
- * детерминированные правила уже сказали «не совпало».
+ * точность. Задача узкая — «ответ и эталон называют один объект?» — с ответом
+ * в JSON и уверенностью; вызывается только когда правила уже сказали «не совпало».
+ *
+ * Порядок провайдеров: сначала Workers AI (работает внутри Cloudflare, без
+ * внешнего egress и ключей), затем Gemini — и только если регион не RU, иначе
+ * запрос к Google блокируется и время тратится зря.
  */
 import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
-type AiEnv = {
+export type AiEnv = {
+  AI?: unknown;
+  CLOUDFLARE_AI_MODEL?: string;
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
+  GEMINI_VERCEL_PROXY_URL?: string;
+  AI_BACKEND_REGION?: string;
   AI_TEXT_GRADING?: string;
 };
 
@@ -25,7 +32,8 @@ export type AiTextGrade = {
 export function aiGradingEnabled(env: AiEnv): boolean {
   const flag = String(env.AI_TEXT_GRADING ?? "on").trim().toLowerCase();
   if (["off", "0", "false", "no"].includes(flag)) return false;
-  return Boolean(String(env.GEMINI_API_KEY || "").trim());
+  const workersAi = Boolean(env.AI && typeof (env.AI as { run?: unknown }).run === "function");
+  return workersAi || Boolean(String(env.GEMINI_API_KEY || "").trim());
 }
 
 const SYSTEM = [
@@ -35,12 +43,11 @@ const SYSTEM = [
   "Правила: другой препарат, другая ткань или пустой ответ — incorrect;",
   "тот же объект с иной формулировкой/опечаткой/порядком слов — correct;",
   "сомневаешься — unsure и confidence ниже 0.6.",
-  "Ответ строго JSON без пояснений вокруг:",
-  '{"verdict":"correct|partial|incorrect|unsure","confidence":0.0,"reason":"кратко по-русски"}',
+  'Ответь строго JSON без текста вокруг: {"verdict":"correct|partial|incorrect|unsure","confidence":0.0,"reason":"кратко по-русски"}',
 ].join(" ");
 
 function parseJson(raw: string): AiTextGrade | null {
-  const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  const cleaned = String(raw || "").replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
@@ -59,43 +66,59 @@ function parseJson(raw: string): AiTextGrade | null {
   }
 }
 
-/** `null` — ИИ недоступен или ответил мусором; вызывающий код остаётся при правилах. */
-export async function aiCompareAnswer(input: {
-  answer: string;
-  target: string;
-  prompt: string;
-  env: AiEnv;
-}): Promise<AiTextGrade | null> {
-  if (!aiGradingEnabled(input.env)) return null;
-  const model = String(input.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
-  const key = String(input.env.GEMINI_API_KEY || "").trim();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+function userPrompt(input: { answer: string; target: string; prompt: string }): string {
+  return [`Задание: ${input.prompt}`, `Эталон: ${input.target}`, `Ответ студента: ${input.answer}`].join("\n");
+}
 
+/**
+ * Workers AI напрямую через биндинг: без импорта `lib/workers-ai`, чтобы этот
+ * модуль оставался чистым (его импортируют и тесты, которым не нужен Env).
+ */
+async function viaWorkersAi(input: { answer: string; target: string; prompt: string; env: AiEnv }) {
+  const ai = input.env.AI as
+    | { run?: (model: string, payload: unknown) => Promise<unknown> }
+    | undefined;
+  if (!ai || typeof ai.run !== "function") return null;
+  const model = String(input.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct-fp8").trim();
+  try {
+    const request = ai.run(model, {
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: userPrompt(input) },
+      ],
+      temperature: 0,
+      max_tokens: 200,
+      stream: false,
+    });
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 8000),
+    );
+    const response = (await Promise.race([request, timeout])) as
+      | string
+      | { response?: string }
+      | null;
+    const content = typeof response === "string" ? response : String(response?.response || "");
+    return parseJson(content);
+  } catch {
+    return null;
+  }
+}
+
+async function viaGemini(input: { answer: string; target: string; prompt: string; env: AiEnv }) {
+  const key = String(input.env.GEMINI_API_KEY || "").trim();
+  if (!key) return null;
+  const model = String(input.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   try {
     const response = await fetchWithTimeout(url, {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": key },
-      // Ответ студента — данные, а не инструкции: он приходит одним абзацем
-      // вместе с эталоном, поэтому выполнить его как команду нельзя.
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: [
-                  `Задание: ${input.prompt}`,
-                  `Эталон: ${input.target}`,
-                  `Ответ студента: ${input.answer}`,
-                ].join("\n"),
-              },
-            ],
-          },
-        ],
+        contents: [{ role: "user", parts: [{ text: userPrompt(input) }] }],
         generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 200 },
       }),
-      timeoutMs: 9000,
+      timeoutMs: 8000,
     });
     if (!response.ok) return null;
     const payload = (await response.json()) as {
@@ -106,4 +129,21 @@ export async function aiCompareAnswer(input: {
   } catch {
     return null;
   }
+}
+
+/** `null` — ИИ недоступен или ответил мусором; вызывающий код остаётся при правилах. */
+export async function aiCompareAnswer(input: {
+  answer: string;
+  target: string;
+  prompt: string;
+  env: AiEnv;
+}): Promise<AiTextGrade | null> {
+  if (!aiGradingEnabled(input.env)) return null;
+
+  const workers = await viaWorkersAi(input);
+  if (workers) return workers;
+
+  const region = String(input.env.AI_BACKEND_REGION || "ru").trim().toLowerCase();
+  if (region === "ru" && !input.env.GEMINI_VERCEL_PROXY_URL) return null;
+  return viaGemini(input);
 }
