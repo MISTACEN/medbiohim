@@ -14,11 +14,14 @@ import { BadgeCheck, Loader2, RefreshCw, X } from "lucide-react";
 import { describeApiError } from "@/lib/errors";
 import {
   approvePreparationSubmission,
+  listPreparationGuides,
   listPreparationSubmissions,
   rejectPreparationSubmission,
   type MyPreparationStatus,
   type PreparationSubmission,
 } from "@/lib/content-api";
+
+type GuidePick = { key: string; name: string; section: string | null };
 
 const TABS: Array<{ id: MyPreparationStatus | "all"; label: string }> = [
   { id: "pending", label: "На проверке" },
@@ -33,6 +36,9 @@ export function PreparationSubmissions() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectFor, setRejectFor] = useState<string | null>(null);
+  const [approveFor, setApproveFor] = useState<string | null>(null);
+  const [guideKey, setGuideKey] = useState("");
+  const [guides, setGuides] = useState<GuidePick[]>([]);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -51,18 +57,48 @@ export function PreparationSubmissions() {
 
   useEffect(() => { void load(status); }, [load, status]);
 
-  async function approve(item: PreparationSubmission) {
+  // Методички нужны, чтобы одобренный снимок стал заданием тренажёра, а не
+  // только экспонатом атласа. Ошибка загрузки не блокирует публикацию.
+  useEffect(() => {
+    void listPreparationGuides()
+      .then((result) => {
+        if (!result.ok) return;
+        setGuides(
+          (result.data.items || []).map((guide) => ({
+            key: String(guide.key),
+            name: String(guide.name || guide.key),
+            section: guide.section ? String(guide.section) : null,
+          })),
+        );
+      })
+      .catch(() => undefined);
+  }, []);
+
+  /** Одноимённая методичка — очевидный выбор по умолчанию; модератор может сменить. */
+  function defaultGuide(name: string): string {
+    const target = name.trim().toLocaleLowerCase("ru-RU");
+    const exact = guides.find((guide) => guide.name.trim().toLocaleLowerCase("ru-RU") === target);
+    return exact?.key || "";
+  }
+
+  async function approve(item: PreparationSubmission, key: string) {
     setBusyId(item.id);
     setError(null);
     setNotice(null);
-    const result = await approvePreparationSubmission(item.id);
+    const result = await approvePreparationSubmission(item.id, key ? { guide_key: key } : {});
     setBusyId(null);
     if (!result.ok) {
       setError(describeApiError(result.error));
       return;
     }
     setItems((current) => current.filter((row) => row.id !== item.id));
-    setNotice(`«${item.name}» опубликован в атласе.`);
+    setApproveFor(null);
+    setGuideKey("");
+    setNotice(
+      key
+        ? `«${item.name}» опубликован в атласе и добавлен в тренажёр.`
+        : `«${item.name}» опубликован в атласе (без вариантов ответа — только просмотр).`,
+    );
   }
 
   async function reject(item: PreparationSubmission) {
@@ -180,20 +216,59 @@ export function PreparationSubmissions() {
                           </button>
                         </div>
                       </div>
+                    ) : approveFor === item.id ? (
+                      <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Методичка препарата
+                          <select
+                            value={guideKey}
+                            onChange={(event) => setGuideKey(event.target.value)}
+                            className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-normal"
+                          >
+                            <option value="">Без методички — только просмотр в атласе</option>
+                            {guides.map((guide) => (
+                              <option key={guide.key} value={guide.key}>
+                                {guide.section ? `${guide.section} · ${guide.name}` : guide.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <p className="text-[11px] leading-4 text-[var(--muted)]">
+                          С методичкой карточка получает вопрос и три варианта — её можно решать в тренажёре и
+                          диагностикуме. Верный ответ строится из выбранной методички, поэтому он должен
+                          соответствовать снимку.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void approve(item, guideKey)}
+                            disabled={busyId === item.id}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                          >
+                            {busyId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
+                            {guideKey ? "Опубликовать и добавить в тренажёр" : "Опубликовать в атласе"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setApproveFor(null); setGuideKey(""); }}
+                            className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-semibold"
+                          >
+                            <X className="h-4 w-4" /> Отмена
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => void approve(item)}
-                          disabled={busyId === item.id}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                          onClick={() => { setApproveFor(item.id); setGuideKey(defaultGuide(item.name)); setRejectFor(null); }}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white"
                         >
-                          {busyId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
-                          Опубликовать в атласе
+                          <BadgeCheck className="h-4 w-4" /> Опубликовать в атласе
                         </button>
                         <button
                           type="button"
-                          onClick={() => { setRejectFor(item.id); setNote(""); }}
+                          onClick={() => { setRejectFor(item.id); setNote(""); setApproveFor(null); }}
                           className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-semibold"
                         >
                           Вернуть на доработку

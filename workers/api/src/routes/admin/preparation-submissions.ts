@@ -16,6 +16,7 @@ import { requireAuth } from "../../middleware/auth";
 import { createServiceClient } from "../../lib/supabase";
 import { getStorageBackend } from "../../lib/b2";
 import { safeObjectKey } from "../trainers/shared";
+import { buildIdentifyQuestion } from "./preparation-options";
 import { MANAGERS, STRICT_ADMINS, UUID, bodyJson, error, gate, type AdminApp } from "./shared";
 
 const STATUSES = new Set(["pending", "approved", "rejected", "all"]);
@@ -193,6 +194,16 @@ export function registerPreparationSubmissions(admin: AdminApp) {
     const image = await resolveImage(c, submission);
     if ("message" in image) return error(c, rid, 422, "VALIDATION_ERROR", image.message);
 
+    // Методичка превращает снимок в задание тренажёра: без неё карточка
+    // остаётся только в атласе.
+    const guideKey = text(body?.guide_key, 80) || "";
+    let question: Record<string, unknown> = {};
+    if (guideKey) {
+      const built = await buildIdentifyQuestion(service, guideKey);
+      if ("message" in built) return error(c, rid, 422, "VALIDATION_ERROR", built.message);
+      question = built.question;
+    }
+
     const name = text(body?.name, 160) || submission.name;
     const organ = text(body?.organ, 160) ?? submission.organ;
     const stain = text(body?.stain, 160) ?? submission.stain;
@@ -214,7 +225,7 @@ export function registerPreparationSubmissions(admin: AdminApp) {
       specialty_slug: "mbh",
       mode_set: "preparation",
       preparation,
-      question: {},
+      question,
       hotspots: [],
       tags: ["свои препараты"],
       is_published: true,

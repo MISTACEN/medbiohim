@@ -30,6 +30,28 @@ test("заявки в атлас решает только админ, публ�
   assert.match(index, /registerPreparationSubmissions\(admin\)/);
 });
 
+test("с методичкой одобренная карточка становится заданием тренажёра", async () => {
+  const options = await source("../src/routes/admin/preparation-options.ts");
+  assert.match(options, /export async function buildIdentifyQuestion/);
+  assert.match(options, /from\("preparation_guides"\)/);
+  assert.match(options, /correct: true/);
+  assert.match(options, /correct: false/);
+  assert.match(options, /DISTRACTORS = 3/);
+
+  const admin = await source("../src/routes/admin/preparation-submissions.ts");
+  assert.match(admin, /buildIdentifyQuestion\(service, guideKey\)/);
+  assert.match(admin, /question,\n      hotspots: \[\]/);
+
+  const mine = await source("../src/routes/trainers/04-mine.ts");
+  // Правка доводится до атласа, удаление снимает публикацию.
+  assert.match(mine, /syncPublishedCard\(c, data as MineRow\)/);
+  assert.match(mine, /withdrawPublishedCard\(c, publishedCardId\)/);
+
+  const publication = await source("../src/routes/trainers/mine-publication.ts");
+  assert.match(publication, /is_published: false, is_archived: true/);
+  assert.match(publication, /name: row\.name/);
+});
+
 test("статус модерации не подделывается из клиента", async () => {
   const migration = await source(
     "../../../database/migrations/20261127140000_user_preparation_submissions.sql",

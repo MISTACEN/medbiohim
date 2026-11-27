@@ -2,6 +2,7 @@ import { ok, fail, requestId } from "../../lib/response";
 import { requireAuth } from "../../middleware/auth";
 import { createServiceClient } from "../../lib/supabase";
 import { getStorageBackend } from "../../lib/b2";
+import { syncPublishedCard, withdrawPublishedCard } from "./mine-publication";
 
 import type { TrainersRouter } from "./types";
 
@@ -215,12 +216,16 @@ export function registerMineRoutes(trainers: TrainersRouter) {
         .delete()
         .eq("id", c.req.param("id"))
         .eq("user_id", user.id)
-        .select("id");
+        .select("id,published_card_id");
       if (error) throw error;
       if (!data || !data.length) {
         const { body, status } = fail("NOT_FOUND", "Препарат не найден", 404, rid);
         return c.json(body, status as 404);
       }
+      // Удаление личной карточки убирает и её публикацию: иначе в атласе
+      // осталась бы карточка, которой владелец больше не хочет делиться.
+      const publishedCardId = String((data[0] as { published_card_id?: string | null }).published_card_id || "");
+      await withdrawPublishedCard(c, publishedCardId);
       return c.json(ok({ deleted: true }, rid));
     } catch (error) {
       console.error("[trainers:mine:delete]", error);
@@ -304,6 +309,7 @@ export function registerMineRoutes(trainers: TrainersRouter) {
         const { body, status } = fail("NOT_FOUND", "Препарат не найден", 404, rid);
         return c.json(body, status as 404);
       }
+      await syncPublishedCard(c, data as MineRow);
       return c.json(ok({ item: mineCard(data as MineRow, null, null) }, rid));
     } catch (error) {
       console.error("[trainers:mine:update]", error);

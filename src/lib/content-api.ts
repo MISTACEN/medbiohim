@@ -388,7 +388,15 @@ export async function listPreparationSubmissions(status: MyPreparationStatus | "
 
 export async function approvePreparationSubmission(
   id: string,
-  payload: { name?: string; organ?: string; stain?: string; description?: string; note?: string } = {},
+  payload: {
+    name?: string;
+    organ?: string;
+    stain?: string;
+    description?: string;
+    note?: string;
+    /** Методичка: даёт вопрос и варианты ответа — карточка становится заданием тренажёра. */
+    guide_key?: string;
+  } = {},
 ) {
   return api<{ item: PreparationSubmission; card_id: string }>(
     endpoints.admin.preparationSubmissionApprove(id),
