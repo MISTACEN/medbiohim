@@ -1,11 +1,8 @@
 "use client";
 
 /**
- * Диагностикум: тренировка распознавания микропрепаратов.
- *
- * Четыре режима заданий, подсказки по уровням (каждая снижает балл) и разбор
- * ошибок после ответа. Ключ ответа остаётся на сервере — до отправки интерфейс
- * не знает правильный вариант, поэтому «подсмотреть» в разметке нечего.
+ * Диагностикум: подсказки по уровням, разбор ошибок, серии и свободный ввод.
+ * Ключ ответа остаётся на сервере — «подсмотреть» в разметке нечего.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -46,6 +43,7 @@ import { DiagnosticumTextAnswers } from "@/components/trainers/DiagnosticumTextA
 import { useDiagnosticumImage } from "@/components/trainers/use-diagnosticum-image";
 import { useDiagnosticumSelection } from "@/components/trainers/use-diagnosticum-selection";
 import { useDiagnosticumTextMode } from "@/components/trainers/use-diagnosticum-text-mode";
+import { useDiagnosticumParts } from "@/components/trainers/use-diagnosticum-parts";
 import {
   useDiagnosticumHint,
   useDiagnosticumRepeat,
@@ -78,9 +76,7 @@ export function DiagnosticumRunner({
   cardIds,
 }: DiagnosticumRunnerProps = {}) {
   const [overview, setOverview] = useState<DiagnosticumOverview | null>(null);
-  // `mode` — только стартовое значение: переключатель внутри раннера должен
-  // реально менять режим, даже если родитель передал свой (иначе «Экзамен» и
-  // «Электронограмма» оставались бы кнопками ни о чём).
+  // `mode` — стартовое значение; переключатель внутри раннера меняет режим.
   const [mode, setLocalMode] = useState<DiagnosticumMode>(controlledMode ?? "complex");
   const [section, setSection] = useState("");
   const [attempt, setAttempt] = useState<DiagnosticumAttempt | null>(null);
@@ -88,12 +84,15 @@ export function DiagnosticumRunner({
   const { selected, setSelected, toggle, label } = useDiagnosticumSelection(attempt);
   // Свободный ввод доступен в любом режиме; выбор формата запоминается.
   const [textMode, setTextMode] = useDiagnosticumTextMode();
+  // Оси «Разбора»: набор частей уходит на сервер вместо выбора режима.
+  const [extraParts, togglePart] = useDiagnosticumParts(() => {
+    setAttempt(null);
+    setResult(null);
+  });
   const [textValues, setTextValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<DiagnosticumResult | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
-  // Статистика не показывается сразу: это вторичный блок, и он не должен
-  // удлинять экран задания. Заодно запрос статистики уходит только при
-  // открытии, а не при каждом входе в тренажёр.
+  // Статистика грузится только при открытии: вторичный блок не удлиняет экран.
   const [statsOpen, setStatsOpen] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -111,9 +110,7 @@ export function DiagnosticumRunner({
   );
   // Экзамен — серия вопросов без подсказок и без эталона до итога.
   const [exam, setExam] = useState<DiagnosticumExamState | null>(null);
-  // Серия живёт на сервере: состав, порядок и итог приходят из
-  // `/diagnosticum/sessions`, клиент хранит только номер вопроса для быстрой
-  // перерисовки.
+  // Серия живёт на сервере: клиент хранит только номер вопроса.
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionItems, setSessionItems] = useState<DiagnosticumSessionItem[]>([]);
   const [review, setReview] = useState<DiagnosticumSessionReview | null>(null);
@@ -355,7 +352,14 @@ export function DiagnosticumRunner({
     setSessionItems([]);
     setReview(null);
     try {
-      const res = await startDiagnosticumAttempt({ mode, section: section || undefined });
+      const res = await startDiagnosticumAttempt({
+        mode,
+        section: section || undefined,
+        // Разбор собирается из осей; для остальных режимов набор не передаём.
+        ...(mode === "complex"
+          ? { parts: ["preparation" as const, ...extraParts] }
+          : {}),
+      });
       if (res.ok) {
         setAttempt(res.data);
       } else {
@@ -367,7 +371,7 @@ export function DiagnosticumRunner({
     } finally {
       setBusy(false);
     }
-  }, [mode, section, examLength, examTime, cardIds, resetHints, resetRepeat, setSelected]);
+  }, [mode, section, examLength, examTime, cardIds, extraParts, resetHints, resetRepeat, setSelected]);
 
   // Части «назови объект» можно закрыть словами: их варианты прячем, а поле
   // ввода показываем отдельным блоком. Остальные части остаются выбором.
@@ -500,6 +504,8 @@ export function DiagnosticumRunner({
         attemptActive={Boolean(attempt)}
         textMode={textMode}
         onTextModeChange={setTextMode}
+        parts={extraParts}
+        onTogglePart={togglePart}
         selectedCount={cardIds?.length ?? 0}
         onStart={() => void start()}
       />

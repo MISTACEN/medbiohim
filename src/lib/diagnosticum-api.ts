@@ -130,7 +130,12 @@ export function getDiagnosticumOverview() {
   return api<DiagnosticumOverview>(endpoints.diagnosticum.root());
 }
 
-export function startDiagnosticumAttempt(input: { mode: DiagnosticumMode; section?: string }) {
+export function startDiagnosticumAttempt(input: {
+  mode: DiagnosticumMode;
+  section?: string;
+  /** Оси задания вместо режима: препарат всегда, структуры/утверждения — по выбору. */
+  parts?: Array<"preparation" | "structures" | "statements" | "differential">;
+}) {
   return api<DiagnosticumAttempt>(endpoints.diagnosticum.start(), {
     method: "POST",
     body: JSON.stringify(input),
