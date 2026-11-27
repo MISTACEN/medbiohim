@@ -25,7 +25,11 @@ test("снимок на статике сайта считается изобр�
 
   const image = await source("../src/routes/trainers/03-image.ts");
   assert.match(image, /prep\.imageStatic/);
-  assert.match(image, /c\.redirect\(new URL\(staticImage, new URL\(c\.req\.url\)\.origin\)\.toString\(\), 302\)/);
+  // Редирект ведёт на origin сайта: `/library/...` лежит только там, а домен
+  // воркера отдавал 404 и «Изображение недоступно».
+  assert.match(image, /c\.env\.APP_ORIGIN \|\| "https:\/\/medbiohim\.vercel\.app"/);
+  assert.match(image, /c\.redirect\(new URL\(staticImage, `\$\{siteOrigin\}\/`\)\.toString\(\), 302\)/);
+  assert.doesNotMatch(image, /new URL\(c\.req\.url\)\.origin/);
 
   const model = await source("../src/routes/diagnosticum/model.ts");
   assert.match(model, /text\(preparation\?\.imagePath\) \|\| text\(preparation\?\.imageUrl\) \|\| text\(preparation\?\.imageStatic\)/);

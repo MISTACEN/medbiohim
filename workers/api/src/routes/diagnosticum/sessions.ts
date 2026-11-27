@@ -15,6 +15,7 @@ import { createServiceClient } from "../../lib/supabase";
 import { requireAuth, type AuthVariables } from "../../middleware/auth";
 import type { Env } from "../../env";
 import { UUID_PATTERN, isMissingTable, loadBank } from "./shared";
+import { MAX_HINTS } from "./model";
 import {
   DEFAULT_SESSION_LENGTH,
   MAX_SESSION_LENGTH,
@@ -105,15 +106,12 @@ sessions.post("/sessions", requireAuth, async (c) => {
   const built = requestedCards.length
     ? buildCardSeries(loaded.bank, requestedCards, body.mode)
     : { items: buildSeries(loaded.bank, body.mode, section, requestedLength), missing: [] as string[] };
-  if (requestedCards.length && built.missing.length) {
-    const { body: errorBody, status } = fail(
-      "CARD_SELECTION_UNAVAILABLE",
-      "Часть выбранных карточек недоступна для разбора: обновите атлас",
-      422,
-      rid,
-    );
-    return c.json(errorBody, status as 422);
-  }
+  // Часть выбранных карточек может быть недоступна: электронограмма, снимок без
+  // методички, карточка снята с публикации. Серия собирается из остальных, а
+  // пропуски отдаются клиенту (`missing`), чтобы он сказал об этом честно.
+  // Раньше любой пропуск ронял весь старт в 422 — из-за этого «Повторить
+  // ошибки» (там в очереди есть ЭМ) не запускал серию вообще.
+  const skipped = built.missing;
   // «Своя серия» — отдельный раздел статистики: иначе выбранные препараты
   // растворялись бы в системах органов.
   const effectiveSection = requestedCards.length ? "Своя серия" : section;
@@ -121,7 +119,9 @@ sessions.post("/sessions", requireAuth, async (c) => {
   if (!items.length) {
     const { body: errorBody, status } = fail(
       "NOT_FOUND",
-      "Для серии не хватает препаратов с изображениями",
+      requestedCards.length
+        ? "Выбранные карточки недоступны для разбора: нужны снимок и методичка"
+        : "Для серии не хватает препаратов с изображениями",
       404,
       rid,
     );
@@ -200,14 +200,18 @@ sessions.post("/sessions", requireAuth, async (c) => {
         status: "in_progress",
         total: items.length,
         created_at: created.data.created_at,
+        // Какие выбранные карточки не вошли в серию: клиент показывает это, а не
+        // ошибку старта.
+        missing: skipped,
         items: items.map((item, index) => ({
           attempt_id: attemptIds[index],
           index,
           section: item.section,
-          guide_key: item.guideKey,
+          // `guide_key` в статусе in_progress не отдаём: по нему (как и по id
+          // варианта) можно было вычислить правильный ответ до ответа.
           question: item.question,
           answered: false,
-          hints_total: 4,
+          hints_total: MAX_HINTS,
         })),
       },
       rid,
@@ -261,11 +265,10 @@ sessions.get("/sessions/:id", requireAuth, async (c) => {
             : {
                 attempt_id: row.id,
                 index: Number(row.session_index ?? 0),
-                guide_key: String(row.guide_key || ""),
                 section: String(row.section || ""),
                 question: row.question,
                 answered: Boolean(row.answered_at),
-                hints_total: 4,
+                hints_total: MAX_HINTS,
               },
         ),
       },

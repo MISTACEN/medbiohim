@@ -9,7 +9,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getTrainerImageUrl } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import {
   finishDiagnosticumSession,
@@ -44,6 +43,8 @@ import {
 } from "@/components/trainers/diagnosticum-exam-resume";
 import { DiagnosticumStatsDetails } from "@/components/trainers/DiagnosticumStatsDetails";
 import { DiagnosticumPartsList } from "@/components/trainers/DiagnosticumPartsList";
+import { DiagnosticumMessages } from "@/components/trainers/DiagnosticumMessages";
+import { useDiagnosticumImage } from "@/components/trainers/use-diagnosticum-image";
 import {
   DiagnosticumResultPanel,
   type DiagnosticumRepeatState,
@@ -82,7 +83,6 @@ export function DiagnosticumRunner({
   const [mode, setLocalMode] = useState<DiagnosticumMode>(controlledMode ?? "complex");
   const [section, setSection] = useState("");
   const [attempt, setAttempt] = useState<DiagnosticumAttempt | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, string[]>>({});
   const [hints, setHints] = useState<DiagnosticumHint[]>([]);
   const [result, setResult] = useState<DiagnosticumResult | null>(null);
@@ -114,6 +114,12 @@ export function DiagnosticumRunner({
   // восстанавливается с сервера по id попытки (без ключа ответа).
   const [resumedNote, setResumedNote] = useState(false);
   const resumeTried = useRef(false);
+  // Номер «живой» попытки. Восстановление серии идёт асинхронно и не должно
+  // перетирать задание, которое студент уже начал кнопкой: иначе ответ ушёл бы
+  // в старую серию, а на экране был бы новый вопрос.
+  const attemptSeq = useRef(0);
+  /** Мягкое сообщение: например, часть выбранных карточек не вошла в серию. */
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -143,6 +149,7 @@ export function DiagnosticumRunner({
     setExam(null);
     setTimedOut(false);
     setRepeatState("idle");
+    setNotice(null);
     resumeTried.current = false;
     setResumedNote(false);
   }, [mode]);
@@ -170,7 +177,11 @@ export function DiagnosticumRunner({
     // и итог не зависят от того, что осталось в sessionStorage.
     const savedSessionId = saved?.sessionId;
     if (savedSessionId) {
+      const seq = attemptSeq.current;
       void getDiagnosticumSession(savedSessionId).then((res) => {
+        // Пока запрос летел, студент мог нажать «Начать экзамен»: новая попытка
+        // важнее восстановленной, иначе ответ ушёл бы в старую серию.
+        if (seq !== attemptSeq.current) return;
         if (!res.ok) {
           clearExamStorage();
           return;
@@ -207,7 +218,11 @@ export function DiagnosticumRunner({
           scores: data.items.filter((entry) => entry.answered).map((entry) => Number(entry.score ?? 0)),
           finished: false,
         });
-        setTimeLeft(examTime);
+        // Таймер берём из серии: локальный дефолт после перезагрузки другой,
+        // и сессия, начатая на 60 с, показывала 90 с.
+        const restoredTimer = Number(data.timer_sec ?? 0);
+        setExamTime(restoredTimer > 0 ? restoredTimer : 0);
+        setTimeLeft(restoredTimer > 0 ? restoredTimer : 0);
         setResumedNote(true);
       });
       return;
@@ -264,27 +279,15 @@ export function DiagnosticumRunner({
     clearExamStorage();
   }, [mode, exam?.finished]);
 
-  useEffect(() => {
-    const cardId = attempt?.question.image_card_id;
-    if (!cardId) {
-      setImageUrl(null);
-      return;
-    }
-    let alive = true;
-    setImageUrl(null);
-    void getTrainerImageUrl(cardId)
-      .then((url) => {
-        if (alive) setImageUrl(url);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [attempt?.question.image_card_id]);
+  // Ссылка на снимок текущей попытки (эффект с отменой — в отдельном хуке).
+  const imageUrl = useDiagnosticumImage(attempt?.question.image_card_id);
 
   const start = useCallback(async () => {
+    // Новая попытка отменяет незавершённое восстановление серии.
+    attemptSeq.current += 1;
     setBusy(true);
     setError(null);
+    setNotice(null);
     setSelected({});
     setHints([]);
     setResult(null);
@@ -319,6 +322,13 @@ export function DiagnosticumRunner({
         setSessionItems(started.data.items);
         setAttempt(attemptFromItem(first));
         setExam({ total: started.data.items.length, index: 1, scores: [], finished: false });
+        // Сервер честно говорит, какие выбранные карточки не вошли в серию:
+        // электронограммы и снимки без методички. Это не ошибка старта.
+        if (started.data.missing?.length) {
+          setNotice(
+            `В серию не вошли ${started.data.missing.length} выбранных карточек: нужны снимок и методичка.`,
+          );
+        }
       } catch {
         setError("Не удалось начать серию");
       } finally {
@@ -511,11 +521,7 @@ export function DiagnosticumRunner({
         onStart={() => void start()}
       />
 
-      {error ? (
-        <p className="rounded-xl bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">
-          {error}
-        </p>
-      ) : null}
+      <DiagnosticumMessages error={error} notice={notice} />
 
       {attempt ? (
         <div className="card space-y-4 p-4">

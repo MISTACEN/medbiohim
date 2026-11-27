@@ -131,7 +131,11 @@ export type DiagnosticumSessionItem = {
   attempt_id: string;
   index: number;
   section: string;
-  guide_key: string;
+  /**
+   * Ключ методички. Сервер отдаёт его только в завершённой серии: в статусе
+   * in_progress он раскрывал правильный вариант до ответа.
+   */
+  guide_key?: string;
   question: DiagnosticumQuestion;
   answered: boolean;
   hints_total: number;
@@ -151,6 +155,8 @@ export type DiagnosticumSession = {
   score?: number | null;
   correct_count?: number | null;
   finished_at?: string | null;
+  /** Выбранные карточки, которые не вошли в серию (ЭМ, снимок без методички). */
+  missing?: string[];
   items: DiagnosticumSessionItem[];
 };
 

@@ -5,8 +5,12 @@
  * отвечал только за выбор карточки банка. Примитивы (строки, списки,
  * перемешивание) — в `model-base.ts`; обратной зависимости от `model.ts` нет,
  * кроме типа режима.
+ *
+ * Варианты закрываются `sealOptions`: id — позиция после перемешивания, а не
+ * ключ методички и не префикс правильности. Иначе правильный ответ читался по
+ * разметке (см. `sealOptions` в `model-base.ts`).
  */
-import { guideStructures, sample, shuffle, stringList } from "./model-base";
+import { guideStructures, sample, sealOptions, stringList } from "./model-base";
 import type { DiagnosticumMode } from "./model";
 import type { AnswerKey, GuideRow, Question, QuestionPart } from "./types";
 
@@ -16,6 +20,9 @@ function exploration(guide: GuideRow): string {
   const differential = stringList(guide.differential);
   return [features.join("; "), differential.join("; ")].filter(Boolean).join(". ") || guide.name;
 }
+
+/** Готовая часть задания вместе с id правильных вариантов — ключ остаётся на сервере. */
+type BuiltPart = { part: QuestionPart; correct: string[] };
 
 /**
  * Собирает вопрос и ключ ответа для выбранного режима. Общие рамки задания
@@ -34,7 +41,7 @@ export function buildModeQuestion(input: {
 }): { question: Question; answers: AnswerKey } | null {
   const { base, distractorPool, guide, mode, others, random, sameSection, title } = input;
 
-  const namePart = (count: number): QuestionPart => {
+  const namePart = (count: number): BuiltPart => {
     // Обманки без повторов и без самого препарата: иначе в задании оказывались
     // два одинаковых варианта и число вариантов «плавало» (4 или 5).
     const seen = new Set<string>([guide.name.trim()]);
@@ -44,38 +51,47 @@ export function buildModeQuestion(input: {
       seen.add(name);
       return true;
     });
-    const distractors = sample(candidates, count, random).map((item) => ({
-      id: item.key,
-      label: item.name,
-    }));
+    const distractors = sample(candidates, count, random).map((item) => String(item.name));
+    const sealed = sealOptions(
+      [{ label: guide.name, correct: true }, ...distractors.map((label) => ({ label, correct: false }))],
+      random,
+    );
     return {
-      id: "preparation",
-      kind: "single",
-      title: "Что это за препарат?",
-      options: shuffle([{ id: guide.key, label: guide.name }, ...distractors], random),
+      part: {
+        id: "preparation",
+        kind: "single",
+        title: "Что это за препарат?",
+        options: sealed.options,
+      },
+      correct: sealed.correct,
     };
   };
 
   const structures = guideStructures(guide);
-  const structuresPart = (): QuestionPart | null => {
+  const structuresPart = (): BuiltPart | null => {
     if (!structures.length) return null;
     const foreign = new Set<string>();
-    for (const item of others) for (const slug of guideStructures(item)) if (!structures.includes(slug)) foreign.add(slug);
-    const distractors = sample(Array.from(foreign), 3, random).map((slug) => ({
-      id: slug,
-      label: title(slug),
-    }));
+    for (const item of others) {
+      for (const slug of guideStructures(item)) {
+        if (!structures.includes(slug)) foreign.add(slug);
+      }
+    }
+    const distractors = sample(Array.from(foreign), 3, random);
+    const sealed = sealOptions(
+      [
+        ...structures.map((slug) => ({ label: title(slug), correct: true })),
+        ...distractors.map((slug) => ({ label: title(slug), correct: false })),
+      ],
+      random,
+    );
     return {
-      id: "structures",
-      kind: "multi",
-      title: "Отметь диагностические структуры этого препарата",
-      options: shuffle(
-        [
-          ...structures.map((slug) => ({ id: slug, label: title(slug) })),
-          ...distractors,
-        ],
-        random,
-      ),
+      part: {
+        id: "structures",
+        kind: "multi",
+        title: "Отметь диагностические структуры этого препарата",
+        options: sealed.options,
+      },
+      correct: sealed.correct,
     };
   };
 
@@ -84,7 +100,7 @@ export function buildModeQuestion(input: {
   // связные формулировки и сначала из того же раздела — там ошибка правдоподобнее.
   const informativeFact = (fact: string) =>
     fact.trim().split(/\s+/).filter(Boolean).length >= 3 && fact.trim().length >= 18;
-  const statementOptions = (facts: string[], groups: GuideRow[][]) => {
+  const statementOptions = (facts: string[], groups: GuideRow[][]): string[] => {
     const pool = new Set<string>();
     for (const group of groups) {
       for (const item of group) {
@@ -94,45 +110,55 @@ export function buildModeQuestion(input: {
         }
       }
     }
-    return sample(Array.from(pool), 2, random).map((fact, index) => ({
-      id: `x${index}`,
-      label: fact,
-    }));
+    return sample(Array.from(pool), 2, random);
+  };
+
+  const statementsPart = (): (BuiltPart & { explanation: string }) | null => {
+    const facts = stringList(guide.features).slice(0, 3);
+    if (facts.length < 2) return null;
+    const fakes = statementOptions(facts, [sameSection, others]);
+    if (!fakes.length) return null;
+    const sealed = sealOptions(
+      [
+        ...facts.map((label) => ({ label, correct: true })),
+        ...fakes.map((label) => ({ label, correct: false })),
+      ],
+      random,
+    );
+    return {
+      part: {
+        id: "statements",
+        kind: "multi",
+        title: "Отметь утверждения, которые относятся к этому препарату",
+        options: sealed.options,
+      },
+      correct: sealed.correct,
+      explanation: stringList(guide.mistakes).slice(0, 2).join("; ") || exploration(guide),
+    };
   };
 
   if (mode === "complex") {
     // Все оси, которые есть у препарата, — в одном задании. Части добавляются
     // только если для них есть данные, чтобы не показывать пустые блоки.
-    const parts: QuestionPart[] = [namePart(3)];
+    const name = namePart(3);
+    const parts: QuestionPart[] = [name.part];
     const answers: AnswerKey["parts"] = {
-      preparation: { correct: [guide.key], explanation: exploration(guide) },
+      preparation: { correct: name.correct, explanation: exploration(guide) },
     };
 
     const structuresOnly = structuresPart();
     if (structuresOnly) {
-      parts.push(structuresOnly);
+      parts.push(structuresOnly.part);
       answers.structures = {
-        correct: [...structures],
+        correct: structuresOnly.correct,
         explanation: stringList(guide.features).join("; ") || exploration(guide),
       };
     }
 
-    const facts = stringList(guide.features).slice(0, 3);
-    const fakes = facts.length >= 2 ? statementOptions(facts, [sameSection, others]) : [];
-    if (facts.length >= 2 && fakes.length) {
-      parts.push({
-        id: "statements",
-        kind: "multi",
-        title: "Отметь утверждения, которые относятся к этому препарату",
-        options: shuffle(
-          [...facts.map((fact, index) => ({ id: `f${index}`, label: fact })), ...fakes],
-          random,
-        ),
-      });
-      answers.statements = {
-        correct: facts.map((_, index) => `f${index}`),
-        explanation: stringList(guide.mistakes).slice(0, 2).join("; ") || exploration(guide),
-      };
+    const statements = statementsPart();
+    if (statements) {
+      parts.push(statements.part);
+      answers.statements = { correct: statements.correct, explanation: statements.explanation };
     }
 
     return {
@@ -148,30 +174,32 @@ export function buildModeQuestion(input: {
   // Экзамен — тот же вопрос «определи препарат», но без подсказок и без разбора
   // до завершения: сервер отдаёт только балл, эталон остаётся в строке попытки.
   if (mode === "exam") {
+    const name = namePart(4);
     return {
       question: {
         ...base,
         prompt: "Экзамен: определи препарат по изображению.",
-        parts: [namePart(4)],
+        parts: [name.part],
       },
       answers: {
         parts: {
-          preparation: { correct: [guide.key], explanation: exploration(guide) },
+          preparation: { correct: name.correct, explanation: exploration(guide) },
         },
       },
     };
   }
 
   if (mode === "identify") {
+    const name = namePart(3);
     return {
       question: {
         ...base,
         prompt: "Определи препарат по изображению.",
-        parts: [namePart(3)],
+        parts: [name.part],
       },
       answers: {
         parts: {
-          preparation: { correct: [guide.key], explanation: exploration(guide) },
+          preparation: { correct: name.correct, explanation: exploration(guide) },
         },
       },
     };
@@ -184,12 +212,12 @@ export function buildModeQuestion(input: {
       question: {
         ...base,
         prompt: "Рассмотри препарат и отметь структуры, которые действительно видны.",
-        parts: [part],
+        parts: [part.part],
       },
       answers: {
         parts: {
           structures: {
-            correct: [...structures],
+            correct: part.correct,
             explanation: stringList(guide.features).join("; ") || exploration(guide),
           },
         },
@@ -198,37 +226,21 @@ export function buildModeQuestion(input: {
   }
 
   if (mode === "schema") {
-    // Ось 1 — сверка утверждений с источником (features гида против чужих).
-    const facts = stringList(guide.features).slice(0, 3);
-    if (facts.length < 2) return null;
-    const fakes = statementOptions(facts, [sameSection, others]);
-    if (!fakes.length) return null;
+    // Ось 1 — сверка утверждений с источником (features гида против чужих),
+    // ось 2 — вывод препарата по выбранным признакам.
+    const statements = statementsPart();
+    if (!statements) return null;
+    const name = namePart(3);
     return {
       question: {
         ...base,
         prompt: "Схема препарата: сверь утверждения с источником, затем определи препарат.",
-        parts: [
-          {
-            id: "statements",
-            kind: "multi",
-            title: "Отметь утверждения, которые относятся к этому препарату",
-            options: shuffle(
-              [...facts.map((fact, index) => ({ id: `f${index}`, label: fact })), ...fakes],
-              random,
-            ),
-          },
-          // Ось 2 — вывод препарата по выбранным признакам.
-          namePart(3),
-        ],
+        parts: [statements.part, name.part],
       },
       answers: {
         parts: {
-          statements: {
-            correct: facts.map((_, index) => `f${index}`),
-            explanation:
-              stringList(guide.mistakes).slice(0, 2).join("; ") || exploration(guide),
-          },
-          preparation: { correct: [guide.key], explanation: exploration(guide) },
+          statements: { correct: statements.correct, explanation: statements.explanation },
+          preparation: { correct: name.correct, explanation: exploration(guide) },
         },
       },
     };
@@ -240,6 +252,13 @@ export function buildModeQuestion(input: {
     );
     const lookAlike = shared ?? sample(sameSection.length ? sameSection : others, 1, random)[0] ?? null;
     if (!lookAlike) return null;
+    const sealed = sealOptions(
+      [
+        { label: guide.name, correct: true },
+        { label: lookAlike.name, correct: false },
+      ],
+      random,
+    );
     return {
       question: {
         ...base,
@@ -249,22 +268,17 @@ export function buildModeQuestion(input: {
             id: "preparation",
             kind: "single",
             title: "Выбери правильный вариант",
-            options: shuffle(
-              [
-                { id: guide.key, label: guide.name },
-                { id: lookAlike.key, label: lookAlike.name },
-              ],
-              random,
-            ),
+            options: sealed.options,
           },
         ],
       },
       answers: {
         parts: {
           preparation: {
-            correct: [guide.key],
+            correct: sealed.correct,
             explanation:
-              (stringList(guide.differential).join("; ") || `Отличие от «${lookAlike.name}» — в строении и составе структур.`) +
+              (stringList(guide.differential).join("; ") ||
+                `Отличие от «${lookAlike.name}» — в строении и составе структур.`) +
               (structures.length ? ` Ключевые структуры: ${structures.map(title).join(", ")}.` : ""),
           },
         },

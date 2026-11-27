@@ -75,7 +75,7 @@ export type {
   Submitted,
 } from "./types";
 
-import { normalizeName, sample, shuffle, text } from "./model-base";
+import { normalizeName, sample, sealOptions, shuffle, text } from "./model-base";
 
 // Публичные имена остаются в `model.ts`, чтобы импорты соседей не менялись.
 export {
@@ -160,6 +160,15 @@ export function buildElectronogramQuestion(
     3,
     random,
   );
+  // Варианты закрыты так же, как в методичках: id — позиция, а не id карточки,
+  // иначе `guide_key` вида `em:<cardId>` снова выдавал бы ответ.
+  const sealed = sealOptions(
+    [
+      { label: text(target.preparation?.name), correct: true },
+      ...distractors.map((card) => ({ label: text(card.preparation?.name), correct: false })),
+    ],
+    random,
+  );
 
   return {
     question: {
@@ -170,20 +179,14 @@ export function buildElectronogramQuestion(
           id: "preparation",
           kind: "single",
           title: "Название структуры",
-          options: shuffle(
-            [target, ...distractors].map((card) => ({
-              id: String(card.id),
-              label: text(card.preparation?.name),
-            })),
-            random,
-          ),
+          options: sealed.options,
         },
       ],
     },
     answers: {
       parts: {
         preparation: {
-          correct: [String(target.id)],
+          correct: sealed.correct,
           explanation: text(target.preparation?.name),
         },
       },

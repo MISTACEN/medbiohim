@@ -60,7 +60,12 @@ test("«своя серия»: выбранные карточки без под
 
   const route = await source("../src/routes/diagnosticum/sessions.ts");
   assert.match(route, /requestedCards\.length\s*\n?\s*\? buildCardSeries/);
-  assert.match(route, /CARD_SELECTION_UNAVAILABLE/);
+  // Недоступные карточки больше не роняют старт: они уходят в `missing`, а серия
+  // собирается из остальных. Иначе «Повторить ошибки» (в очереди есть ЭМ)
+  // получал 422 и не запускался вовсе.
+  assert.match(route, /const skipped = built\.missing/);
+  assert.match(route, /missing: skipped/);
+  assert.doesNotMatch(route, /CARD_SELECTION_UNAVAILABLE/);
   assert.match(route, /const effectiveSection = requestedCards\.length \? "Своя серия"/);
 
   // Конкретная карточка задаёт изображение вопроса, а не подбор по названию.
