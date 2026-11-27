@@ -194,3 +194,22 @@
 4. B4 (атлас/модерация/свои препараты), затем B5 (наполнение), затем B6 (деплой/PR/preview).
 
 Каждый блок заканчивается зелёными проверками и живым прогоном; «готово» = проверено на сайте, а не «код написан».
+
+## 11. Статус выполнения
+
+**B1 — сделано и в проде** (PR #28, squash `4687c303`, 2026-11-27).
+
+Проверено на `https://medbiohim.vercel.app` после деплоя Worker и фронтенда:
+
+* варианты приходят с позиционными id `a1…aN` (в `/diagnosticum/start` — `[["a1"…"a4"],["a1"…"a6"],["a1"…"a5"]]`), `guide_key` в ответе отсутствует;
+* `GET /diagnosticum/sessions/:id` в статусе in_progress отдаёт только `attempt_id,index,section,question,answered,hints_total`;
+* бонус-снимок `feed-prep-bonus-ct-hyaline-cartilage-01` → редирект на `https://medbiohim.vercel.app/library/.../shot-01.jpg`, `200 image/jpeg`;
+* `/diagnosticum/mistakes` — 20 записей, из них 0 с `em:` (электронограммы в очередь не попадают);
+* в UI после четырёх подсказок кнопка читается «Все подсказки использованы» и disabled;
+* экзамен по-прежнему принимает ответ: выбран первый вариант → «Ответ принят · 0 баллов», «вопрос 1 из 10», без таймера.
+
+CI на merge-коммите: `frontend`, `backend`, `workers-api`, `smoke`, `package`, `playwright`, `build-and-deploy` — success; `deploy` (Cloudflare API) — success; Vercel задеплоил фронтенд.
+Отдельно падает `Supabase Preview`: «Remote migration versions not found in local migrations directory» — расхождение ledger миграций, к B1 не относится, требует отдельного шага.
+
+Дальше — блок B2 (миграция + `parts` + список сессий + слияние истории/статистики).
+
