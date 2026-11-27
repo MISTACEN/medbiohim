@@ -9,7 +9,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getTrainerImageUrl } from "@/lib/api";
 import { describeApiError } from "@/lib/errors";
 import {
   finishDiagnosticumSession,
@@ -44,6 +43,8 @@ import {
 } from "@/components/trainers/diagnosticum-exam-resume";
 import { DiagnosticumStatsDetails } from "@/components/trainers/DiagnosticumStatsDetails";
 import { DiagnosticumPartsList } from "@/components/trainers/DiagnosticumPartsList";
+import { DiagnosticumMessages } from "@/components/trainers/DiagnosticumMessages";
+import { useDiagnosticumImage } from "@/components/trainers/use-diagnosticum-image";
 import {
   DiagnosticumResultPanel,
   type DiagnosticumRepeatState,
@@ -82,7 +83,6 @@ export function DiagnosticumRunner({
   const [mode, setLocalMode] = useState<DiagnosticumMode>(controlledMode ?? "complex");
   const [section, setSection] = useState("");
   const [attempt, setAttempt] = useState<DiagnosticumAttempt | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, string[]>>({});
   const [hints, setHints] = useState<DiagnosticumHint[]>([]);
   const [result, setResult] = useState<DiagnosticumResult | null>(null);
@@ -279,23 +279,8 @@ export function DiagnosticumRunner({
     clearExamStorage();
   }, [mode, exam?.finished]);
 
-  useEffect(() => {
-    const cardId = attempt?.question.image_card_id;
-    if (!cardId) {
-      setImageUrl(null);
-      return;
-    }
-    let alive = true;
-    setImageUrl(null);
-    void getTrainerImageUrl(cardId)
-      .then((url) => {
-        if (alive) setImageUrl(url);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [attempt?.question.image_card_id]);
+  // Ссылка на снимок текущей попытки (эффект с отменой — в отдельном хуке).
+  const imageUrl = useDiagnosticumImage(attempt?.question.image_card_id);
 
   const start = useCallback(async () => {
     // Новая попытка отменяет незавершённое восстановление серии.
@@ -536,17 +521,7 @@ export function DiagnosticumRunner({
         onStart={() => void start()}
       />
 
-      {error ? (
-        <p className="rounded-xl bg-[var(--status-critical-bg)] px-3 py-2 text-sm text-[var(--status-critical-fg)]">
-          {error}
-        </p>
-      ) : null}
-
-      {notice ? (
-        <p className="rounded-xl bg-[var(--status-warn-bg)] px-3 py-2 text-sm text-[var(--status-warn-fg)]">
-          {notice}
-        </p>
-      ) : null}
+      <DiagnosticumMessages error={error} notice={notice} />
 
       {attempt ? (
         <div className="card space-y-4 p-4">
