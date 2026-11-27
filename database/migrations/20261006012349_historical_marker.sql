@@ -1,0 +1,4 @@
+-- Historical migration 20261006012349.
+-- Applied to production before the repository cleanup; body is not in this tree.
+-- Restored as a marker so the migration tool sees it in the ledger.
+-- No-op: nothing to execute.
