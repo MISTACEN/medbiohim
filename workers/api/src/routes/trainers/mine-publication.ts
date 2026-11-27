@@ -9,6 +9,7 @@
 import { createServiceClient } from "../../lib/supabase";
 
 export type PublishedRow = {
+  id: string;
   name: string;
   organ: string | null;
   stain: string | null;
@@ -42,6 +43,32 @@ export async function syncPublishedCard(c: any, row: PublishedRow): Promise<void
   } catch (error) {
     console.warn("[trainers:mine:sync]", String(error));
   }
+}
+
+/**
+ * Владелец заменил снимок после одобрения.
+ *
+ * Атлас показывает проверенный кадр, поэтому новый снимок нельзя оставлять
+ * «одобренным»: публикация снимается, карточка возвращается в черновик и должна
+ * пройти проверку заново. Иначе личная карточка и атлас показывали бы разные
+ * фотографии одного и того же препарата.
+ */
+export async function resetPublicationAfterImageChange(c: any, row: PublishedRow): Promise<void> {
+  if (!row.published_card_id) return;
+  await withdrawPublishedCard(c, row.published_card_id);
+  const service = createServiceClient(c.env);
+  if (!service) return;
+  const { error } = await service
+    .from("user_preparations")
+    .update({
+      submission_status: "draft",
+      published_card_id: null,
+      reviewed_at: null,
+      submitted_at: null,
+      moderation_note: null,
+    })
+    .eq("id", row.id);
+  if (error) console.warn("[trainers:mine:reset-publication]", error.message);
 }
 
 /** Снять публикацию: архив + не публикуется, снимок больше не отдаётся. */

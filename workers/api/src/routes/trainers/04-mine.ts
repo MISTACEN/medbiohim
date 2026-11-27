@@ -2,7 +2,7 @@ import { ok, fail, requestId } from "../../lib/response";
 import { requireAuth } from "../../middleware/auth";
 import { createServiceClient } from "../../lib/supabase";
 import { getStorageBackend } from "../../lib/b2";
-import { syncPublishedCard, withdrawPublishedCard } from "./mine-publication";
+import { resetPublicationAfterImageChange, syncPublishedCard, withdrawPublishedCard } from "./mine-publication";
 
 import type { TrainersRouter } from "./types";
 
@@ -309,8 +309,22 @@ export function registerMineRoutes(trainers: TrainersRouter) {
         const { body, status } = fail("NOT_FOUND", "Препарат не найден", 404, rid);
         return c.json(body, status as 404);
       }
-      await syncPublishedCard(c, data as MineRow);
-      return c.json(ok({ item: mineCard(data as MineRow, null, null) }, rid));
+      let updated = data as MineRow;
+      // Новый снимок — новое содержание: старый одобренный кадр больше не
+      // соответствует карточке, поэтому публикация снимается и нужна проверка.
+      if ((patch.file_id !== undefined || patch.image_url !== undefined) && updated.published_card_id) {
+        await resetPublicationAfterImageChange(c, updated);
+        const { data: fresh } = await supabase
+          .from("user_preparations")
+          .select(FIELDS)
+          .eq("id", String(updated.id))
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (fresh) updated = fresh as MineRow;
+      } else {
+        await syncPublishedCard(c, updated);
+      }
+      return c.json(ok({ item: mineCard(updated, null, null) }, rid));
     } catch (error) {
       console.error("[trainers:mine:update]", error);
       const { body, status } = fail("DB_UNAVAILABLE", "Не удалось сохранить изменения", 503, rid);

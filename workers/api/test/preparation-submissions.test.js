@@ -44,12 +44,18 @@ test("с методичкой одобренная карточка станов
 
   const mine = await source("../src/routes/trainers/04-mine.ts");
   // Правка доводится до атласа, удаление снимает публикацию.
-  assert.match(mine, /syncPublishedCard\(c, data as MineRow\)/);
+  assert.match(mine, /syncPublishedCard\(c, updated\)/);
   assert.match(mine, /withdrawPublishedCard\(c, publishedCardId\)/);
 
   const publication = await source("../src/routes/trainers/mine-publication.ts");
   assert.match(publication, /is_published: false, is_archived: true/);
   assert.match(publication, /name: row\.name/);
+
+  // Замена снимка после одобрения снимает публикацию: атлас показывает
+  // проверенный кадр, а не автоматически новый.
+  assert.match(mine, /resetPublicationAfterImageChange\(c, updated\)/);
+  assert.match(publication, /export async function resetPublicationAfterImageChange/);
+  assert.match(publication, /submission_status: "draft"/);
 });
 
 test("health показывает, настроено ли хранилище снимков", async () => {

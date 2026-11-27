@@ -122,7 +122,14 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
     setEditId(null);
     if (fileRef.current) fileRef.current.value = "";
     setFormOpen(false);
-    setNotice(editId ? "Изменения сохранены." : "Препарат сохранён — он ниже, в вашем списке.");
+    const status = (result.data as { item?: { submission_status?: MyPreparationStatus } }).item?.submission_status;
+    setNotice(
+      editId
+        ? status === "draft"
+          ? "Изменения сохранены. Новый снимок нужно снова отправить в атлас."
+          : "Изменения сохранены."
+        : "Препарат сохранён — он ниже, в вашем списке.",
+    );
     await load();
   }
 
