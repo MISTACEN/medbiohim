@@ -6,6 +6,7 @@ import {
   pickImageCard,
   type GuideRow,
 } from "../../../workers/api/src/routes/diagnosticum/model";
+import { modeForParts } from "../../../workers/api/src/routes/diagnosticum/parts";
 import {
   gradeAnswer,
   hintFor,
@@ -309,8 +310,24 @@ describe("hintFor", () => {
   });
 });
 
-describe("электронограммы", () => {
-  const emCards = ["Апоптоз", "Митохондрии", "Ресничка", "Сперматозоид"].map((name, index) => ({
+describe("оси задания вместо режима", () => {
+  it("сводит выбранные оси к существующим режимам сборки", () => {
+    expect(modeForParts(["preparation"])).toBe("identify");
+    expect(modeForParts(["structures"])).toBe("structures");
+    expect(modeForParts(["preparation", "statements"])).toBe("schema");
+    expect(modeForParts(["preparation", "structures", "statements"])).toBe("complex");
+    expect(modeForParts(["differential"])).toBe("differential");
+  });
+
+  it("неизвестный или пустой набор не превращается в задание", () => {
+    expect(modeForParts([])).toBeNull();
+    expect(modeForParts(["bogus"])).toBeNull();
+    expect(modeForParts(["structures", "statements"])).toBeNull();
+    expect(modeForParts(undefined)).toBeNull();
+  });
+});
+
+describe("электронограммы", () => {  const emCards = ["Апоптоз", "Митохондрии", "Ресничка", "Сперматозоид"].map((name, index) => ({
     id: `em-card-${index}`,
     mode_set: "electronogram",
     preparation: { name, imagePath: `em/${index}.jpg` },

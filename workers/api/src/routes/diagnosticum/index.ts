@@ -29,6 +29,8 @@ import { MODE_LABELS, isConstraintViolation, isMissingTable, loadBank } from "./
 import { FIRST_DIAGNOSTICUM, isSetSection, setGuides } from "./sets";
 import session from "./session";
 import sessions from "./sessions";
+import sessionsList from "./sessions-list";
+import { modeForParts } from "./sessions-model";
 
 const diagnosticum = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -99,10 +101,24 @@ diagnosticum.get("/", requireAuth, async (c) => {
 diagnosticum.post("/start", requireAuth, async (c) => {
   const rid = requestId();
   const body = (await c.req.json().catch(() => null)) as
-    | { mode?: unknown; section?: unknown }
+    | { mode?: unknown; section?: unknown; parts?: unknown }
     | null;
 
-  if (!isMode(body?.mode)) {
+  // Оси вместо режима: UI отмечает «препарат / структуры / утверждения», сервер
+  // сводит их к той же сборке (`identify`/`structures`/`schema`/`complex`).
+  const modeFromParts = body?.parts === undefined ? null : modeForParts(body.parts);
+  if (body?.parts !== undefined && !modeFromParts) {
+    const { body: errorBody, status } = fail(
+      "VALIDATION_ERROR",
+      "Неизвестный набор осей задания",
+      422,
+      rid,
+    );
+    return c.json(errorBody, status as 422);
+  }
+  const mode = modeFromParts ?? body?.mode;
+
+  if (!isMode(mode)) {
     const { body: errorBody, status } = fail(
       "VALIDATION_ERROR",
       "Неизвестный режим диагностикума",
@@ -137,7 +153,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
 
   // Электронограммы — отдельный банк без методичек, поэтому раздел препаратов
   // к ним не применяется.
-  if (body.mode === "electronogram") {
+  if (mode === "electronogram") {
     const em = buildElectronogramQuestion(bank.cards);
     if (!em) {
       const { body: errorBody, status } = fail(
@@ -155,7 +171,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
       .from("diagnosticum_attempts")
       .insert({
         user_id: user.id,
-        mode: body.mode,
+        mode,
         section: em.section,
         guide_key: em.guideKey,
         card_id: em.question.image_card_id,
@@ -194,7 +210,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
       ok(
         {
           attempt_id: insert.data?.id,
-          mode: body.mode,
+          mode,
           section: em.section,
           question: em.question,
           hints_total: MAX_HINTS,
@@ -223,7 +239,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
       guide,
       guides: bank.guides,
       cards: bank.cards,
-      mode: body.mode,
+      mode,
       structureTitles: bank.structureTitles,
     });
     if (result) {
@@ -255,7 +271,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
     .from("diagnosticum_attempts")
     .insert({
       user_id: user.id,
-      mode: body.mode,
+      mode,
       section: built.section,
       guide_key: built.guideKey,
       card_id: built.question.image_card_id,
@@ -293,7 +309,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
     ok(
       {
         attempt_id: insert.data?.id,
-        mode: body.mode,
+        mode,
         section: built.section,
         question: built.question,
         hints_total: MAX_HINTS,
@@ -307,6 +323,7 @@ diagnosticum.post("/start", requireAuth, async (c) => {
 
 // Серии монтируются раньше одиночных маршрутов: пути `/sessions*` не должны
 // перехватываться обработчиками попыток.
+diagnosticum.route("/", sessionsList);
 diagnosticum.route("/", sessions);
 diagnosticum.route("/", session);
 

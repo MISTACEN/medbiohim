@@ -42,6 +42,9 @@ export function isMode(value: unknown): value is DiagnosticumMode {
   return typeof value === "string" && (DIAGNOSTICUM_MODES as string[]).includes(value);
 }
 
+// Оси задания живут в чистом `parts.ts`; реэкспорт — чтобы соседи не меняли импорты.
+export { PART_IDS, modeForParts, type PartId } from "./parts";
+
 /**
  * Собирает серию из банка: один препарат — один вопрос, без повторов.
  *

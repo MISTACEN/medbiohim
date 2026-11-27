@@ -23,6 +23,7 @@ import {
   buildSeries,
   isMode,
   loadOwnedSession,
+  modeForParts,
   reviewOf,
 } from "./sessions-model";
 
@@ -39,10 +40,21 @@ sessions.post("/sessions", requireAuth, async (c) => {
         timer_sec?: unknown;
         /** «Своя серия»: конкретные карточки банка, выбранные студентом. */
         card_ids?: unknown;
+        /** Оси задания вместо режима: препарат / структуры / утверждения. */
+        parts?: unknown;
       }
     | null;
 
-  if (!isMode(body?.mode)) {
+  // Оси сводятся к тому же режиму сборки, что и раньше: старые попытки и
+  // статистика не меняются, а UI больше не заставляет выбирать «режим».
+  const modeFromParts = body?.parts === undefined ? null : modeForParts(body.parts);
+  if (body?.parts !== undefined && !modeFromParts) {
+    const { body: errorBody, status } = fail("VALIDATION_ERROR", "Неизвестный набор осей задания", 422, rid);
+    return c.json(errorBody, status as 422);
+  }
+  const mode = modeFromParts ?? body?.mode;
+
+  if (!isMode(mode)) {
     const { body: errorBody, status } = fail("VALIDATION_ERROR", "Неизвестный режим диагностикума", 422, rid);
     return c.json(errorBody, status as 422);
   }
@@ -104,8 +116,8 @@ sessions.post("/sessions", requireAuth, async (c) => {
   }
 
   const built = requestedCards.length
-    ? buildCardSeries(loaded.bank, requestedCards, body.mode)
-    : { items: buildSeries(loaded.bank, body.mode, section, requestedLength), missing: [] as string[] };
+    ? buildCardSeries(loaded.bank, requestedCards, mode)
+    : { items: buildSeries(loaded.bank, mode, section, requestedLength), missing: [] as string[] };
   // Часть выбранных карточек может быть недоступна: электронограмма, снимок без
   // методички, карточка снята с публикации. Серия собирается из остальных, а
   // пропуски отдаются клиенту (`missing`), чтобы он сказал об этом честно.
@@ -133,7 +145,7 @@ sessions.post("/sessions", requireAuth, async (c) => {
     .from("diagnosticum_sessions")
     .insert({
       user_id: user.id,
-      mode: body.mode,
+      mode: mode,
       section: effectiveSection,
       session_length: items.length,
       timer_sec: timerSec,
@@ -160,7 +172,7 @@ sessions.post("/sessions", requireAuth, async (c) => {
   const sessionId = String(created.data.id);
   const rows = items.map((item, index) => ({
     user_id: user.id,
-    mode: body.mode,
+    mode: mode,
     section: item.section,
     guide_key: item.guideKey,
     card_id: item.question.image_card_id,
@@ -194,7 +206,7 @@ sessions.post("/sessions", requireAuth, async (c) => {
     ok(
       {
         session_id: sessionId,
-        mode: body.mode,
+        mode: mode,
         section: effectiveSection,
         timer_sec: timerSec,
         status: "in_progress",
