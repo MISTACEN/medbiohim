@@ -21,6 +21,50 @@ type StatsRow = {
   hints_used: number | null;
 };
 
+type LegacyRow = {
+  status: string | null;
+  score: number | null;
+  total_questions: number | null;
+  content_type: string | null;
+};
+
+/**
+ * Сводка по старым тренировкам карточного движка (`trainings`).
+ *
+ * Отдельный блок: там процент по карточкам, здесь балл разбора. Складывать их в
+ * один средний — значит показывать неправду. Ошибка чтения не ломает основную
+ * статистику: блок просто помечается недоступным.
+ */
+async function legacySummary(c: Context<{ Bindings: Env; Variables: AuthVariables }>) {
+  const { data, error } = await c
+    .get("supabase")
+    .from("trainings")
+    .select("status,score,total_questions,content_type")
+    .eq("user_id", c.get("user").id)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    if (!isMissingTable(error as SupabaseError)) {
+      console.warn("[diagnosticum:stats:legacy]", error.message);
+    }
+    return { available: false, total: 0, completed: 0, avg_percent: 0 };
+  }
+
+  const rows = (data || []) as LegacyRow[];
+  const completed = rows.filter((row) => String(row.status) === "completed");
+  const percents = completed.map((row) => {
+    const total = Number(row.total_questions || 0);
+    const score = Number(row.score || 0);
+    return total > 0 ? Math.round((score / total) * 100) : Math.round(score);
+  });
+  const avgPercent = percents.length
+    ? Math.round(percents.reduce((sum, value) => sum + value, 0) / percents.length)
+    : 0;
+
+  return { available: true, total: rows.length, completed: completed.length, avg_percent: avgPercent };
+}
+
 export async function stats(c: Context<{ Bindings: Env; Variables: AuthVariables }>) {
   const rid = requestId();
   const { data, error } = await c
@@ -75,6 +119,11 @@ export async function stats(c: Context<{ Bindings: Env; Variables: AuthVariables
     .slice(0, 3)
     .map((entry) => entry.section);
 
+  // Старые тренировки карточного движка: отдельный блок, а не общий счётчик.
+  // Смешивать две разные шкалы (процент карточек и балл разбора) нельзя,
+  // поэтому «ранние» показываем отдельно и честно называем источник.
+  const legacy = await legacySummary(c);
+
   return c.json(
     ok(
       {
@@ -90,6 +139,8 @@ export async function stats(c: Context<{ Bindings: Env; Variables: AuthVariables
         })),
         by_section: sections,
         weak_sections: weakSections,
+        // Ранние тренировки карточного движка: свои числа, своя шкала.
+        legacy,
       },
       rid,
     ),

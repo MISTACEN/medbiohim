@@ -108,3 +108,32 @@ test("серии смонтированы в диагностикум и дос�
   assert.match(panel, /Разбор серии/);
   assert.match(panel, /review\?\.|review\.items/);
 });
+
+test("история серий: список своих серий и слияние со старым движком", async () => {
+  const list = await source("../src/routes/diagnosticum/sessions-list.ts");
+  assert.match(list, /list\.get\("\/sessions"/);
+  assert.match(list, /\.eq\("user_id", c\.get\("user"\)\.id\)/);
+  assert.match(list, /order\("created_at", \{ ascending: false \}\)/);
+  assert.match(list, /migrated: false/);
+
+  const index = await source("../src/routes/diagnosticum/index.ts");
+  // Список монтируется раньше серии, иначе GET /sessions перехватит /:id.
+  assert.ok(index.indexOf('diagnosticum.route("/", sessionsList)') < index.indexOf('diagnosticum.route("/", sessions)'));
+
+  const stats = await source("../src/routes/diagnosticum/session-stats.ts");
+  assert.match(stats, /async function legacySummary/);
+  assert.match(stats, /from\("trainings"\)/);
+  assert.match(stats, /legacy,/);
+});
+
+test("оси задания вместо режима: старт и серия принимают parts", async () => {
+  const index = await source("../src/routes/diagnosticum/index.ts");
+  assert.match(index, /modeForParts\(body\.parts\)/);
+
+  const sessions = await source("../src/routes/diagnosticum/sessions.ts");
+  assert.match(sessions, /modeForParts\(body\.parts\)/);
+
+  const parts = await source("../src/routes/diagnosticum/parts.ts");
+  assert.match(parts, /export function modeForParts/);
+  assert.match(parts, /export const PART_IDS/);
+});

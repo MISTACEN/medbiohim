@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Menu, Microscope } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Menu, Microscope } from "lucide-react";
 import { getAccountSettings } from "@/lib/settings-api";
 import {
   answerTrainingQuestion, cancelTraining, completeTraining, createHistologyTraining,
@@ -12,8 +12,9 @@ import {
 } from "@/lib/content-api";
 import { compareLessons, isElectronogramCard, lessonKeyOf } from "@/lib/histologyOrder";
 import { HistologyQuestionCard } from "@/components/trainers/HistologyQuestionCard";
-import { topicLabel, ImageBox, Dots, historyLabel } from "@/components/trainers/HistologyTrainerParts";
+import { topicLabel, ImageBox, Dots } from "@/components/trainers/HistologyTrainerParts";
 import { HistologyAtlas } from "@/components/trainers/HistologyAtlas";
+import { TrainerHistory } from "@/components/trainers/TrainerHistory";
 import { HistologyTrainerFilters } from "@/components/trainers/HistologyTrainerFilters";
 import { DiagnosticumRunner } from "@/components/trainers/DiagnosticumRunner";
 import { groupAtlasCards, guideForCard, indexGuides, type PreparationGuide } from "@/lib/histologyAtlas";
@@ -69,7 +70,6 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
   const [allQuestions, setAllQuestions] = useState(false);
   const [labelMode, setLabelMode] = useState<TrainingLabelMode>("without");
   const [layout, setLayout] = useState<TrainingLayout>("top");
-  const [historyExpanded, setHistoryExpanded] = useState(false);
   // Атлас и тренажёр — два режима одного экрана. Внутри тренажёра больше нет
   // «форматов»: диагностикум и тренировка по карточкам живут на одном экране,
   // разделять их переключателем значит заставлять выбирать до начала работы.
@@ -282,9 +282,6 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
     [feedItems, contentType],
   );
 
-  const visibleSessions = historyExpanded ? sessions : sessions.slice(0, 4);
-  const hasMoreHistory = sessions.length > 4;
-
   // Гид для карточки: ключ методички берём из того же индекса, что и атлас.
   const guideKeyFor = (a: AnswerRow): string | null => {
     if (!guideIndex) return null;
@@ -406,30 +403,12 @@ function HistologyTrainerInner({ embedded = false }: { embedded?: boolean }) {
               />
             )}
 
-            {sessions.length > 0 && (
-              <details className="card p-4 sm:p-5">
-                <summary className="cursor-pointer text-sm font-bold text-slate-800">
-                  История тренировок · {sessions.length}
-                </summary>
-                <div className="mt-3 space-y-2">
-                  {visibleSessions.map((t) => (
-                    <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
-                      <span>{historyLabel(t)} · {t.content_type || "all"} · {t.answered_count || 0}/{t.total_questions || t.question_count}</span>
-                      <div className="flex gap-2">
-                        {t.status === "in_progress" && <button type="button" onClick={() => void loadSession(t.id)} className="rounded-lg border px-2 py-1">Продолжить</button>}
-                        {t.status === "completed" && <button type="button" onClick={() => void loadSession(t.id, true)} className="rounded-lg border px-2 py-1">Разбор</button>}
-                        {t.status === "in_progress" && <button type="button" onClick={() => void restart(t.id)} className="rounded-lg border px-2 py-1 text-[var(--status-critical-fg)]">Отменить</button>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {hasMoreHistory && (
-                  <button type="button" onClick={() => setHistoryExpanded(!historyExpanded)} className="mt-2 text-sm text-indigo-600">
-                    {historyExpanded ? "Свернуть" : "Показать ещё"} <ChevronDown className="inline h-4 w-4" />
-                  </button>
-                )}
-              </details>
-            )}
+            <TrainerHistory
+              sessions={sessions}
+              onResume={(id) => void loadSession(id)}
+              onReview={(id) => void loadSession(id, true)}
+              onCancel={(id) => void restart(id)}
+            />
         </div>
 
       </div>

@@ -107,6 +107,23 @@ export type DiagnosticumStats = {
   by_mode: { mode: string; title: string; total: number; correct: number; correct_rate: number }[];
   by_section: { section: string; total: number; correct: number; correct_rate: number }[];
   weak_sections: string[];
+  /** Старый карточный движок: отдельная шкала, отдельный блок. */
+  legacy?: { available: boolean; total: number; completed: number; avg_percent: number };
+};
+
+/** Короткая карточка серии для истории. */
+export type DiagnosticumSessionSummary = {
+  session_id: string;
+  mode: DiagnosticumMode;
+  title: string;
+  section: string;
+  status: "in_progress" | "finished" | "abandoned";
+  total: number;
+  score: number | null;
+  correct_count: number | null;
+  timer_sec: number | null;
+  created_at: string | null;
+  finished_at: string | null;
 };
 
 export function getDiagnosticumOverview() {
@@ -209,6 +226,13 @@ export function startDiagnosticumSession(input: {
 
 export function getDiagnosticumSession(sessionId: string) {
   return api<DiagnosticumSession>(endpoints.diagnosticum.session(sessionId));
+}
+
+/** Свои серии: список для «Истории» (новые сверху). */
+export function getDiagnosticumSessions() {
+  return api<{ items: DiagnosticumSessionSummary[]; total: number; migrated?: boolean }>(
+    endpoints.diagnosticum.sessions(),
+  );
 }
 
 export function finishDiagnosticumSession(sessionId: string) {

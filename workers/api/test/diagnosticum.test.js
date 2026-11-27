@@ -211,7 +211,9 @@ test("диагностикум: электронограммы идут отде
   assert.ok(model.includes("em:${"), "попытки ЭМ помечены префиксом");
 
   const route = await read(ROUTE);
-  assert.ok(route.includes('body.mode === "electronogram"'), "старт ЭМ не зависит от раздела препаратов");
+  // Режим вычисляется из тела (mode или оси → modeForParts), но ЭМ всё так же
+  // не зависит от раздела препаратов.
+  assert.ok(route.includes('mode === "electronogram"'), "старт ЭМ не зависит от раздела препаратов");
   assert.ok(route.includes("buildElectronogramQuestion(bank.cards)"), "вопрос ЭМ строится по карточкам");
 
   const session = await read(SESSION);
