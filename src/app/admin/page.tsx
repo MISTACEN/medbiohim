@@ -19,6 +19,7 @@ const COUNT_LABELS: Record<string, string> = {
   announcements: "Объявления",
   schedule: "Занятия в расписании",
   curriculum: "Учебный план",
+  atlas_submissions: "Заявки в атлас на проверке",
 };
 
 /** Плитки сводки без повторов, если оба бэкенда вернули один и тот же показатель. */

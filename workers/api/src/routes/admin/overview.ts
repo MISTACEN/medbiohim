@@ -1,5 +1,6 @@
 import { requireAuth } from "../../middleware/auth";
 import { ok, requestId } from "../../lib/response";
+import { createServiceClient } from "../../lib/supabase";
 import { STRICT_ADMINS, error, gate, type AdminApp } from "./shared";
 
 /**
@@ -38,9 +39,19 @@ export function registerOverview(admin: AdminApp) {
         questions: questions.count || 0,
         schedule: scheduleEntries.count || 0,
         announcements: Array.isArray(announcementPayload) ? announcementPayload.length : 0,
+        atlas_submissions: 0,
       };
+      // Очередь «Свои препараты → атлас» — best effort: у `user_preparations`
+      // RLS по владельцу, поэтому счётчик читается service-ключом.
+      const service = createServiceClient(c.env);
+      const pendingSubmissions = service
+        ? await service.from("user_preparations").select("id", { count: "exact", head: true }).eq("submission_status", "pending")
+        : null;
+      if (pendingSubmissions?.error) console.warn("[admin:overview:submissions]", pendingSubmissions.error.message);
+      counts.atlas_submissions = pendingSubmissions?.count || 0;
+
       // Дополнительные счётчики — best effort: из-за них сводка не должна падать.
-      const partial = Boolean(scheduleEntries.error || announcements.error || site.error);
+      const partial = Boolean(scheduleEntries.error || announcements.error || site.error || pendingSubmissions?.error);
       return c.json(ok({ site: site.data?.payload || {}, counts, source: "supabase", partial }, rid));
     } catch (dbError) { console.error("[admin]", dbError); return error(c, rid, 503, "DB_UNAVAILABLE", "Центр управления временно недоступен"); }
   });

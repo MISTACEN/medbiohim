@@ -52,6 +52,14 @@ test("с методичкой одобренная карточка станов
   assert.match(publication, /name: row\.name/);
 });
 
+test("очередь заявок видна в сводке админки", async () => {
+  const overview = await source("../src/routes/admin/overview.ts");
+  // user_preparations под RLS владельца: без service-ключа счётчик был бы нулём.
+  assert.match(overview, /createServiceClient/);
+  assert.match(overview, /\.eq\("submission_status", "pending"\)/);
+  assert.match(overview, /counts\.atlas_submissions =/);
+});
+
 test("статус модерации не подделывается из клиента", async () => {
   const migration = await source(
     "../../../database/migrations/20261127140000_user_preparation_submissions.sql",
