@@ -39,12 +39,35 @@ export function aiGradingEnabled(env: AiEnv): boolean {
 const SYSTEM = [
   "Ты проверяешь ответ студента по гистологии.",
   "Тебе дают эталонное название препарата (или структуры) и ответ студента.",
-  "Задача: решить, называет ли студент ТОТ ЖЕ объект, пусть другими словами.",
-  "Правила: другой препарат, другая ткань или пустой ответ — incorrect;",
-  "тот же объект с иной формулировкой/опечаткой/порядком слов — correct;",
-  "сомневаешься — unsure и confidence ниже 0.6.",
-  'Ответь строго JSON без текста вокруг: {"verdict":"correct|partial|incorrect|unsure","confidence":0.0,"reason":"кратко по-русски"}',
+  "Реши, называют ли они ОДИН И ТОТ ЖЕ объект.",
+  "Ответь одним словом, без пояснений и без кавычек:",
+  "ДА — тот же объект, пусть другими словами, с опечаткой или иным порядком слов;",
+  "НЕТ — другой препарат, другая ткань или пустой ответ;",
+  "НЕЗНАЮ — если сомневаешься.",
 ].join(" ");
+
+/** Маленькие модели надёжнее отвечают одним словом, чем JSON: сначала слово. */
+function parseVerdict(raw: string): AiTextGrade | null {
+  const asJson = parseJson(raw);
+  if (asJson) return asJson;
+  const word = String(raw || "")
+    .toUpperCase()
+    .replace(/[^А-ЯЁA-Z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!word) return null;
+  // Границы слов: `\b` не работает для кириллицы (в JS \w — только латиница).
+  if (/^ДА(?![А-ЯЁ])|^YES(?![A-Z])/.test(word)) {
+    return { verdict: "correct", confidence: 0.8, reason: "ИИ: тот же объект другими словами" };
+  }
+  if (/^НЕ\s*ЗНА/.test(word) || /^UNSURE(?![A-Z])/.test(word)) {
+    return { verdict: "unsure", confidence: 0.5, reason: "ИИ: нужна ручная проверка" };
+  }
+  if (/^НЕТ(?![А-ЯЁ])|^NO(?![A-Z])/.test(word)) {
+    return { verdict: "incorrect", confidence: 0.8, reason: "ИИ: назван другой объект" };
+  }
+  return null;
+}
 
 function parseJson(raw: string): AiTextGrade | null {
   const cleaned = String(raw || "").replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -87,7 +110,7 @@ async function viaWorkersAi(input: { answer: string; target: string; prompt: str
         { role: "user", content: userPrompt(input) },
       ],
       temperature: 0,
-      max_tokens: 200,
+      max_tokens: 16,
       stream: false,
     });
     const timeout = new Promise<never>((_, reject) =>
@@ -98,7 +121,7 @@ async function viaWorkersAi(input: { answer: string; target: string; prompt: str
       | { response?: string }
       | null;
     const content = typeof response === "string" ? response : String(response?.response || "");
-    return parseJson(content);
+    return parseVerdict(content);
   } catch {
     return null;
   }
@@ -116,7 +139,7 @@ async function viaGemini(input: { answer: string; target: string; prompt: string
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         contents: [{ role: "user", parts: [{ text: userPrompt(input) }] }],
-        generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 200 },
+        generationConfig: { temperature: 0, maxOutputTokens: 16 },
       }),
       timeoutMs: 8000,
     });
@@ -125,7 +148,7 @@ async function viaGemini(input: { answer: string; target: string; prompt: string
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
     const text = payload.candidates?.[0]?.content?.parts?.map((part) => String(part.text || "")).join("") || "";
-    return parseJson(text);
+    return parseVerdict(text);
   } catch {
     return null;
   }
