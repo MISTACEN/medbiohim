@@ -111,6 +111,18 @@ function userPrompt(input: { answer: string; target: string; prompt: string }): 
   return [`Задание: ${input.prompt}`, `Эталон: ${input.target}`, `Ответ студента: ${input.answer}`].join("\n");
 }
 
+/**
+ * Кандидаты моделей: Cloudflare выводит старые из эксплуатации (например,
+ * `llama-3.1-8b-instruct-fp8` отключён 2026-11-20), а `CLOUDFLARE_AI_MODEL`
+ * в проде может остаться прежним. Пробуем по порядку и берём первый живой.
+ */
+const WORKERS_AI_MODELS = [
+  "@cf/meta/llama-3.1-8b-instruct",
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  "@cf/meta/llama-4-scout-17b-16e-instruct",
+  "@cf/meta/llama-3.2-3b-instruct",
+];
+
 async function viaWorkersAi(input: {
   answer: string;
   target: string;
@@ -123,45 +135,43 @@ async function viaWorkersAi(input: {
   if (!ai || typeof ai.run !== "function") {
     return { grade: null, debug: { provider: "none", ok: false, error: "AI binding missing" } };
   }
-  const model = String(input.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct-fp8").trim();
-  try {
-    const request = ai.run(model, {
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: userPrompt(input) },
-      ],
-      temperature: 0,
-      max_tokens: 32,
-      stream: false,
-    });
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("timeout")), 8000),
-    );
-    const response = (await Promise.race([request, timeout])) as
-      | string
-      | { response?: string }
-      | null;
-    const content = typeof response === "string" ? response : String(response?.response || "");
-    const grade = parseVerdict(content);
-    return {
-      grade,
-      debug: {
-        provider: "workers-ai",
-        ok: Boolean(grade),
-        raw: content.slice(0, 160),
-        ...(grade ? {} : { error: "unparsed" }),
-      },
-    };
-  } catch (error) {
-    return {
-      grade: null,
-      debug: {
-        provider: "workers-ai",
-        ok: false,
-        error: error instanceof Error ? error.message.slice(0, 120) : "run failed",
-      },
-    };
+  const configured = String(input.env.CLOUDFLARE_AI_MODEL || "").trim();
+  const models = [configured, ...WORKERS_AI_MODELS].filter(
+    (model, index, all) => Boolean(model) && all.indexOf(model) === index,
+  );
+  let lastError = "run failed";
+  for (const model of models) {
+    try {
+      const request = ai.run(model, {
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: userPrompt(input) },
+        ],
+        temperature: 0,
+        max_tokens: 32,
+        stream: false,
+      });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 8000),
+      );
+      const response = (await Promise.race([request, timeout])) as
+        | string
+        | { response?: string }
+        | null;
+      const content = typeof response === "string" ? response : String(response?.response || "");
+      const grade = parseVerdict(content);
+      if (grade) {
+        return {
+          grade,
+          debug: { provider: "workers-ai", ok: true, raw: `${model}: ${content.slice(0, 120)}` },
+        };
+      }
+      lastError = `unparsed (${model})`;
+    } catch (error) {
+      lastError = `${model}: ${error instanceof Error ? error.message.slice(0, 100) : "run failed"}`;
+    }
   }
+  return { grade: null, debug: { provider: "workers-ai", ok: false, error: lastError.slice(0, 180) } };
 }
 
 async function viaGemini(input: {
