@@ -1,4 +1,4 @@
-﻿# Расхождение ledger миграций Supabase (диагностика 2026-11-28)
+# Расхождение ledger миграций Supabase (диагностика 2026-11-28)
 
 Проверка `Supabase Preview` в CI падает с «Remote migration versions not found in
 local migrations directory». Это не ошибка кода: разошлись записи о применённых
@@ -43,3 +43,22 @@ local migrations directory». Это не ошибка кода: разошли�
 
 Скрипт только читает: `node scripts/check-migration-ledger.mjs` (нужен `pg` и
 `DB_URL` в `.env.local`; пароль не печатается).
+
+## Выполнено 2026-11-28: repair
+
+`node scripts/repair-migration-ledger.mjs --apply` — 58 локальных файлов
+отмечены применёнными (только строки ledger: `version`, `name`; DDL не
+выполнялся). Перед записью снят бэкап прежнего ledger — `data/ledger-backup.json`.
+Транзакция + `ON CONFLICT DO NOTHING`: повторный запуск безопасен, откат —
+удалить эти версии или восстановить строки из бэкапа.
+
+Проверка после записи:
+
+```
+remote: 228, local: 228, remote_only: 0, local_only: 0
+```
+
+То есть обе стороны сошлись ровно; жёсткая ошибка Supabase Preview
+(«Remote migration versions not found in local migrations directory») больше
+не воспроизводится.
+

@@ -1,0 +1,685 @@
+{
+  "saved_at": "2026-11-27T18:26:34.886Z",
+  "rows": [
+    {
+      "version": "20260912025932",
+      "name": "production_schema_reconcile_v14"
+    },
+    {
+      "version": "20260912113847",
+      "name": "temporary_legacy_import_rpc"
+    },
+    {
+      "version": "20260912122034",
+      "name": "legacy_content_offerings_batch_01"
+    },
+    {
+      "version": "20260912122049",
+      "name": "legacy_question_banks_physiology"
+    },
+    {
+      "version": "20260912122105",
+      "name": "legacy_question_bank_math"
+    },
+    {
+      "version": "20260912122217",
+      "name": "legacy_question_bank_biology"
+    },
+    {
+      "version": "20260912122305",
+      "name": "legacy_tickets_batch_01"
+    },
+    {
+      "version": "20260912122319",
+      "name": "legacy_tickets_batch_02"
+    },
+    {
+      "version": "20260912122332",
+      "name": "legacy_tickets_batch_03"
+    },
+    {
+      "version": "20260912122351",
+      "name": "legacy_tickets_batch_04"
+    },
+    {
+      "version": "20260912122407",
+      "name": "legacy_site_content_home"
+    },
+    {
+      "version": "20260912135303",
+      "name": "isolate_legacy_schema_before_clean_rebuild"
+    },
+    {
+      "version": "20260912135321",
+      "name": "create_clean_student_schema"
+    },
+    {
+      "version": "20260912135335",
+      "name": "secure_clean_rls_helpers"
+    },
+    {
+      "version": "20260912135342",
+      "name": "delete_legacy_application_schema"
+    },
+    {
+      "version": "20260912135350",
+      "name": "remove_unused_legacy_types"
+    },
+    {
+      "version": "20260912135404",
+      "name": "revoke_public_execute_on_rls_helpers"
+    },
+    {
+      "version": "20260912140406",
+      "name": "student_auth_groups_rls"
+    },
+    {
+      "version": "20260912141149",
+      "name": "student_learning_platform_rls"
+    },
+    {
+      "version": "20260912141245",
+      "name": "student_auth_groups_profile_rls"
+    },
+    {
+      "version": "20260912141249",
+      "name": "student_auth_profile_group_policies"
+    },
+    {
+      "version": "20260912141326",
+      "name": "student_workspace_workflow_rls"
+    },
+    {
+      "version": "20260913071211",
+      "name": "medbiohim_auth_roles_schema_reconcile"
+    },
+    {
+      "version": "20260913071226",
+      "name": "medbiohim_demo_groups_subjects"
+    },
+    {
+      "version": "20260913071236",
+      "name": "medbiohim_demo_modules_topics"
+    },
+    {
+      "version": "20260916150829",
+      "name": "schedule_early_start_metadata_2026_09_17"
+    },
+    {
+      "version": "20261005094058",
+      "name": "allow_sequential_preparation_mode_20261005"
+    },
+    {
+      "version": "20260915072951",
+      "name": "p0_homework_subjects_compatibility"
+    },
+    {
+      "version": "20260915074926",
+      "name": "schedule_indexes_20260915"
+    },
+    {
+      "version": "20260915110543",
+      "name": "add_user_course_number"
+    },
+    {
+      "version": "20260915110654",
+      "name": "seed_curriculum_semesters_1_4_v2"
+    },
+    {
+      "version": "20260915110757",
+      "name": "seed_curriculum_semesters_5_12"
+    },
+    {
+      "version": "20260915123510",
+      "name": "seed_course2_autumn_schedule_compact"
+    },
+    {
+      "version": "20260915124505",
+      "name": "add_group_memberships_is_active"
+    },
+    {
+      "version": "20260915131055",
+      "name": "community_posts_2026_09_15_reconcile"
+    },
+    {
+      "version": "20260916132248",
+      "name": "production_schedule_exam_questions_rls_v2"
+    },
+    {
+      "version": "20260916143622",
+      "name": "add_user_academic_context"
+    },
+    {
+      "version": "20260916151016",
+      "name": "schedule_early_start_times_2026_09_17"
+    },
+    {
+      "version": "20260917140428",
+      "name": "runtime_contract_security_reconcile_20260918"
+    },
+    {
+      "version": "20260917140807",
+      "name": "rls_policy_and_rpc_hardening_20260918"
+    },
+    {
+      "version": "20260917140840",
+      "name": "homework_policy_action_split_20260918"
+    },
+    {
+      "version": "20260917140948",
+      "name": "rls_initplan_hardening_20260918"
+    },
+    {
+      "version": "20260922055535",
+      "name": "admin_content_audit_and_topic_test_tools"
+    },
+    {
+      "version": "20260922070525",
+      "name": "atomic_content_import"
+    },
+    {
+      "version": "20260922070804",
+      "name": "atomic_content_import_validation"
+    },
+    {
+      "version": "20260922080313",
+      "name": "20260922090000_preparation_mode"
+    },
+    {
+      "version": "20260930124016",
+      "name": "add_test_pack_order_index"
+    },
+    {
+      "version": "20260922082136",
+      "name": "question_reports_and_work_items"
+    },
+    {
+      "version": "20260922083234",
+      "name": "ai_chat_history"
+    },
+    {
+      "version": "20260922095359",
+      "name": "adaptive_academic_planning"
+    },
+    {
+      "version": "20260922100528",
+      "name": "auto_academic_state_sync"
+    },
+    {
+      "version": "20260922124707",
+      "name": "official_curriculum_gradebook_schema"
+    },
+    {
+      "version": "20260922233057",
+      "name": "telegram_homework_ingestion_20260923"
+    },
+    {
+      "version": "20260923004614",
+      "name": "telegram_ai_and_inline_attachments"
+    },
+    {
+      "version": "20260923004912",
+      "name": "telegram_media_groups"
+    },
+    {
+      "version": "20260923011259",
+      "name": "telegram_vision_metadata"
+    },
+    {
+      "version": "20261002130320",
+      "name": "20261002_tests_preparation_lookup_indexes"
+    },
+    {
+      "version": "20261007131326",
+      "name": "correct_file_storage_provider_default_20261007"
+    },
+    {
+      "version": "20260923122826",
+      "name": "20260923_content_integration_mbh_histology"
+    },
+    {
+      "version": "20260923125058",
+      "name": "20260923_content_sources_file_links"
+    },
+    {
+      "version": "20260923125707",
+      "name": "20260923_file_specialty_scope"
+    },
+    {
+      "version": "20260924003228",
+      "name": "add_histology_content_model"
+    },
+    {
+      "version": "20260924133425",
+      "name": "temp_histology_media_bootstrap_upload"
+    },
+    {
+      "version": "20260925043916",
+      "name": "20260925_histology_trainer_sources_and_resume_index"
+    },
+    {
+      "version": "20260930002125",
+      "name": "chemical_engine_beta"
+    },
+    {
+      "version": "20260930122750",
+      "name": "add_exam_questions_sort_order_for_ordered_banks"
+    },
+    {
+      "version": "20261002130339",
+      "name": "20261002_remove_duplicate_preparation_index"
+    },
+    {
+      "version": "20261002141741",
+      "name": "canonicalize_histology_subject"
+    },
+    {
+      "version": "20261002141811",
+      "name": "remove_duplicate_trainer_feed_subject_index"
+    },
+    {
+      "version": "20261004051736",
+      "name": "srs_cards_20261004"
+    },
+    {
+      "version": "20261004052505",
+      "name": "presence_online_20261004"
+    },
+    {
+      "version": "20261004142322",
+      "name": "student_planner_reconcile_20261005_v2"
+    },
+    {
+      "version": "20261005064209",
+      "name": "relink_archived_test_questions_20261005"
+    },
+    {
+      "version": "20261005064733",
+      "name": "harden_question_reports_and_trainer_rls_20261005"
+    },
+    {
+      "version": "20261005064750",
+      "name": "harden_admin_rls_initplan_20261005"
+    },
+    {
+      "version": "20261005094742",
+      "name": "reconstruct_histology_bird_blastula_source_20261005_v2"
+    },
+    {
+      "version": "20261005115746",
+      "name": "histology_current_semester_test_sources_20261005"
+    },
+    {
+      "version": "20261005115846",
+      "name": "histology_material_plan_links_20261005"
+    },
+    {
+      "version": "20261005120001",
+      "name": "histology_publish_dedup_canonical_20261005_v2"
+    },
+    {
+      "version": "20261006011052",
+      "name": "test_attempts_active_unique_20261006"
+    },
+    {
+      "version": "20261006012050",
+      "name": "20261006_test_context_and_answer_snapshots"
+    },
+    {
+      "version": "20261006012221",
+      "name": "20261006_preparation_question_snapshot"
+    },
+    {
+      "version": "20261006012349",
+      "name": "20261006_remove_duplicate_test_answer_index"
+    },
+    {
+      "version": "20261007131114",
+      "name": "file_storage_audit_foundation_20261007"
+    },
+    {
+      "version": "20261006095442",
+      "name": "smart_answer_grading"
+    },
+    {
+      "version": "20261006103437",
+      "name": "map_current_semester_questions_to_curriculum_topics_20261006"
+    },
+    {
+      "version": "20261006103531",
+      "name": "finish_curriculum_mapping_tests_20261006_v2"
+    },
+    {
+      "version": "20261006103615",
+      "name": "link_histology_topics_to_lesson_calendar_20261006"
+    },
+    {
+      "version": "20261006143038",
+      "name": "20261007_create_chemistry_master_catalog_v2"
+    },
+    {
+      "version": "20261006144644",
+      "name": "20261007_chemistry_two_methodicals_sources"
+    },
+    {
+      "version": "20261007035445",
+      "name": "secure_file_visibility_semantics"
+    },
+    {
+      "version": "20261007124936",
+      "name": "schedule_homework_context_attachments_20261007"
+    },
+    {
+      "version": "20261007132125",
+      "name": "file_variants_media_derivatives_foundation_20261007"
+    },
+    {
+      "version": "20261008022028",
+      "name": "20261008_reconcile_schedule_entries_current_session"
+    },
+    {
+      "version": "20261008023429",
+      "name": "launch_integrity_cleanup"
+    },
+    {
+      "version": "20261008090652",
+      "name": "histology_lecture_05_leukocyte_trainer"
+    },
+    {
+      "version": "20261008152510",
+      "name": "admin_db_connections"
+    },
+    {
+      "version": "20261008152535",
+      "name": "admin_db_connections_lockdown"
+    },
+    {
+      "version": "20261008152853",
+      "name": "seed_spaceweb_admin_db_connections"
+    },
+    {
+      "version": "20261008153906",
+      "name": "adjust_spaceweb_pgsql_sslmode"
+    },
+    {
+      "version": "20261012062330",
+      "name": "secure_test_attempt_rpc_20261012"
+    },
+    {
+      "version": "20261013002012",
+      "name": "secure_test_answer_review_20261013"
+    },
+    {
+      "version": "20261013141533",
+      "name": "expand_ai_chat_provider_check"
+    },
+    {
+      "version": "20261013171940",
+      "name": "create_user_preferences"
+    },
+    {
+      "version": "20261014144405",
+      "name": "secure_histology_training_lifecycle_rpc_20261015"
+    },
+    {
+      "version": "20261014145559",
+      "name": "persist_histology_training_score_20261015"
+    },
+    {
+      "version": "20261014150745",
+      "name": "secure_histology_training_lifecycle_reconcile_20261015"
+    },
+    {
+      "version": "20261014210042",
+      "name": "secure_histology_training_lifecycle"
+    },
+    {
+      "version": "20261014210629",
+      "name": "remove_duplicate_histology_training_rpc"
+    },
+    {
+      "version": "20261015113039",
+      "name": "admin_site_content_access"
+    },
+    {
+      "version": "20261015113044",
+      "name": "histology_training_active_unique"
+    },
+    {
+      "version": "20261015164454",
+      "name": "homework_student_member_scope"
+    },
+    {
+      "version": "20261015165138",
+      "name": "homework_attachments_atomic_rpc"
+    },
+    {
+      "version": "20261016075941",
+      "name": "grant_private_schema_usage_to_authenticated"
+    },
+    {
+      "version": "20261016160523",
+      "name": "admin_user_directory_rls"
+    },
+    {
+      "version": "20261016160602",
+      "name": "telegram_account_linking_rpc_20261017"
+    },
+    {
+      "version": "20261016163508",
+      "name": "restore_subject_content_20261017"
+    },
+    {
+      "version": "20261016163617",
+      "name": "restore_physiology_ticket_questions_20261017"
+    },
+    {
+      "version": "20261016163849",
+      "name": "restore_physiology_question_bank_20261017"
+    },
+    {
+      "version": "20261016205927",
+      "name": "restore_chemistry_kinetics_test_20261017"
+    },
+    {
+      "version": "20261016210300",
+      "name": "restore_full_histology_embryology_test_20261017"
+    },
+    {
+      "version": "20261016211426",
+      "name": "canonicalize_organic_chemistry_ticket_bank_20261017"
+    },
+    {
+      "version": "20261016212314",
+      "name": "restore_physiology_subject_plan_20261017"
+    },
+    {
+      "version": "20261016212352",
+      "name": "restore_histology_detailed_plan_20261017"
+    },
+    {
+      "version": "20261016220441",
+      "name": "student_subject_plan_rpc_20261017"
+    },
+    {
+      "version": "20261017005831",
+      "name": "files_upstash_blob_provider_20261017"
+    },
+    {
+      "version": "20261017132300",
+      "name": "restore_histology_preparation_catalog"
+    },
+    {
+      "version": "20261017132530",
+      "name": "restore_histology_preparation_catalog"
+    },
+    {
+      "version": "20261017133542",
+      "name": "restore_histology_preparation_catalog"
+    },
+    {
+      "version": "20261017133836",
+      "name": "publish_valid_histology_cyto_embryo_questions"
+    },
+    {
+      "version": "20261017134003",
+      "name": "restore_histology_cyto_embryo_answer_key"
+    },
+    {
+      "version": "20261017134108",
+      "name": "normalize_histology_closed_test_options"
+    },
+    {
+      "version": "20261017134125",
+      "name": "publish_histology_embryology_test"
+    },
+    {
+      "version": "20261017134212",
+      "name": "normalize_linked_histology_test_questions"
+    },
+    {
+      "version": "20261017134512",
+      "name": "link_histology_electronogram_source_docs"
+    },
+    {
+      "version": "20261017134813",
+      "name": "publish_valid_histology_cyto_embryo_questions"
+    },
+    {
+      "version": "20261018111312",
+      "name": "complete_histology_lecture_notes"
+    },
+    {
+      "version": "20261018111804",
+      "name": "add_histology_exam_study_outlines_batch_01"
+    },
+    {
+      "version": "20261018112012",
+      "name": "add_histology_exam_study_outlines_batch_02"
+    },
+    {
+      "version": "20261018112132",
+      "name": "add_histology_exam_study_outlines_batch_03"
+    },
+    {
+      "version": "20261018112254",
+      "name": "add_histology_exam_study_outlines_batch_04"
+    },
+    {
+      "version": "20261018112500",
+      "name": "add_histology_exam_study_outlines_batch_05"
+    },
+    {
+      "version": "20261018112708",
+      "name": "add_histology_exam_study_outlines_batch_06"
+    },
+    {
+      "version": "20261018112841",
+      "name": "add_histology_exam_study_outlines_batch_07"
+    },
+    {
+      "version": "20261018113004",
+      "name": "add_histology_exam_study_outlines_batch_08"
+    },
+    {
+      "version": "20261018113128",
+      "name": "add_histology_exam_study_outlines_batch_09"
+    },
+    {
+      "version": "20261018114312",
+      "name": "add_core_histology_study_notes"
+    },
+    {
+      "version": "20261018114450",
+      "name": "add_organ_system_histology_study_notes"
+    },
+    {
+      "version": "20261031000000",
+      "name": "workshop_and_governance"
+    },
+    {
+      "version": "20261104133836",
+      "name": "20261104_knowledge_pyramid"
+    },
+    {
+      "version": "20261104140959",
+      "name": "grant_trainer_feed_cards_safe_search_columns"
+    },
+    {
+      "version": "20261107111910",
+      "name": "grant_user_roles_dml_to_authenticated"
+    },
+    {
+      "version": "20261113161707",
+      "name": "20261114_sos_reports_category"
+    },
+    {
+      "version": "20261113163838",
+      "name": "20261114_card_packs"
+    },
+    {
+      "version": "20261115030456",
+      "name": "20261115_user_ai_configs"
+    },
+    {
+      "version": "20261115032408",
+      "name": "20261115_ai_call_log"
+    },
+    {
+      "version": "20261115034451",
+      "name": "20261115_study_plans"
+    },
+    {
+      "version": "20261115045603",
+      "name": "20261115_clean_em_urls"
+    },
+    {
+      "version": "20261115061028",
+      "name": "clean_em_urls_batch2"
+    },
+    {
+      "version": "20261115061150",
+      "name": "clean_em_urls_batch2_truncated_names"
+    },
+    {
+      "version": "20261115061252",
+      "name": "clean_em_urls_uzlovoj_truncated"
+    },
+    {
+      "version": "20261115082516",
+      "name": "ai_conversations_provider_expand"
+    },
+    {
+      "version": "20261115082530",
+      "name": "srs_fsrs_columns"
+    },
+    {
+      "version": "20261115125307",
+      "name": "questions_explanation_column"
+    },
+    {
+      "version": "20261116210049",
+      "name": "card_item_images"
+    },
+    {
+      "version": "20261117135103",
+      "name": "chemistry_alcohols_phenols_ethers_full_test_20261117"
+    },
+    {
+      "version": "20261121125131",
+      "name": "prep_guides_20261120_schema"
+    },
+    {
+      "version": "20261121125334",
+      "name": "diagnosticum_20261120"
+    },
+    {
+      "version": "20261121125355",
+      "name": "bridge_document_reads_20261120"
+    },
+    {
+      "version": "20261121140528",
+      "name": "diagnosticum_card_id_text_20261121"
+    }
+  ]
+}
