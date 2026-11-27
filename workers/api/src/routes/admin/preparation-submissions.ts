@@ -269,6 +269,25 @@ export function registerPreparationSubmissions(admin: AdminApp) {
       return error(c, rid, 503, "DB_UNAVAILABLE", "Не удалось сохранить решение по заявке");
     }
 
+    // Публикация видна и в Мастерской: один студенческий материал не должен
+    // жить в двух несвязанных списках. Связь — тег `atlas:<id>`: не нужна новая
+    // колонка, старые строки не ломаются.
+    const { error: workshopError } = await service.from("workshop_items").insert({
+      author_id: submission.user_id,
+      title: name,
+      summary: description || [organ, stain].filter(Boolean).join(" · ") || null,
+      kind: "other",
+      topic: submission.subject_slug || "histology",
+      tags: [`atlas:${submission.id}`, "атлас", "микропрепарат"],
+      status: "published",
+      personal_data_confirmed: true,
+      published_at: new Date().toISOString(),
+    });
+    if (workshopError) {
+      // Карточка уже опубликована: сбой зеркала в Мастерскую не отменяет решение.
+      console.warn("[admin:submissions:workshop]", workshopError.message);
+    }
+
     return c.json(ok({ item: updated, card_id: cardId }, rid));
   });
 

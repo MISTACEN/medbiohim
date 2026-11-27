@@ -14,6 +14,7 @@
     "src/components/physiology/PhysiologyPractice.tsx": 918,
     "src/components/tests/TestsHub.tsx": 821,
     "src/components/admin/AdminDatabaseConsole.tsx": 782,
+    "src/components/admin/TrainerCardEditor.tsx": 620,
     "src/components/lectures/ExamModePanel.tsx": 752,
     "src/components/lectures/LectureRenderer.tsx": 712,
     "src/components/study/StudyTrainer.tsx": 688,

@@ -327,7 +327,7 @@ export default function MyPreparations({ subjectSlug = "histology" }: { subjectS
                     </button>
                   ) : null}
                   {item.submission_status === "approved" && item.published_card_id ? (
-                    <a href={`/subjects/histology?tab=trainer&card=${encodeURIComponent(item.published_card_id)}`} className="text-[11px] font-semibold text-indigo-600">
+                    <a href={`/trainers/feed/histology?section=atlas&card=${encodeURIComponent(item.published_card_id)}`} className="text-[11px] font-semibold text-indigo-600">
                       Открыть в атласе →
                     </a>
                   ) : null}

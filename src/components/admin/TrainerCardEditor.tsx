@@ -9,9 +9,10 @@
  * чего в методичке нет: сами изображения и метки на них.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArchiveRestore, ImagePlus, Loader2, MapPin, Search, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, ImagePlus, Loader2, MapPin, Plus, Search, Trash2, X } from "lucide-react";
 import {
   adminAddTrainerCardImage,
+  adminCreateTrainerCard,
   adminDeleteTrainerCardImage,
   adminGetTrainerCard,
   adminListTrainerCards,
@@ -19,8 +20,14 @@ import {
   adminUpdateTrainerCardImage,
   getTrainerCardImageUrl,
   getTrainerImageUrl,
+  uploadFile,
 } from "@/lib/api";
+import { listPreparationGuides } from "@/lib/content-api";
 import { describeApiError } from "@/lib/errors";
+
+type GuidePick = { key: string; name: string; section: string | null };
+type CreateDraft = { name: string; organ: string; stain: string; description: string; external_url: string; guide_key: string };
+const EMPTY_CREATE: CreateDraft = { name: "", organ: "", stain: "", description: "", external_url: "", guide_key: "" };
 
 type Hotspot = { x: number; y: number; label: string; structure: string };
 
@@ -73,6 +80,11 @@ export function TrainerCardEditor() {
   const [newKey, setNewKey] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newCaption, setNewCaption] = useState("");
+  // Создание новой карточки: имя, поля препарата, снимок и методичка.
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createDraft, setCreateDraft] = useState<CreateDraft>(EMPTY_CREATE);
+  const [guides, setGuides] = useState<GuidePick[]>([]);
+  const createFileRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   async function loadList() {
@@ -119,6 +131,77 @@ export function TrainerCardEditor() {
 
   const patchCard = (patch: Partial<CardDetail>) =>
     setCard((current) => (current ? { ...current, ...patch } : current));
+
+  // Методички нужны при создании: без неё карточка попадает только в атлас.
+  useEffect(() => {
+    if (!createOpen || guides.length) return;
+    void listPreparationGuides()
+      .then((result) => {
+        if (!result.ok) return;
+        setGuides(
+          (result.data.items || []).map((guide) => ({
+            key: String(guide.key),
+            name: String(guide.name || guide.key),
+            section: guide.section ? String(guide.section) : null,
+          })),
+        );
+      })
+      .catch(() => undefined);
+  }, [createOpen, guides.length]);
+
+  async function createCard() {
+    const name = createDraft.name.trim();
+    if (name.length < 2) {
+      setError("Название препарата — хотя бы два символа.");
+      return;
+    }
+    const file = createFileRef.current?.files?.[0] ?? null;
+    if (!file && !createDraft.external_url.trim()) {
+      setError("Добавьте снимок: файл или https-ссылку.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+
+    let fileId: string | null = null;
+    if (file) {
+      const uploaded = await uploadFile(file);
+      const created = uploaded.ok ? (uploaded.data?.file as { id?: string } | undefined) : undefined;
+      if (!uploaded.ok || !created?.id) {
+        setBusy(false);
+        setError(uploaded.ok ? "Файл не сохранился в хранилище." : describeApiError(uploaded.error));
+        return;
+      }
+      fileId = String(created.id);
+    }
+
+    const res = await adminCreateTrainerCard({
+      name,
+      organ: createDraft.organ,
+      stain: createDraft.stain,
+      description: createDraft.description,
+      external_url: createDraft.external_url.trim(),
+      guide_key: createDraft.guide_key,
+      file_id: fileId,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError(describeApiError(res.error));
+      return;
+    }
+    const id = String(res.data?.item?.id || "");
+    setCreateOpen(false);
+    setCreateDraft(EMPTY_CREATE);
+    if (createFileRef.current) createFileRef.current.value = "";
+    await loadList();
+    if (id) await open(id);
+    setMessage(
+      res.data?.item?.trainable
+        ? "Карточка создана и добавлена в атлас и тренажёр."
+        : "Карточка создана и добавлена в атлас (без вариантов ответа).",
+    );
+  }
 
   async function saveCard(patch: Record<string, unknown>, success: string) {
     if (!card) return;
@@ -208,6 +291,82 @@ export function TrainerCardEditor() {
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
       <div className="card space-y-2 p-3">
+        <button
+          type="button"
+          onClick={() => { setCreateOpen((open) => !open); setError(""); setMessage(""); }}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+        >
+          {createOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {createOpen ? "Свернуть" : "Создать препарат"}
+        </button>
+
+        {createOpen ? (
+          <div className="space-y-2 rounded-xl border border-indigo-200 bg-indigo-50/40 p-2">
+            <input
+              value={createDraft.name}
+              onChange={(event) => setCreateDraft({ ...createDraft, name: event.target.value })}
+              placeholder="Название препарата *"
+              className="w-full rounded-lg border border-[var(--border)] px-2 py-1.5 text-sm"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={createDraft.organ}
+                onChange={(event) => setCreateDraft({ ...createDraft, organ: event.target.value })}
+                placeholder="Орган"
+                className="rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"
+              />
+              <input
+                value={createDraft.stain}
+                onChange={(event) => setCreateDraft({ ...createDraft, stain: event.target.value })}
+                placeholder="Окраска"
+                className="rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"
+              />
+            </div>
+            <textarea
+              value={createDraft.description}
+              onChange={(event) => setCreateDraft({ ...createDraft, description: event.target.value })}
+              placeholder="Что видно на снимке"
+              rows={2}
+              className="w-full rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"
+            />
+            <input
+              ref={createFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="block w-full text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-2 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+            />
+            <input
+              value={createDraft.external_url}
+              onChange={(event) => setCreateDraft({ ...createDraft, external_url: event.target.value })}
+              placeholder="или https-ссылка на снимок"
+              className="w-full rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"
+            />
+            <select
+              value={createDraft.guide_key}
+              onChange={(event) => setCreateDraft({ ...createDraft, guide_key: event.target.value })}
+              className="w-full rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"
+            >
+              <option value="">Без методички — только атлас</option>
+              {guides.map((guide) => (
+                <option key={guide.key} value={guide.key}>
+                  {guide.section ? `${guide.section} · ${guide.name}` : guide.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void createCard()}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Создать и опубликовать
+            </button>
+            {error ? <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[11px] text-red-700">{error}</p> : null}
+            {message ? <p className="rounded-lg bg-[var(--status-ok-bg)] px-2 py-1.5 text-[11px] text-[var(--status-ok-fg)]">{message}</p> : null}
+          </div>
+        ) : null}
+
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
           <input

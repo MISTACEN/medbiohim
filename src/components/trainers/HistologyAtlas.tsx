@@ -509,6 +509,13 @@ export function HistologyAtlas({
                       </div>
                       <div className="p-2">
                         <div className="line-clamp-2 text-xs font-semibold text-slate-900">{name}</div>
+                        {/* Снимок, присланный студентом и одобренный админом:
+                            авторство не прячем, иначе атлас выглядит «только админским». */}
+                        {String((card.preparation as { contributor?: unknown } | null)?.contributor || "") === "student" ? (
+                          <span className="mt-1 inline-flex rounded-full bg-[var(--status-ok-bg)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--status-ok-fg)]">
+                            от студента
+                          </span>
+                        ) : null}
                         <div className="mt-0.5 line-clamp-1 text-[10px] font-medium text-indigo-500">
                           {topicLabel(lessonKeyOf(card as never))}
                         </div>

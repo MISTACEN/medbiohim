@@ -18,6 +18,7 @@ import { registerPresence } from "./presence";
 import { registerPreparationGuides } from "./preparation-guides";
 import { registerTrainerCards } from "./trainer-cards";
 import { registerPreparationSubmissions } from "./preparation-submissions";
+import { registerTrainerCardCreate } from "./trainer-card-create";
 
 /**
  * Админ-консоль платформы.
@@ -42,6 +43,8 @@ registerPresence(admin);
 registerPreparationGuides(admin);
 registerTrainerCards(admin);
 registerPreparationSubmissions(admin);
+// Создание карточки: POST /admin/trainer-cards (отдельный файл — бюджет строк).
+registerTrainerCardCreate(admin);
 
 admin.route("/database", dbAdmin);
 admin.route("/", adminParity);
