@@ -6,7 +6,7 @@
  * никогда не вызывается для вариантов ответа и не перебивает точное совпадение,
  * поэтому проверка остаётся дешёвой и предсказуемой.
  */
-import { aiCompareAnswer } from "./ai-grade";
+import { aiCompareAnswer, type AiEnv } from "./ai-grade";
 import { compareAnswer } from "./grading-text";
 import type { AnswerKey, Question } from "./types";
 
@@ -21,11 +21,7 @@ export type TextOutcome = {
   reason?: string;
 };
 
-export type TextEnv = {
-  GEMINI_API_KEY?: string;
-  GEMINI_MODEL?: string;
-  AI_TEXT_GRADING?: string;
-};
+export type TextEnv = AiEnv;
 
 export async function judgeTextAnswers(input: {
   question: Question;
