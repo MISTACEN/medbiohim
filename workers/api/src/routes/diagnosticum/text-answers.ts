@@ -6,7 +6,7 @@
  * никогда не вызывается для вариантов ответа и не перебивает точное совпадение,
  * поэтому проверка остаётся дешёвой и предсказуемой.
  */
-import { aiCompareAnswer, type AiEnv } from "./ai-grade";
+import { aiCompareAnswer, type AiDebug, type AiEnv } from "./ai-grade";
 import { compareAnswer } from "./grading-text";
 import type { AnswerKey, Question } from "./types";
 
@@ -28,9 +28,14 @@ export async function judgeTextAnswers(input: {
   answers: AnswerKey;
   submittedText: Record<string, string>;
   env: TextEnv;
-}): Promise<{ verdicts: Record<string, boolean>; outcomes: Record<string, TextOutcome> }> {
+}): Promise<{
+  verdicts: Record<string, boolean>;
+  outcomes: Record<string, TextOutcome>;
+  debug: Record<string, AiDebug>;
+}> {
   const verdicts: Record<string, boolean> = {};
   const outcomes: Record<string, TextOutcome> = {};
+  const debug: Record<string, AiDebug> = {};
   let aiUsed = false;
 
   for (const [partId, raw] of Object.entries(input.submittedText)) {
@@ -60,16 +65,14 @@ export async function judgeTextAnswers(input: {
       // Одна попытка ИИ на ответ: в сложном задании несколько текстовых частей,
       // но платить за каждую не нужно — правила уже отработали.
       aiUsed = true;
-      if (ai) {
+      debug[partId] = ai.debug;
+      if (ai.grade) {
+        const g = ai.grade;
         source = "ai";
-        reason = ai.reason;
+        reason = g.reason;
         // «Частично верно» не зачитываем: название препарата либо то, либо нет.
         // Такой ответ остаётся сомнительным и виден в разборе с пояснением ИИ.
-        grade = {
-          verdict: ai.verdict === "partial" ? "unsure" : ai.verdict,
-          confidence: ai.confidence,
-          source: "none",
-        };
+        grade = { verdict: g.verdict === "partial" ? "unsure" : g.verdict, confidence: g.confidence, source: "none" };
       }
     }
 
@@ -86,5 +89,5 @@ export async function judgeTextAnswers(input: {
     };
   }
 
-  return { verdicts, outcomes };
+  return { verdicts, outcomes, debug };
 }
