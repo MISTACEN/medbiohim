@@ -52,6 +52,15 @@ test("с методичкой одобренная карточка станов
   assert.match(publication, /name: row\.name/);
 });
 
+test("health показывает, настроено ли хранилище снимков", async () => {
+  const health = await source("../src/routes/health.ts");
+  assert.match(health, /storageProvider: storageProviderName\(env\)/);
+
+  const b2 = await source("../src/lib/b2.ts");
+  assert.match(b2, /export function storageProviderName/);
+  assert.match(b2, /return env\.UPSTASH_BLOB_TOKEN\?\.trim\(\) \? "upstash" : "none"/);
+});
+
 test("очередь заявок видна в сводке админки", async () => {
   const overview = await source("../src/routes/admin/overview.ts");
   // user_preparations под RLS владельца: без service-ключа счётчик был бы нулём.

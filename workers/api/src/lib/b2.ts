@@ -173,3 +173,12 @@ function upstashBackend(env: Env): StorageBackend | null {
 export function getStorageBackend(env: Env): StorageBackend | null {
   return b2Backend(env) ?? upstashBackend(env);
 }
+
+/**
+ * Какое хранилище настроено — без создания клиента. Нужно для `/health`, чтобы
+ * загрузка снимков и отдача медиа проверялись снаружи без логина и секретов.
+ */
+export function storageProviderName(env: Env): "b2" | "upstash" | "none" {
+  if (b2Config(env)) return "b2";
+  return env.UPSTASH_BLOB_TOKEN?.trim() ? "upstash" : "none";
+}

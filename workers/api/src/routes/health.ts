@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { ok, requestId } from "../lib/response";
 import { gigachatConfigured, gigachatTransport } from "../lib/gigachat";
 import { workersAiConfigured, workersAiModel } from "../lib/workers-ai";
+import { storageProviderName } from "../lib/b2";
 
 const health = new Hono<{ Bindings: Env }>();
 
@@ -22,6 +23,9 @@ function payload(env: Env) {
       supabaseConfigured: Boolean(env.SUPABASE_URL && env.SUPABASE_ANON_KEY),
       redisConfigured: Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
       openaiConfigured: Boolean(env.OPENAI_API_KEY),
+      // Хранилище снимков: без него загрузка «Своих препаратов» не работает.
+      // Имя провайдера, а не ключи — секретов не раскрывает.
+      storageProvider: storageProviderName(env),
       cloudflareAiConfigured: workersAiConfigured(env),
       cloudflareAiModel: workersAiModel(env),
       gigachatConfigured: gigachatConfigured(env),
