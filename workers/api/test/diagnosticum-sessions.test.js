@@ -24,7 +24,8 @@ test("серии: старт, восстановление и идемпотен
   assert.match(route, /sessions\.get\("\/sessions\/:id"/);
   assert.match(route, /sessions\.post\("\/sessions\/:id\/finish"/);
   // В выдаче серии нет ключа: только вопрос и признак ответа.
-  assert.match(route, /question: item\.question,\n\s*answered: false,/);
+  // \r?\n — файл в рабочей копии может быть с CRLF.
+  assert.match(route, /question: item\.question,\r?\n\s*answered: false,/);
   // Повторный finish возвращает тот же итог.
   assert.match(route, /alreadyFinished/);
   // Неотвеченные вопросы считаются нулём, а не выпадают из среднего.

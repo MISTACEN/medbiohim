@@ -8,7 +8,7 @@
  * не знает правильный вариант, поэтому «подсмотреть» в разметке нечего.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { describeApiError } from "@/lib/errors";
 import {
   finishDiagnosticumSession,
@@ -16,11 +16,9 @@ import {
   getDiagnosticumOverview,
   getDiagnosticumSession,
   startDiagnosticumSession,
-  requestDiagnosticumHint,
   startDiagnosticumAttempt,
   submitDiagnosticumAnswer,
   type DiagnosticumAttempt,
-  type DiagnosticumHint,
   type DiagnosticumMode,
   type DiagnosticumOverview,
   type DiagnosticumResult,
@@ -44,17 +42,20 @@ import {
 import { DiagnosticumStatsDetails } from "@/components/trainers/DiagnosticumStatsDetails";
 import { DiagnosticumPartsList } from "@/components/trainers/DiagnosticumPartsList";
 import { DiagnosticumMessages } from "@/components/trainers/DiagnosticumMessages";
+import { DiagnosticumTextAnswers } from "@/components/trainers/DiagnosticumTextAnswers";
 import { useDiagnosticumImage } from "@/components/trainers/use-diagnosticum-image";
+import { useDiagnosticumSelection } from "@/components/trainers/use-diagnosticum-selection";
+import { useDiagnosticumTextMode } from "@/components/trainers/use-diagnosticum-text-mode";
 import {
-  DiagnosticumResultPanel,
-  type DiagnosticumRepeatState,
-} from "@/components/trainers/DiagnosticumResultPanel";
+  useDiagnosticumHint,
+  useDiagnosticumRepeat,
+} from "@/components/trainers/use-diagnosticum-actions";
+import { DiagnosticumResultPanel } from "@/components/trainers/DiagnosticumResultPanel";
 import {
   DiagnosticumExamProgress,
   DiagnosticumExamResult,
   type DiagnosticumExamState,
 } from "@/components/trainers/DiagnosticumExamPanel";
-import { srsAddTrainerCard } from "@/lib/features-api";
 
 /**
  * Режим можно задать снаружи — так тренажёр выбирает диагностикум форматом
@@ -83,8 +84,11 @@ export function DiagnosticumRunner({
   const [mode, setLocalMode] = useState<DiagnosticumMode>(controlledMode ?? "complex");
   const [section, setSection] = useState("");
   const [attempt, setAttempt] = useState<DiagnosticumAttempt | null>(null);
-  const [selected, setSelected] = useState<Record<string, string[]>>({});
-  const [hints, setHints] = useState<DiagnosticumHint[]>([]);
+  // Выбор вариантов и подписи — в хуке, чтобы раннер оставался в бюджете строк.
+  const { selected, setSelected, toggle, label } = useDiagnosticumSelection(attempt);
+  // Свободный ввод доступен в любом режиме; выбор формата запоминается.
+  const [textMode, setTextMode] = useDiagnosticumTextMode();
+  const [textValues, setTextValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<DiagnosticumResult | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
   // Статистика не показывается сразу: это вторичный блок, и он не должен
@@ -92,11 +96,19 @@ export function DiagnosticumRunner({
   // открытии, а не при каждом входе в тренажёр.
   const [statsOpen, setStatsOpen] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
-  // Ошибка сразу уходит в повторение: препарат добавляется точечно по ключу
-  // методички, а не пачкой из десяти случайных.
-  const [repeatState, setRepeatState] = useState<DiagnosticumRepeatState>("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Подсказки и «в повторение» живут в хуках: раннер отвечает за сценарий.
+  const { hints, ask: askHint, reset: resetHints } = useDiagnosticumHint({
+    attemptId: attempt?.attempt_id,
+    answered: Boolean(result),
+    onBusy: setBusy,
+    onError: setError,
+  });
+  const { repeatState, add: addToRepeat, reset: resetRepeat } = useDiagnosticumRepeat(
+    result?.guide_key,
+    setError,
+  );
   // Экзамен — серия вопросов без подсказок и без эталона до итога.
   const [exam, setExam] = useState<DiagnosticumExamState | null>(null);
   // Серия живёт на сервере: состав, порядок и итог приходят из
@@ -145,14 +157,15 @@ export function DiagnosticumRunner({
     setAttempt(null);
     setResult(null);
     setSelected({});
-    setHints([]);
+    setTextValues({});
+    resetHints();
     setExam(null);
     setTimedOut(false);
-    setRepeatState("idle");
+    resetRepeat();
     setNotice(null);
     resumeTried.current = false;
     setResumedNote(false);
-  }, [mode]);
+  }, [mode, resetHints, resetRepeat, setSelected]);
 
   // Восстановление экзамена после перезагрузки. Одного раза на вход в режим
   // достаточно: дальше серия живёт в состоянии, а не в хранилище.
@@ -289,9 +302,10 @@ export function DiagnosticumRunner({
     setError(null);
     setNotice(null);
     setSelected({});
-    setHints([]);
+    setTextValues({});
+    resetHints();
     setResult(null);
-    setRepeatState("idle");
+    resetRepeat();
     if (mode === "exam") {
       setExam({ total: examLength, index: 1, scores: [], finished: false });
       setTimeLeft(examTime);
@@ -353,26 +367,36 @@ export function DiagnosticumRunner({
     } finally {
       setBusy(false);
     }
-  }, [mode, section, examLength, examTime, cardIds]);
+  }, [mode, section, examLength, examTime, cardIds, resetHints, resetRepeat, setSelected]);
 
-  const askHint = useCallback(async () => {
-    if (!attempt || result) return;
-    setBusy(true);
-    try {
-      const res = await requestDiagnosticumHint(attempt.attempt_id);
-      if (res.ok) setHints((current) => [...current, res.data]);
-      else setError(describeApiError(res.error));
-    } finally {
-      setBusy(false);
-    }
-  }, [attempt, result]);
+  // Части «назови объект» можно закрыть словами: их варианты прячем, а поле
+  // ввода показываем отдельным блоком. Остальные части остаются выбором.
+  // Объявлено до `submit`: от этого зависит отправка ответа.
+  const textParts = textMode
+    ? (attempt?.question.parts ?? []).filter((part) => part.kind === "single")
+    : [];
+  const textPartIds = textParts.map((part) => part.id);
+  const submittedText = Object.fromEntries(
+    textPartIds
+      .map((partId) => [partId, (textValues[partId] ?? "").trim()] as const)
+      .filter(([, value]) => value.length > 0),
+  );
+
+  const ready = Boolean(
+    attempt &&
+      attempt.question.parts.every((part) =>
+        textPartIds.includes(part.id)
+          ? (textValues[part.id] ?? "").trim().length > 0
+          : (selected[part.id] ?? []).length > 0,
+      ),
+  );
 
   const submit = useCallback(async () => {
     if (!attempt || result) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await submitDiagnosticumAnswer(attempt.attempt_id, selected);
+      const res = await submitDiagnosticumAnswer(attempt.attempt_id, selected, submittedText);
       if (res.ok) {
         setResult(res.data);
         setStatsKey((key) => key + 1);
@@ -387,7 +411,7 @@ export function DiagnosticumRunner({
     } finally {
       setBusy(false);
     }
-  }, [attempt, result, selected, mode]);
+  }, [attempt, result, selected, submittedText, mode]);
 
   /** Следующий вопрос серии или её итог с разбором после последнего. */
   const nextExamQuestion = useCallback(async () => {
@@ -429,11 +453,12 @@ export function DiagnosticumRunner({
     setAttempt(attemptFromItem(next));
     setExam({ ...exam, index: exam.index + 1 });
     setSelected({});
-    setHints([]);
+    setTextValues({});
+    resetHints();
     setResult(null);
     setTimeLeft(examTime);
     setTimedOut(false);
-  }, [exam, examTime, sessionId, sessionItems]);
+  }, [exam, examTime, sessionId, sessionItems, resetHints, setSelected, setTextValues]);
 
   // Отсчёт только для активного вопроса экзамена: без результата и без итога.
   useEffect(() => {
@@ -452,50 +477,6 @@ export function DiagnosticumRunner({
     setTimedOut(true);
     void submit();
   }, [mode, examTime, timeLeft, attempt, result, exam, submit]);
-
-  /** Положить разобранный препарат в очередь повторения (идемпотентно). */
-  const addToRepeat = useCallback(async () => {
-    const key = result?.guide_key;
-    if (!key || repeatState === "busy" || repeatState === "saved" || repeatState === "exists") return;
-    setRepeatState("busy");
-    const res = await srsAddTrainerCard(key);
-    if (!res.ok) {
-      setRepeatState("idle");
-      setError(describeApiError(res.error));
-      return;
-    }
-    setRepeatState(res.data.added > 0 ? "saved" : "exists");
-  }, [result?.guide_key, repeatState]);
-
-  const labels = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const part of attempt?.question.parts ?? []) {
-      for (const option of part.options) map.set(`${part.id}:${option.id}`, option.label);
-    }
-    return map;
-  }, [attempt]);
-
-  const toggle = (partId: string, optionId: string, kind: "single" | "multi") => {
-    if (result) return;
-    setSelected((current) => {
-      const picked = current[partId] ?? [];
-      if (kind === "single") return { ...current, [partId]: [optionId] };
-      return {
-        ...current,
-        [partId]: picked.includes(optionId)
-          ? picked.filter((id) => id !== optionId)
-          : [...picked, optionId],
-      };
-    });
-  };
-
-  const ready = Boolean(
-    attempt &&
-      attempt.question.parts.every((part) => (selected[part.id] ?? []).length > 0),
-  );
-
-  const label = (partId: string, optionId: string) =>
-    labels.get(`${partId}:${optionId}`) ?? optionId;
 
 
   return (
@@ -517,6 +498,8 @@ export function DiagnosticumRunner({
         onExamTimeChange={setExamTime}
         busy={busy}
         attemptActive={Boolean(attempt)}
+        textMode={textMode}
+        onTextModeChange={setTextMode}
         selectedCount={cardIds?.length ?? 0}
         onStart={() => void start()}
       />
@@ -541,8 +524,22 @@ export function DiagnosticumRunner({
             parts={attempt.question.parts}
             selected={selected}
             result={result}
-            onToggle={toggle}
+            hiddenParts={textPartIds}
+            onToggle={(partId, optionId, kind) => {
+              if (!result) toggle(partId, optionId, kind);
+            }}
           />
+
+          {textParts.length ? (
+            <DiagnosticumTextAnswers
+              parts={textParts}
+              values={textValues}
+              result={result}
+              onChange={(partId, value) =>
+                setTextValues((current) => ({ ...current, [partId]: value }))
+              }
+            />
+          ) : null}
 
           <DiagnosticumHints hints={hints} />
 

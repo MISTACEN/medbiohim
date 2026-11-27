@@ -16,6 +16,7 @@ import {
   type Submitted,
 } from "./model";
 import { gradeAnswer, hintFor } from "./grading";
+import { judgeTextAnswers, type TextOutcome } from "./text-answers";
 import {
   UUID_PATTERN,
   isMissingTable,
@@ -136,7 +137,7 @@ session.post("/hint", requireAuth, async (c) => {
 session.post("/answer", requireAuth, async (c) => {
   const rid = requestId();
   const body = (await c.req.json().catch(() => null)) as
-    | { attempt_id?: unknown; submitted?: unknown }
+    | { attempt_id?: unknown; submitted?: unknown; submitted_text?: unknown }
     | null;
   const attemptId = String(body?.attempt_id ?? "");
   if (!UUID_PATTERN.test(attemptId)) {
@@ -157,6 +158,17 @@ session.post("/answer", requireAuth, async (c) => {
   const submitted: Submitted = {};
   for (const [partId, value] of Object.entries(submittedRaw as Record<string, unknown>)) {
     submitted[partId] = stringList(value);
+  }
+
+  // Свободный ввод: части, отвеченные словами, приходят отдельным объектом.
+  // Ограничение длины — чтобы в строку попытки не улетал абзац текста.
+  const submittedText: Record<string, string> = {};
+  const textRaw = body?.submitted_text;
+  if (textRaw && typeof textRaw === "object" && !Array.isArray(textRaw)) {
+    for (const [partId, value] of Object.entries(textRaw as Record<string, unknown>)) {
+      const clean = String(value ?? "").slice(0, 300).trim();
+      if (clean) submittedText[partId] = clean;
+    }
   }
 
   // Service-клиент: ключ ответа не входит в колоночные гранты authenticated.
@@ -187,8 +199,21 @@ session.post("/answer", requireAuth, async (c) => {
   // что строит buildQuestion (см. /start). Раньше его оборачивали в {parts}
   // второй раз: key.correct был undefined и /answer падал INTERNAL на живой БД.
   const answerKey = attempt.answers && typeof attempt.answers === "object" ? attempt.answers : { parts: {} };
-  const result = gradeAnswer(answerKey, submitted, Number(attempt.hints_used || 0));
-  const feedback = { parts: result.parts, guide_key: attempt.guide_key };
+  // Текстовые части проверяются отдельно: правила, затем один запрос к ИИ.
+  const text = Object.keys(submittedText).length
+    ? await judgeTextAnswers({
+        question: attempt.question,
+        answers: answerKey,
+        submittedText,
+        env: c.env,
+      })
+    : { verdicts: {} as Record<string, boolean>, outcomes: {} as Record<string, TextOutcome> };
+  const result = gradeAnswer(answerKey, submitted, Number(attempt.hints_used || 0), text.verdicts);
+  const feedback = {
+    parts: result.parts,
+    guide_key: attempt.guide_key,
+    ...(Object.keys(text.outcomes).length ? { text: text.outcomes } : {}),
+  };
 
   const update = await service
     .from("diagnosticum_attempts")
@@ -231,6 +256,8 @@ session.post("/answer", requireAuth, async (c) => {
         // У электронограммы нет методички — пустой ключ, чтобы клиент не звал панель.
         guide_key: attempt.mode === "electronogram" ? "" : attempt.guide_key,
         section: attempt.section || "",
+        // Как проверяли свободный ввод: точное совпадение, правило или ИИ.
+        ...(Object.keys(text.outcomes).length ? { text: text.outcomes } : {}),
       },
       rid,
     ),

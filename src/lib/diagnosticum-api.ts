@@ -74,12 +74,24 @@ export type DiagnosticumPartFeedback = {
   explanation: string;
 };
 
+/** Как проверяли свободный ответ: точное совпадение, правило или ИИ. */
+export type DiagnosticumTextOutcome = {
+  input: string;
+  target: string;
+  verdict: "correct" | "incorrect" | "unsure";
+  confidence: number;
+  source: "exact" | "contains" | "fuzzy" | "ai" | "none";
+  reason?: string;
+};
+
 export type DiagnosticumResult = {
   correct: boolean;
   score: number;
   hints_used: number;
   /** В экзамене разбор не приходит: сервер отдаёт только балл. */
   parts?: DiagnosticumPartFeedback[];
+  /** Вердикты по частям, отвеченным словами (только вне экзамена). */
+  text?: Record<string, DiagnosticumTextOutcome>;
   guide_key?: string;
   section?: string;
   exam?: boolean;
@@ -116,13 +128,22 @@ export function requestDiagnosticumHint(attemptId: string, level?: number) {
   });
 }
 
+/**
+ * Ответ на задание: `submitted` — выбранные id, `submittedText` — части,
+ * отвеченные словами. Сервер сам решает, что проверять правилами, а что ИИ.
+ */
 export function submitDiagnosticumAnswer(
   attemptId: string,
   submitted: Record<string, string[]>,
+  submittedText?: Record<string, string>,
 ) {
   return api<DiagnosticumResult>(endpoints.diagnosticum.answer(), {
     method: "POST",
-    body: JSON.stringify({ attempt_id: attemptId, submitted }),
+    body: JSON.stringify({
+      attempt_id: attemptId,
+      submitted,
+      ...(submittedText && Object.keys(submittedText).length ? { submitted_text: submittedText } : {}),
+    }),
   });
 }
 
